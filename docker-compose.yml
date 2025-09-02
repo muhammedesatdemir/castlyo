@@ -1,0 +1,117 @@
+
+
+services:
+  # PostgreSQL Database
+  postgres:
+    image: postgres:15-alpine
+    container_name: castlyo-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: castlyo
+      POSTGRES_USER: castlyo
+      POSTGRES_PASSWORD: castlyo_password
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./scripts/init-db.sql:/docker-entrypoint-initdb.d/init-db.sql
+    networks:
+      - castlyo-network
+
+  # Redis Cache
+  redis:
+    image: redis:7-alpine
+    container_name: castlyo-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - castlyo-network
+
+  # Meilisearch
+  meilisearch:
+    image: getmeili/meilisearch:v1.5
+    container_name: castlyo-search
+    restart: unless-stopped
+    ports:
+      - "7700:7700"
+    environment:
+      MEILI_ENV: development
+      MEILI_MASTER_KEY: castlyo_search_master_key
+    volumes:
+      - meilisearch_data:/meili_data
+    networks:
+      - castlyo-network
+
+  # API Backend (Development)
+  api:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    container_name: castlyo-api
+    restart: unless-stopped
+    ports:
+      - "3001:3001"
+    environment:
+      NODE_ENV: development
+      DATABASE_URL: postgresql://castlyo:castlyo_password@postgres:5432/castlyo
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      JWT_SECRET: dev-jwt-secret-change-in-production
+      JWT_REFRESH_SECRET: dev-refresh-secret-change-in-production
+    volumes:
+      - ./apps/api:/app
+      - /app/node_modules
+    depends_on:
+      - postgres
+      - redis
+      - meilisearch
+    networks:
+      - castlyo-network
+    command: npm run dev
+
+  # Frontend Web App (Development)
+  web:
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+    container_name: castlyo-web
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      NODE_ENV: development
+      NEXT_PUBLIC_API_URL: http://localhost:3001/api/v1
+    volumes:
+      - ./apps/web:/app
+      - /app/node_modules
+      - /app/.next
+    depends_on:
+      - api
+    networks:
+      - castlyo-network
+    command: npm run dev
+
+
+
+  # Mailhog (Email testing in development)
+  mailhog:
+    image: mailhog/mailhog:latest
+    container_name: castlyo-mailhog
+    restart: unless-stopped
+    ports:
+      - "1025:1025"  # SMTP port
+      - "8025:8025"  # Web UI port
+    networks:
+      - castlyo-network
+
+volumes:
+  postgres_data:
+  redis_data:
+  meilisearch_data:
+
+networks:
+  castlyo-network:
+    driver: bridge
