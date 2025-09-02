@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import Header from '@/components/layout/Header'
 import HeroShowreel from '@/components/hero/HeroShowreel'
 import LogoMarquee from '@/components/sections/LogoMarquee'
@@ -11,24 +11,41 @@ import TalentRegistrationForm from '@/components/forms/TalentRegistrationForm'
 import AgencyRegistrationForm from '@/components/forms/AgencyRegistrationForm'
 
 export default function Home() {
-  const [isTalentModalOpen, setIsTalentModalOpen] = useState(false)
-  const [isAgencyModalOpen, setIsAgencyModalOpen] = useState(false)
+  const [signup, setSignup] = useState<{open: boolean; type: "talent" | "agency" | null}>({
+    open: false,
+    type: null
+  })
 
-  const handleTalentRegistration = () => {
-    setIsTalentModalOpen(true)
+  const openSignup = (type: "talent" | "agency") => {
+    setSignup({ open: true, type })
+    // hash'i de güncelle (isteğe bağlı)
+    window.location.hash = type === "talent" ? "#signup-talent" : "#signup-agency"
   }
 
-  const handleAgencyRegistration = () => {
-    setIsAgencyModalOpen(true)
+  const closeSignup = () => {
+    setSignup({ open: false, type: null })
+    // hash'i temizle
+    if (window.location.hash === "#signup-talent" || window.location.hash === "#signup-agency") {
+      history.replaceState(null, "", " ")
+    }
   }
+
+  // Hash değişimini dinle (#signup-talent / #signup-agency doğrudan çalışsın)
+  useEffect(() => {
+    const handleHash = () => {
+      if (window.location.hash === "#signup-talent") openSignup("talent")
+      if (window.location.hash === "#signup-agency") openSignup("agency")
+    }
+    window.addEventListener("hashchange", handleHash)
+    // sayfa yüklendiğinde mevcut hash'i de işle
+    handleHash()
+    return () => window.removeEventListener("hashchange", handleHash)
+  }, [])
 
   return (
     <main className="min-h-screen">
-      <Header 
-        onTalentSignUp={handleTalentRegistration}
-        onAgencySignUp={handleAgencyRegistration}
-      />
-      <HeroShowreel />
+      <Header onSignup={openSignup} />
+      <HeroShowreel onSignup={openSignup} />
       <LogoMarquee />
       
       <section id="features" className="py-24 sm:py-32 bg-brand-50 dark:bg-gray-900">
@@ -111,7 +128,7 @@ export default function Home() {
                   </li>
                 </ul>
                 <button 
-                  onClick={handleTalentRegistration}
+                  onClick={() => openSignup("talent")}
                   className="w-full bg-gradient-to-r from-brand-primary to-brand-secondary text-white py-4 px-6 rounded-xl hover:scale-105 transition-all duration-300 cursor-pointer font-semibold text-lg shadow-lg"
                 >
                   Yetenek Olarak Başla
@@ -138,7 +155,7 @@ export default function Home() {
                   </li>
                 </ul>
                 <button 
-                  onClick={handleAgencyRegistration}
+                  onClick={() => openSignup("agency")}
                   className="w-full bg-gradient-to-r from-brand-700 via-brand-primary to-brand-800 text-white py-4 px-6 rounded-xl hover:scale-105 transition-all duration-300 cursor-pointer font-semibold text-lg shadow-lg"
                 >
                   Ajans Olarak Başla
@@ -151,22 +168,13 @@ export default function Home() {
 
       <CTASticky />
 
-      {/* Talent Registration Modal */}
+      {/* Signup Modal */}
       <Modal
-        isOpen={isTalentModalOpen}
-        onClose={() => setIsTalentModalOpen(false)}
-        title="Sahne Senin! 🎬"
+        isOpen={signup.open}
+        onClose={closeSignup}
+        title={signup.type === "talent" ? "Sahne Senin! 🎬" : "Ajans Kaydı 🏢"}
       >
-        <TalentRegistrationForm />
-      </Modal>
-
-      {/* Agency Registration Modal */}
-      <Modal
-        isOpen={isAgencyModalOpen}
-        onClose={() => setIsAgencyModalOpen(false)}
-        title="Ajans Kaydı 🏢"
-      >
-        <AgencyRegistrationForm />
+        {signup.type === "talent" ? <TalentRegistrationForm /> : <AgencyRegistrationForm />}
       </Modal>
     </main>
   );

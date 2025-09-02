@@ -3,7 +3,11 @@
 import { motion } from 'framer-motion'
 import Link from 'next/link'
 
-export default function HeroShowreel() {
+interface HeroShowreelProps {
+  onSignup: (type: "talent" | "agency") => void
+}
+
+export default function HeroShowreel({ onSignup }: HeroShowreelProps) {
   return (
     <section className="relative overflow-hidden min-h-screen flex items-center">
       {/* Video Background */}
@@ -62,18 +66,18 @@ export default function HeroShowreel() {
           transition={{ delay: 0.4 }}
           className="mt-8 flex flex-col sm:flex-row items-center justify-center gap-4"
         >
-          <Link 
-            href="#signup-talent" 
+          <button
+            onClick={() => onSignup("talent")}
             className="w-full sm:w-auto rounded-xl bg-brand-gradient-smooth px-8 py-4 text-lg font-semibold text-white shadow-lg shadow-brand-primary/20 hover:scale-105 transition-all duration-300 hover:shadow-xl hover:shadow-brand-primary/30"
           >
             Yetenek Olarak Başla
-          </Link>
-          <Link 
-            href="#signup-agency" 
+          </button>
+          <button
+            onClick={() => onSignup("agency")}
             className="w-full sm:w-auto rounded-xl border border-white/20 bg-white/10 px-8 py-4 text-lg font-semibold text-white backdrop-blur-sm hover:bg-white/20 transition-all duration-300"
           >
             Ajans Olarak Başla
-          </Link>
+          </button>
         </motion.div>
 
         {/* Stats Row */}

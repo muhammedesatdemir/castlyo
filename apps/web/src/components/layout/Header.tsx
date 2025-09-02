@@ -6,11 +6,10 @@ import { Button } from '@/components/ui/button'
 import { User, Menu, X, Star } from 'lucide-react'
 
 interface HeaderProps {
-  onTalentSignUp?: () => void
-  onAgencySignUp?: () => void
+  onSignup: (type: "talent" | "agency") => void
 }
 
-export default function Header({ onTalentSignUp, onAgencySignUp }: HeaderProps) {
+export default function Header({ onSignup }: HeaderProps) {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
   const [isLoggedIn] = useState(false) // TODO: Replace with actual auth state
 
@@ -63,21 +62,22 @@ export default function Header({ onTalentSignUp, onAgencySignUp }: HeaderProps) 
               </div>
             ) : (
               <>
-                <Button 
-                  variant="outline" 
-                  size="sm" 
-                  onClick={onTalentSignUp}
-                  className="rounded-lg hover:bg-brand-50 hover:border-brand-300 hover:text-brand-primary transition-all"
+                <button
+                  id="header-talent"
+                  type="button"
+                  onClick={() => onSignup("talent")}
+                  className="rounded-lg hover:bg-brand-50 hover:border-brand-300 hover:text-brand-primary transition-all px-4 py-2 border border-gray-300 text-sm font-medium"
                 >
                   Yetenek
-                </Button>
-                <Button 
-                  size="sm" 
-                  onClick={onAgencySignUp}
-                  className="rounded-lg bg-gradient-to-r from-brand-primary to-brand-secondary hover:scale-105 transition-all duration-300 text-white shadow-lg"
+                </button>
+                <button
+                  id="header-agency"
+                  type="button"
+                  onClick={() => onSignup("agency")}
+                  className="rounded-lg bg-gradient-to-r from-brand-primary to-brand-secondary hover:scale-105 transition-all duration-300 text-white shadow-lg px-4 py-2 text-sm font-medium"
                 >
                   Ajans
-                </Button>
+                </button>
               </>
             )}
           </div>
@@ -137,7 +137,7 @@ export default function Header({ onTalentSignUp, onAgencySignUp }: HeaderProps) 
                       variant="outline" 
                       size="sm" 
                       onClick={() => {
-                        onTalentSignUp?.()
+                        onSignup("talent")
                         setIsMobileMenuOpen(false)
                       }}
                       className="w-full rounded-lg"
@@ -147,7 +147,7 @@ export default function Header({ onTalentSignUp, onAgencySignUp }: HeaderProps) 
                     <Button 
                       size="sm" 
                       onClick={() => {
-                        onAgencySignUp?.()
+                        onSignup("agency")
                         setIsMobileMenuOpen(false)
                       }}
                       className="w-full rounded-lg bg-gradient-to-r from-brand-primary to-brand-secondary text-white"
