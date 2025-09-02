@@ -41,6 +41,10 @@ export default function RootLayout({
 }) {
   return (
     <html lang="tr">
+      <head>
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
+        <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@700;800&display=swap" rel="stylesheet" />
+      </head>
       <body className={inter.className}>
         <AuthProvider>
           <div className="min-h-screen bg-background">

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { User, Menu, X, Star } from 'lucide-react'
@@ -12,9 +12,41 @@ interface HeaderProps {
 export default function Header({ onSignup }: HeaderProps) {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
   const [isLoggedIn] = useState(false) // TODO: Replace with actual auth state
+  const menuRef = useRef<HTMLDivElement>(null)
+  const buttonRef = useRef<HTMLButtonElement>(null)
+
+  // Close menu when clicking outside or pressing Escape
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (
+        menuRef.current && 
+        buttonRef.current &&
+        !menuRef.current.contains(event.target as Node) &&
+        !buttonRef.current.contains(event.target as Node)
+      ) {
+        setIsMobileMenuOpen(false)
+      }
+    }
+
+    function handleEscapeKey(event: KeyboardEvent) {
+      if (event.key === 'Escape') {
+        setIsMobileMenuOpen(false)
+      }
+    }
+
+    if (isMobileMenuOpen) {
+      document.addEventListener('mousedown', handleClickOutside)
+      document.addEventListener('keydown', handleEscapeKey)
+    }
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside)
+      document.removeEventListener('keydown', handleEscapeKey)
+    }
+  }, [isMobileMenuOpen])
 
   return (
-    <header className="fixed top-0 w-full z-50 bg-white/90 dark:bg-gray-900/90 backdrop-blur-lg border-b border-gray-200 dark:border-gray-800">
+    <header className="site-header fixed top-0 w-full z-50 bg-black border-b border-gray-800">
       <div className="mx-auto max-w-7xl px-6 lg:px-8">
         <div className="flex h-16 items-center justify-between">
           {/* Logo */}
@@ -23,7 +55,7 @@ export default function Header({ onSignup }: HeaderProps) {
               <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-brand-primary to-brand-secondary flex items-center justify-center">
                 <Star className="w-5 h-5 text-white" />
               </div>
-              <span className="text-xl font-bold bg-gradient-to-r from-brand-primary to-brand-secondary bg-clip-text text-transparent">
+              <span className="logo nav-link text-xl font-bold text-[#F6E6C3] hover:text-white transition-colors duration-200">
                 Castlyo
               </span>
             </Link>
@@ -33,99 +65,103 @@ export default function Header({ onSignup }: HeaderProps) {
           <nav className="hidden md:flex items-center space-x-8">
             <Link 
               href="#explore" 
-              className="text-gray-700 dark:text-gray-300 hover:text-brand-primary dark:hover:text-brand-primary transition-colors"
+              className="nav-link text-[#F6E6C3] hover:text-white transition-colors duration-200"
             >
               Keşfet
             </Link>
             <Link 
               href="/jobs" 
-              className="text-gray-700 dark:text-gray-300 hover:text-brand-primary dark:hover:text-brand-primary transition-colors"
+              className="nav-link text-[#F6E6C3] hover:text-white transition-colors duration-200"
             >
               İlanlar
             </Link>
             <Link 
               href="#features" 
-              className="text-gray-700 dark:text-gray-300 hover:text-brand-primary dark:hover:text-brand-primary transition-colors"
+              className="nav-link text-[#F6E6C3] hover:text-white transition-colors duration-200"
             >
               Özellikler
             </Link>
           </nav>
 
-          {/* Desktop Auth Buttons */}
-          <div className="hidden md:flex items-center space-x-4">
-            {isLoggedIn ? (
-              <div className="flex items-center space-x-3">
-                <Button variant="outline" size="sm" className="rounded-lg">
-                  <User className="w-4 h-4 mr-2" />
-                  Profilim
-                </Button>
-              </div>
-            ) : (
-              <>
-                <button
-                  id="header-talent"
-                  type="button"
-                  onClick={() => onSignup("talent")}
-                  className="rounded-lg hover:bg-brand-50 hover:border-brand-300 hover:text-brand-primary transition-all px-4 py-2 border border-gray-300 text-sm font-medium"
-                >
-                  Yetenek
-                </button>
-                <button
-                  id="header-agency"
-                  type="button"
-                  onClick={() => onSignup("agency")}
-                  className="rounded-lg bg-gradient-to-r from-brand-primary to-brand-secondary hover:scale-105 transition-all duration-300 text-white shadow-lg px-4 py-2 text-sm font-medium"
-                >
-                  Ajans
-                </button>
-              </>
-            )}
+          {/* Desktop Hamburger Menu */}
+          <div className="hidden md:flex items-center space-x-4 relative">
+            <button
+              ref={buttonRef}
+              className={`hamburger ${isMobileMenuOpen ? 'open' : ''}`}
+              onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+              aria-expanded={isMobileMenuOpen}
+              aria-label="Kullanıcı menüsü"
+            >
+              <span className="line"></span>
+              <span className="line"></span>
+              <span className="line"></span>
+            </button>
+
+            {/* Auth Menu Dropdown */}
+            <div ref={menuRef} className={`auth-menu ${isMobileMenuOpen ? 'open' : ''}`}>
+              <button
+                onClick={() => {
+                  onSignup("talent")
+                  setIsMobileMenuOpen(false)
+                }}
+                className="primary"
+              >
+                Kayıt Ol
+              </button>
+              <button
+                onClick={() => {
+                  onSignup("agency")
+                  setIsMobileMenuOpen(false)
+                }}
+                className="ghost"
+              >
+                Giriş Yap
+              </button>
+            </div>
           </div>
 
           {/* Mobile Menu Button */}
           <div className="md:hidden">
-            <Button
-              variant="outline"
-              size="sm"
+            <button
               onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-              className="rounded-lg"
+              className="hamburger nav-link inline-flex items-center justify-center w-10 h-10 bg-transparent border border-[#F6E6C3] rounded-lg text-[#F6E6C3] hover:text-white hover:border-white transition-colors duration-200"
             >
               {isMobileMenuOpen ? (
                 <X className="w-4 h-4" />
               ) : (
                 <Menu className="w-4 h-4" />
               )}
-            </Button>
+            </button>
           </div>
         </div>
 
         {/* Mobile Menu */}
         {isMobileMenuOpen && (
-          <div className="md:hidden py-4 border-t border-gray-200 dark:border-gray-800">
+          <div className="md:hidden py-4 border-t border-gray-800">
             <nav className="flex flex-col space-y-3">
               <Link 
                 href="#explore" 
-                className="text-gray-700 dark:text-gray-300 hover:text-brand-primary dark:hover:text-brand-primary transition-colors py-2"
+                className="nav-link text-[#F6E6C3] hover:text-white transition-colors duration-200 py-2"
                 onClick={() => setIsMobileMenuOpen(false)}
               >
                 Keşfet
               </Link>
               <Link 
                 href="/jobs" 
-                className="text-gray-700 dark:text-gray-300 hover:text-brand-primary dark:hover:text-brand-primary transition-colors py-2"
+                className="nav-link text-[#F6E6C3] hover:text-white transition-colors duration-200 py-2"
                 onClick={() => setIsMobileMenuOpen(false)}
               >
                 İlanlar
               </Link>
               <Link 
                 href="#features" 
-                className="text-gray-700 dark:text-gray-300 hover:text-brand-primary dark:hover:text-brand-primary transition-colors py-2"
+                className="nav-link text-[#F6E6C3] hover:text-white transition-colors duration-200 py-2"
                 onClick={() => setIsMobileMenuOpen(false)}
               >
                 Özellikler
               </Link>
               
-              <div className="pt-4 border-t border-gray-200 dark:border-gray-800">
+              <div className="pt-4 border-t border-gray-800">
                 {isLoggedIn ? (
                   <Button variant="outline" size="sm" className="w-full rounded-lg">
                     <User className="w-4 h-4 mr-2" />
@@ -133,27 +169,24 @@ export default function Header({ onSignup }: HeaderProps) {
                   </Button>
                 ) : (
                   <div className="space-y-2">
-                    <Button 
-                      variant="outline" 
-                      size="sm" 
+                    <button 
                       onClick={() => {
                         onSignup("talent")
                         setIsMobileMenuOpen(false)
                       }}
-                      className="w-full rounded-lg"
+                      className="w-full rounded-lg bg-[#F6E6C3] hover:bg-white text-black font-semibold px-4 py-2 transition-all duration-200"
                     >
-                      Yetenek Olarak Katıl
-                    </Button>
-                    <Button 
-                      size="sm" 
+                      Kayıt Ol
+                    </button>
+                    <button 
                       onClick={() => {
                         onSignup("agency")
                         setIsMobileMenuOpen(false)
                       }}
-                      className="w-full rounded-lg bg-gradient-to-r from-brand-primary to-brand-secondary text-white"
+                      className="w-full rounded-lg border border-[#F6E6C3] text-[#F6E6C3] hover:bg-gray-800 hover:text-white px-4 py-2 transition-all duration-200"
                     >
-                      Ajans Olarak Katıl
-                    </Button>
+                      Giriş Yap
+                    </button>
                   </div>
                 )}
               </div>
