@@ -54,6 +54,7 @@ export const talentProfiles = pgTable('talent_profiles', {
   
   // Visibility settings
   isPublic: boolean('is_public').default(true).notNull(),
+  visibility: varchar('visibility', { length: 30 }).default('public').notNull(), // public, only-applied-agencies, private
   boostedUntil: timestamp('boosted_until'),
   profileViews: integer('profile_views').default(0).notNull(),
   

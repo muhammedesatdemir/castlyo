@@ -1,51 +1,25 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useRouter } from 'next/navigation'
 import Header from '@/components/layout/Header'
 import HeroShowreel from '@/components/hero/HeroShowreel'
 import LogoMarquee from '@/components/sections/LogoMarquee'
 import ExploreGrid from '@/components/sections/ExploreGrid'
 import CTASticky from '@/components/sections/CTASticky'
-import { Modal } from '@/components/ui/modal'
-import TalentRegistrationForm from '@/components/forms/TalentRegistrationForm'
-import AgencyRegistrationForm from '@/components/forms/AgencyRegistrationForm'
 
 export default function Home() {
-  const [signup, setSignup] = useState<{open: boolean; type: "talent" | "agency" | null}>({
-    open: false,
-    type: null
-  })
+  const router = useRouter()
 
-  const openSignup = (type: "talent" | "agency") => {
-    setSignup({ open: true, type })
-    // hash'i de güncelle (isteğe bağlı)
-    window.location.hash = type === "talent" ? "#signup-talent" : "#signup-agency"
+  const handleSignup = (type: "talent" | "agency") => {
+    // First show privacy info, then redirect to auth page with role and return URL
+    const returnUrl = encodeURIComponent(`/onboarding/${type}`)
+    router.push(`/privacy-info?role=${type}&next=${returnUrl}`)
   }
-
-  const closeSignup = () => {
-    setSignup({ open: false, type: null })
-    // hash'i temizle
-    if (window.location.hash === "#signup-talent" || window.location.hash === "#signup-agency") {
-      history.replaceState(null, "", " ")
-    }
-  }
-
-  // Hash değişimini dinle (#signup-talent / #signup-agency doğrudan çalışsın)
-  useEffect(() => {
-    const handleHash = () => {
-      if (window.location.hash === "#signup-talent") openSignup("talent")
-      if (window.location.hash === "#signup-agency") openSignup("agency")
-    }
-    window.addEventListener("hashchange", handleHash)
-    // sayfa yüklendiğinde mevcut hash'i de işle
-    handleHash()
-    return () => window.removeEventListener("hashchange", handleHash)
-  }, [])
 
   return (
     <main className="min-h-screen">
-      <Header onSignup={openSignup} />
-      <HeroShowreel onSignup={openSignup} />
+      <Header onSignup={handleSignup} />
+      <HeroShowreel onSignup={handleSignup} />
       <LogoMarquee />
       
       <section id="features" className="bg-black text-white py-24 sm:py-32 -mt-px">
@@ -80,17 +54,7 @@ export default function Home() {
                 <h3 className="text-xl font-bold text-black mb-3">Canlı Ağ</h3>
                 <p className="text-gray-800">Binlerce yetenek ve yüzlerce ajans aktif olarak buluşuyor, networking hiç bu kadar kolay olmamıştı</p>
                 
-                {/* Hemen Başla butonu eklendi */}
-                <div className="mt-6 flex justify-center">
-                  <button
-                    onClick={() => openSignup("talent")}
-                    className="rounded-xl px-5 py-2 font-medium
-                               bg-[#962901] text-white
-                               shadow-md hover:bg-[#7a2000] transition cursor-pointer"
-                  >
-                    Hemen Başla
-                  </button>
-                </div>
+                {/* CTA Diyeti: Bu buton kaldırıldı - sayfa başına tek ana CTA */}
               </div>
               
               <div className="text-center p-8 bg-[#F6E6C3] border border-gray-200 rounded-2xl shadow-lg hover:shadow-xl hover:-translate-y-1 transition-all duration-300">
@@ -138,7 +102,7 @@ export default function Home() {
                 </li>
               </ul>
               <button 
-                onClick={() => openSignup("talent")}
+                onClick={() => handleSignup("talent")}
                 className="w-full bg-white text-[#962901] py-4 px-6 rounded-2xl hover:bg-[#F6E6C3] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40 transition cursor-pointer font-semibold text-lg shadow-lg"
               >
                 Yetenek Olarak Başla
@@ -147,7 +111,7 @@ export default function Home() {
             
             <div className="bg-[#962901] rounded-2xl p-8 text-[#F6E6C3] ring-1 ring-white/10 shadow-2xl transition hover:-translate-y-0.5 will-change-transform">
               <h3 className="text-2xl font-semibold text-[#F6E6C3] mb-6">
-                🏢 Ajanslar İçin
+                🏢 Ajans Olarak Başla
               </h3>
               <ul className="space-y-3 mb-8">
                 <li className="flex items-start gap-3">
@@ -164,7 +128,7 @@ export default function Home() {
                 </li>
               </ul>
               <button 
-                onClick={() => openSignup("agency")}
+                onClick={() => handleSignup("agency")}
                 className="w-full bg-white text-[#962901] py-4 px-6 rounded-2xl hover:bg-[#F6E6C3] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40 transition cursor-pointer font-semibold text-lg shadow-lg"
               >
                 Ajans Olarak Başla
@@ -175,15 +139,6 @@ export default function Home() {
       </section>
 
       <CTASticky />
-
-      {/* Signup Modal */}
-      <Modal
-        isOpen={signup.open}
-        onClose={closeSignup}
-        title={signup.type === "talent" ? "Sahne Senin! 🎬" : "Ajans Kaydı 🏢"}
-      >
-        {signup.type === "talent" ? <TalentRegistrationForm /> : <AgencyRegistrationForm />}
-      </Modal>
     </main>
   );
 }

@@ -113,11 +113,21 @@ export default function Header({ onSignup }: HeaderProps) {
                   }}
                   className="primary"
                 >
-                  Kayıt Ol
+                  Yetenek Olarak Başla
                 </button>
                 <button
                   onClick={() => {
                     onSignup("agency")
+                    setIsMobileMenuOpen(false)
+                  }}
+                  className="secondary"
+                >
+                  Ajans Olarak Başla
+                </button>
+                <button
+                  onClick={() => {
+                    // Login için role parametresi olmadan auth sayfasına yönlendir
+                    window.location.href = '/auth'
                     setIsMobileMenuOpen(false)
                   }}
                   className="ghost"
@@ -184,11 +194,20 @@ export default function Header({ onSignup }: HeaderProps) {
                       }}
                       className="w-full rounded-lg bg-[#F6E6C3] hover:bg-white text-black font-semibold px-4 py-2 transition-all duration-200"
                     >
-                      Kayıt Ol
+                      Yetenek Olarak Başla
                     </button>
                     <button 
                       onClick={() => {
                         onSignup("agency")
+                        setIsMobileMenuOpen(false)
+                      }}
+                      className="w-full rounded-lg bg-[#962901] hover:bg-[#7a2000] text-white font-semibold px-4 py-2 transition-all duration-200"
+                    >
+                      Ajans Olarak Başla
+                    </button>
+                    <button 
+                      onClick={() => {
+                        window.location.href = '/auth'
                         setIsMobileMenuOpen(false)
                       }}
                       className="w-full rounded-lg border border-[#F6E6C3] text-[#F6E6C3] hover:bg-gray-800 hover:text-white px-4 py-2 transition-all duration-200"

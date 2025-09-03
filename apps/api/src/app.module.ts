@@ -11,6 +11,8 @@ import { JobsModule } from './modules/jobs/jobs.module';
 import { SearchModule } from './modules/search/search.module';
 import { PaymentsModule } from './modules/payments/payments.module';
 import { MessagesModule } from './modules/messages/messages.module';
+import { PermissionsModule } from './modules/permissions/permissions.module';
+import { ConsentModule } from './modules/consent/consent.module';
 import { HealthModule } from './common/health/health.module';
 
 @Module({
@@ -46,6 +48,8 @@ import { HealthModule } from './common/health/health.module';
     SearchModule,
     PaymentsModule,
     MessagesModule,
+    PermissionsModule,
+    ConsentModule,
     HealthModule,
   ],
   providers: [

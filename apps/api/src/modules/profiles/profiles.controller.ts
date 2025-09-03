@@ -12,6 +12,7 @@ import {
   HttpStatus
 } from '@nestjs/common';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { Public } from '../auth/decorators/public.decorator';
 import { ProfilesService } from './profiles.service';
 import { 
   CreateTalentProfileDto, 
@@ -53,6 +54,12 @@ export class ProfilesController {
     return this.profilesService.getTalentProfile(id, req.user?.id);
   }
 
+  @Public()
+  @Get('public/talent/:id')
+  async getPublicTalentProfile(@Param('id') id: string, @Request() req) {
+    return this.profilesService.getPublicTalentProfile(id, req.user?.id);
+  }
+
   @Get('agency/:id')
   async getAgencyProfile(@Param('id') id: string, @Request() req) {
     return this.profilesService.getAgencyProfile(id, req.user?.id);
@@ -80,5 +87,10 @@ export class ProfilesController {
   @HttpCode(HttpStatus.NO_CONTENT)
   async deleteProfile(@Param('id') id: string, @Request() req) {
     return this.profilesService.deleteProfile(id, req.user.id);
+  }
+
+  @Get('export/me')
+  async exportMyData(@Request() req) {
+    return this.profilesService.exportUserData(req.user.id, req.user.id);
   }
 }

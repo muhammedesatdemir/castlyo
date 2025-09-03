@@ -1,10 +1,11 @@
 'use client'
 
-import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 
 export default function CTASticky() {
+  const router = useRouter()
   const [show, setShow] = useState(false)
 
   useEffect(() => {
@@ -18,6 +19,12 @@ export default function CTASticky() {
     return () => window.removeEventListener('scroll', handleScroll)
   }, [])
 
+  const handleCTA = () => {
+    // Default to talent signup for sticky CTA, but show privacy info first
+    const returnUrl = encodeURIComponent('/onboarding/talent')
+    router.push(`/privacy-info?role=talent&next=${returnUrl}`)
+  }
+
   return (
     <AnimatePresence>
       {show && (
@@ -30,12 +37,12 @@ export default function CTASticky() {
         >
           <div className="rounded-2xl bg-white/90 px-6 py-3 shadow-2xl backdrop-blur-lg dark:bg-gray-900/90 border border-white/20">
             <div className="flex items-center">
-              <Link 
-                href="#signup-talent" 
+              <button 
+                onClick={handleCTA}
                 className="rounded-2xl bg-[#962901] px-6 py-2.5 text-sm font-semibold text-white shadow-lg hover:bg-[#7a2000] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40 transition-all duration-300"
               >
                 Hemen Başla
-              </Link>
+              </button>
             </div>
           </div>
         </motion.div>

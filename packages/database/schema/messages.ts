@@ -1,11 +1,12 @@
 import { pgTable, uuid, varchar, text, timestamp, boolean, jsonb, pgEnum, integer } from 'drizzle-orm/pg-core';
 import { relations } from 'drizzle-orm';
 import { users, talentProfiles, agencyProfiles } from './users';
-import { contactPermissions } from './jobs';
+import { contactPermissions } from './permissions';
 
 // Enums
 export const messageStatusEnum = pgEnum('message_status', ['SENT', 'DELIVERED', 'READ', 'DELETED']);
 export const threadStatusEnum = pgEnum('thread_status', ['ACTIVE', 'ARCHIVED', 'BLOCKED']);
+export const offerStatusEnum = pgEnum('offer_status', ['PENDING', 'ACCEPTED', 'REJECTED', 'WITHDRAWN', 'EXPIRED']);
 
 // Message threads - conversation containers
 export const messageThreads = pgTable('message_threads', {
@@ -168,6 +169,51 @@ export const userNotificationReads = pgTable('user_notification_reads', {
   readAt: timestamp('read_at').defaultNow().notNull(),
 });
 
+// Job offers - for talent casting/project offers
+export const offers = pgTable('offers', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  
+  // Participants
+  agencyId: uuid('agency_id').references(() => users.id).notNull(),
+  talentId: uuid('talent_id').references(() => users.id).notNull(),
+  contactPermissionId: uuid('contact_permission_id').references(() => contactPermissions.id),
+  
+  // Offer details
+  title: varchar('title', { length: 300 }).notNull(),
+  description: text('description').notNull(),
+  projectType: varchar('project_type', { length: 100 }), // film, dizi, reklam, etc.
+  
+  // Financial details
+  budgetMin: integer('budget_min'),
+  budgetMax: integer('budget_max'),
+  currency: varchar('currency', { length: 10 }).default('TRY').notNull(),
+  paymentTerms: text('payment_terms'),
+  
+  // Timeline
+  startDate: timestamp('start_date'),
+  endDate: timestamp('end_date'),
+  applicationDeadline: timestamp('application_deadline'),
+  
+  // Location and requirements
+  location: varchar('location', { length: 200 }),
+  requirements: jsonb('requirements').$type<string[]>().default([]),
+  
+  // Status and workflow
+  status: offerStatusEnum('status').default('PENDING').notNull(),
+  respondedAt: timestamp('responded_at'),
+  responseMessage: text('response_message'),
+  
+  // Expiration
+  expiresAt: timestamp('expires_at'),
+  
+  // Metadata
+  isUrgent: boolean('is_urgent').default(false).notNull(),
+  tags: jsonb('tags').$type<string[]>().default([]),
+  
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+});
+
 // Relations
 export const messageThreadsRelations = relations(messageThreads, ({ one, many }) => ({
   agency: one(agencyProfiles, {
@@ -231,5 +277,20 @@ export const userNotificationReadsRelations = relations(userNotificationReads, (
   notification: one(systemNotifications, {
     fields: [userNotificationReads.notificationId],
     references: [systemNotifications.id],
+  }),
+}));
+
+export const offersRelations = relations(offers, ({ one }) => ({
+  agency: one(users, {
+    fields: [offers.agencyId],
+    references: [users.id],
+  }),
+  talent: one(users, {
+    fields: [offers.talentId],
+    references: [users.id],
+  }),
+  contactPermission: one(contactPermissions, {
+    fields: [offers.contactPermissionId],
+    references: [contactPermissions.id],
   }),
 }));

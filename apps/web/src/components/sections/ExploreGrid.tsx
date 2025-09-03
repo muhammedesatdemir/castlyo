@@ -141,9 +141,24 @@ export default function ExploreGrid() {
               
               {/* Hover Overlay */}
               <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-                <div className="absolute bottom-4 left-4 right-4">
-                  <button className="w-full rounded-lg bg-white/20 py-2 text-sm font-medium text-white backdrop-blur-sm hover:bg-white/30 transition-colors">
+                <div className="absolute bottom-4 left-4 right-4 space-y-2">
+                  <button 
+                    onClick={() => {
+                      // TODO: Navigate to talent profile page
+                      console.log('Navigate to profile:', talent.id)
+                    }}
+                    className="w-full rounded-lg bg-white/20 py-2 text-sm font-medium text-white backdrop-blur-sm hover:bg-white/30 transition-colors"
+                  >
                     Profili Görüntüle
+                  </button>
+                  <button 
+                    onClick={() => {
+                      // TODO: Navigate to auth then offer page
+                      window.location.href = `/auth?next=${encodeURIComponent(`/talent/${talent.id}/offer`)}`
+                    }}
+                    className="w-full rounded-lg bg-brand-primary/80 py-2 text-sm font-medium text-white backdrop-blur-sm hover:bg-brand-primary transition-colors"
+                  >
+                    Teklif Gönder
                   </button>
                 </div>
               </div>
@@ -177,18 +192,18 @@ export default function ExploreGrid() {
                     {skill}
                   </span>
                 ))}
+                
+                {/* Privacy Badge */}
+                <span className="rounded-md px-2 py-1 text-xs bg-green-500/20 text-green-300 border border-green-500/30">
+                  🔒 İletişim gizli
+                </span>
               </div>
             </div>
           </motion.div>
         ))}
       </div>
 
-        {/* View More Button */}
-        <div className="text-center mt-12">
-          <button className="rounded-xl bg-gradient-to-r from-[#F6E6C3] to-white text-black px-8 py-3 font-semibold shadow-lg hover:scale-105 transition-all duration-300 hover:shadow-xl">
-            Daha Fazla Keşfet
-          </button>
-        </div>
+        {/* CTA Diyeti: "Daha Fazla Keşfet" butonu kaldırıldı - sadece Hero'daki ana CTA'lar kalacak */}
       </div>
     </section>
   )

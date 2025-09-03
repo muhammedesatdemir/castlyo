@@ -1,0 +1,78 @@
+import { 
+  Controller, 
+  Get, 
+  Post, 
+  Patch,
+  Body, 
+  Param, 
+  UseGuards, 
+  Request,
+  Ip,
+  Headers,
+  HttpCode,
+  HttpStatus
+} from '@nestjs/common';
+import { Throttle } from '@nestjs/throttler';
+import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { ConsentService } from './consent.service';
+
+export class UpdateConsentDto {
+  consentType: string;
+  granted: boolean;
+}
+
+@Controller('consent')
+@UseGuards(JwtAuthGuard)
+export class ConsentController {
+  constructor(private consentService: ConsentService) {}
+
+  /**
+   * Get user's current consents
+   */
+  @Get('me')
+  async getUserConsents(@Request() req) {
+    return this.consentService.getUserConsents(req.user.id);
+  }
+
+  /**
+   * Update user consent
+   */
+  @Patch('update')
+  @Throttle({ default: { limit: 20, ttl: 60 * 1000 } }) // 20 updates per minute
+  @HttpCode(HttpStatus.OK)
+  async updateConsent(
+    @Body() dto: UpdateConsentDto,
+    @Request() req,
+    @Ip() ipAddress: string,
+    @Headers('user-agent') userAgent: string,
+  ) {
+    return this.consentService.updateConsent({
+      userId: req.user.id,
+      consentType: dto.consentType,
+      granted: dto.granted,
+      ipAddress,
+      userAgent,
+    });
+  }
+
+  /**
+   * Check if user has specific consent
+   */
+  @Get('check/:consentType')
+  async checkConsent(
+    @Param('consentType') consentType: string,
+    @Request() req,
+  ) {
+    const hasConsent = await this.consentService.hasConsent(req.user.id, consentType);
+    return { hasConsent };
+  }
+
+  /**
+   * Export user consent data (KVKK right to data portability)
+   */
+  @Get('export')
+  @Throttle({ default: { limit: 5, ttl: 60 * 60 * 1000 } }) // 5 exports per hour
+  async exportConsentData(@Request() req) {
+    return this.consentService.exportUserConsentData(req.user.id);
+  }
+}
