@@ -48,16 +48,16 @@ export default function Home() {
       <HeroShowreel onSignup={openSignup} />
       <LogoMarquee />
       
-      <section id="features" className="py-24 sm:py-32 bg-brand-50 dark:bg-gray-900">
+      <section id="features" className="bg-black text-white py-24 sm:py-32 -mt-px">
         <div className="mx-auto max-w-7xl px-6 lg:px-8">
           <div className="mx-auto max-w-2xl lg:text-center">
-            <h2 className="text-base font-semibold leading-7 bg-gradient-to-r from-brand-primary to-brand-secondary bg-clip-text text-transparent">
+            <h2 className="text-base font-semibold leading-7 text-[#F6E6C3] tracking-widest">
               Neden Castlyo?
             </h2>
-            <p className="mt-2 text-3xl font-bold tracking-tight text-gray-900 dark:text-white sm:text-4xl">
+            <p className="mt-2 text-3xl font-bold tracking-tight text-white sm:text-4xl">
               Sahne Senin, Fırsat Bizim!
             </p>
-            <p className="mt-6 text-lg leading-8 text-gray-600 dark:text-gray-300">
+            <p className="mt-6 text-lg leading-8 text-white/80">
               Güvenli, hızlı ve eğlenceli casting deneyimi. Yetenekler ve ajanslar 
               tek platformda buluşuyor, hayaller gerçek oluyor.
             </p>
@@ -65,28 +65,40 @@ export default function Home() {
           
           <div className="mx-auto mt-16 max-w-2xl sm:mt-20 lg:mt-24 lg:max-w-none">
             <div className="grid grid-cols-1 gap-8 md:grid-cols-2 lg:grid-cols-3">
-              <div className="text-center p-8 bg-white dark:bg-white/5 rounded-2xl shadow-lg hover:shadow-xl hover:-translate-y-1 transition-all duration-300 border border-gray-100 dark:border-gray-800 backdrop-blur">
-                <div className="w-16 h-16 bg-brand-gradient-smooth rounded-2xl flex items-center justify-center mx-auto mb-6 animate-float">
-                  <div className="w-8 h-8 bg-white rounded-lg"></div>
+              <div className="text-center p-8 bg-white/5 border border-white/10 rounded-2xl shadow-lg hover:shadow-xl hover:-translate-y-1 transition-all duration-300 backdrop-blur">
+                <div className="w-16 h-16 bg-[#F6E6C3] rounded-2xl flex items-center justify-center mx-auto mb-6 animate-float">
+                  <div className="w-8 h-8 bg-black rounded-lg"></div>
                 </div>
-                <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-3">Güvenli Platform</h3>
-                <p className="text-gray-600 dark:text-gray-300">KVKV uyumlu sistem ile verileriniz güvende, profesyonel deneyim garantili</p>
+                <h3 className="text-xl font-bold text-white mb-3">Güvenli Platform</h3>
+                <p className="text-white/70">KVKV uyumlu sistem ile verileriniz güvende, profesyonel deneyim garantili</p>
               </div>
               
-              <div className="text-center p-8 bg-white dark:bg-white/5 rounded-2xl shadow-lg hover:shadow-xl hover:-translate-y-1 transition-all duration-300 border border-gray-100 dark:border-gray-800 backdrop-blur">
-                <div className="w-16 h-16 bg-brand-gradient-smooth rounded-2xl flex items-center justify-center mx-auto mb-6 animate-float" style={{ animationDelay: '1s' }}>
-                  <div className="w-8 h-8 bg-white rounded-lg"></div>
+              <div className="text-center p-8 bg-white/5 border border-white/10 rounded-2xl shadow-lg hover:shadow-xl hover:-translate-y-1 transition-all duration-300 backdrop-blur">
+                <div className="w-16 h-16 bg-[#F6E6C3] rounded-2xl flex items-center justify-center mx-auto mb-6 animate-float" style={{ animationDelay: '1s' }}>
+                  <div className="w-8 h-8 bg-black rounded-lg"></div>
                 </div>
-                <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-3">Canlı Ağ</h3>
-                <p className="text-gray-600 dark:text-gray-300">Binlerce yetenek ve yüzlerce ajans aktif olarak buluşuyor, networking hiç bu kadar kolay olmamıştı</p>
+                <h3 className="text-xl font-bold text-white mb-3">Canlı Ağ</h3>
+                <p className="text-white/70">Binlerce yetenek ve yüzlerce ajans aktif olarak buluşuyor, networking hiç bu kadar kolay olmamıştı</p>
+                
+                {/* Hemen Başla butonu eklendi */}
+                <div className="mt-6 flex justify-center">
+                  <button
+                    onClick={() => openSignup("talent")}
+                    className="rounded-xl px-5 py-2 font-medium
+                               bg-gradient-to-r from-[#F6E6C3] to-white text-black
+                               shadow-md hover:opacity-90 transition cursor-pointer"
+                  >
+                    Hemen Başla
+                  </button>
+                </div>
               </div>
               
-              <div className="text-center p-8 bg-white dark:bg-white/5 rounded-2xl shadow-lg hover:shadow-xl hover:-translate-y-1 transition-all duration-300 border border-gray-100 dark:border-gray-800 backdrop-blur">
-                <div className="w-16 h-16 bg-brand-gradient-smooth rounded-2xl flex items-center justify-center mx-auto mb-6 animate-float" style={{ animationDelay: '2s' }}>
-                  <div className="w-8 h-8 bg-white rounded-lg"></div>
+              <div className="text-center p-8 bg-white/5 border border-white/10 rounded-2xl shadow-lg hover:shadow-xl hover:-translate-y-1 transition-all duration-300 backdrop-blur">
+                <div className="w-16 h-16 bg-[#F6E6C3] rounded-2xl flex items-center justify-center mx-auto mb-6 animate-float" style={{ animationDelay: '2s' }}>
+                  <div className="w-8 h-8 bg-black rounded-lg"></div>
                 </div>
-                <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-3">Akıllı Eşleştirme</h3>
-                <p className="text-gray-600 dark:text-gray-300">AI destekli algoritma ile saniyeler içinde mükemmel eşleştirmeler, doğru rolle doğru yetenek</p>
+                <h3 className="text-xl font-bold text-white mb-3">Akıllı Eşleştirme</h3>
+                <p className="text-white/70">AI destekli algoritma ile saniyeler içinde mükemmel eşleştirmeler, doğru rolle doğru yetenek</p>
               </div>
             </div>
           </div>

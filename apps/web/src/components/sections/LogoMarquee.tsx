@@ -10,6 +10,9 @@ const logos = [
 export default function LogoMarquee() {
   return (
     <section className="section-black relative bg-[#0E0A1A] py-12 border-y border-white/5 z-0 -mt-1">
+      {/* Alta doğru siyaha eriyecek köprü */}
+      <div className="pointer-events-none absolute bottom-0 left-0 right-0 h-12
+                      bg-gradient-to-b from-transparent to-black" />
       <div className="mx-auto max-w-6xl px-6">
         <p className="text-center text-white/60 text-sm mb-8">
           Güvenilen ajanslarla ortaklık
