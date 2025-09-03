@@ -32,7 +32,7 @@ export default function CTASticky() {
             <div className="flex items-center">
               <Link 
                 href="#signup-talent" 
-                className="rounded-xl bg-brand-gradient-smooth px-6 py-2.5 text-sm font-semibold text-white shadow-lg hover:scale-105 transition-all duration-300"
+                className="rounded-xl bg-[#962901] px-6 py-2.5 text-sm font-semibold text-white shadow-lg hover:bg-[#7a2000] transition-all duration-300"
               >
                 Hemen Başla
               </Link>

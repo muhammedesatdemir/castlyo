@@ -65,40 +65,40 @@ export default function Home() {
           
           <div className="mx-auto mt-16 max-w-2xl sm:mt-20 lg:mt-24 lg:max-w-none">
             <div className="grid grid-cols-1 gap-8 md:grid-cols-2 lg:grid-cols-3">
-              <div className="text-center p-8 bg-white/5 border border-white/10 rounded-2xl shadow-lg hover:shadow-xl hover:-translate-y-1 transition-all duration-300 backdrop-blur">
-                <div className="w-16 h-16 bg-[#F6E6C3] rounded-2xl flex items-center justify-center mx-auto mb-6 animate-float">
+              <div className="text-center p-8 bg-[#F6E6C3] border border-gray-200 rounded-2xl shadow-lg hover:shadow-xl hover:-translate-y-1 transition-all duration-300">
+                <div className="w-16 h-16 bg-black/10 rounded-2xl flex items-center justify-center mx-auto mb-6">
                   <div className="w-8 h-8 bg-black rounded-lg"></div>
                 </div>
-                <h3 className="text-xl font-bold text-white mb-3">Güvenli Platform</h3>
-                <p className="text-white/70">KVKV uyumlu sistem ile verileriniz güvende, profesyonel deneyim garantili</p>
+                <h3 className="text-xl font-bold text-black mb-3">Güvenli Platform</h3>
+                <p className="text-gray-800">KVKV uyumlu sistem ile verileriniz güvende, profesyonel deneyim garantili</p>
               </div>
               
-              <div className="text-center p-8 bg-white/5 border border-white/10 rounded-2xl shadow-lg hover:shadow-xl hover:-translate-y-1 transition-all duration-300 backdrop-blur">
-                <div className="w-16 h-16 bg-[#F6E6C3] rounded-2xl flex items-center justify-center mx-auto mb-6 animate-float" style={{ animationDelay: '1s' }}>
+              <div className="text-center p-8 bg-[#F6E6C3] border border-gray-200 rounded-2xl shadow-lg hover:shadow-xl hover:-translate-y-1 transition-all duration-300">
+                <div className="w-16 h-16 bg-black/10 rounded-2xl flex items-center justify-center mx-auto mb-6" style={{ animationDelay: '1s' }}>
                   <div className="w-8 h-8 bg-black rounded-lg"></div>
                 </div>
-                <h3 className="text-xl font-bold text-white mb-3">Canlı Ağ</h3>
-                <p className="text-white/70">Binlerce yetenek ve yüzlerce ajans aktif olarak buluşuyor, networking hiç bu kadar kolay olmamıştı</p>
+                <h3 className="text-xl font-bold text-black mb-3">Canlı Ağ</h3>
+                <p className="text-gray-800">Binlerce yetenek ve yüzlerce ajans aktif olarak buluşuyor, networking hiç bu kadar kolay olmamıştı</p>
                 
                 {/* Hemen Başla butonu eklendi */}
                 <div className="mt-6 flex justify-center">
                   <button
                     onClick={() => openSignup("talent")}
                     className="rounded-xl px-5 py-2 font-medium
-                               bg-gradient-to-r from-[#F6E6C3] to-white text-black
-                               shadow-md hover:opacity-90 transition cursor-pointer"
+                               bg-[#962901] text-white
+                               shadow-md hover:bg-[#7a2000] transition cursor-pointer"
                   >
                     Hemen Başla
                   </button>
                 </div>
               </div>
               
-              <div className="text-center p-8 bg-white/5 border border-white/10 rounded-2xl shadow-lg hover:shadow-xl hover:-translate-y-1 transition-all duration-300 backdrop-blur">
-                <div className="w-16 h-16 bg-[#F6E6C3] rounded-2xl flex items-center justify-center mx-auto mb-6 animate-float" style={{ animationDelay: '2s' }}>
+              <div className="text-center p-8 bg-[#F6E6C3] border border-gray-200 rounded-2xl shadow-lg hover:shadow-xl hover:-translate-y-1 transition-all duration-300">
+                <div className="w-16 h-16 bg-black/10 rounded-2xl flex items-center justify-center mx-auto mb-6" style={{ animationDelay: '2s' }}>
                   <div className="w-8 h-8 bg-black rounded-lg"></div>
                 </div>
-                <h3 className="text-xl font-bold text-white mb-3">Akıllı Eşleştirme</h3>
-                <p className="text-white/70">AI destekli algoritma ile saniyeler içinde mükemmel eşleştirmeler, doğru rolle doğru yetenek</p>
+                <h3 className="text-xl font-bold text-black mb-3">Akıllı Eşleştirme</h3>
+                <p className="text-gray-800">AI destekli algoritma ile saniyeler içinde mükemmel eşleştirmeler, doğru rolle doğru yetenek</p>
               </div>
             </div>
           </div>
@@ -118,59 +118,57 @@ export default function Home() {
             </p>
           </div>
           
-          <div className="bg-white/5 border border-white/10 rounded-3xl shadow-2xl p-8 backdrop-blur">
-            <div className="grid md:grid-cols-2 gap-10">
-              <div className="relative">
-                <h3 className="text-2xl font-bold text-[#F6E6C3] mb-6">
-                  🎭 Yetenekler İçin
-                </h3>
-                <ul className="space-y-4 text-white/80 mb-8">
-                  <li className="flex items-center gap-4">
-                    <div className="w-3 h-3 bg-[#F6E6C3] rounded-full"></div>
-                    <span className="text-base">Ücretsiz profil oluştur ve sergile</span>
-                  </li>
-                  <li className="flex items-center gap-4">
-                    <div className="w-3 h-3 bg-[#F6E6C3] rounded-full"></div>
-                    <span className="text-base">Ajanslarla doğrudan buluş</span>
-                  </li>
-                  <li className="flex items-center gap-4">
-                    <div className="w-3 h-3 bg-[#F6E6C3] rounded-full"></div>
-                    <span className="text-base">Portföyünü profesyonelce yönet</span>
-                  </li>
-                </ul>
-                <button 
-                  onClick={() => openSignup("talent")}
-                  className="w-full bg-gradient-to-r from-[#F6E6C3] to-white text-black py-4 px-6 rounded-xl hover:scale-105 transition-all duration-300 cursor-pointer font-semibold text-lg shadow-lg"
-                >
-                  Yetenek Olarak Başla
-                </button>
-              </div>
-              
-              <div className="relative">
-                <h3 className="text-2xl font-bold text-[#F6E6C3] mb-6">
-                  🏢 Ajanslar İçin
-                </h3>
-                <ul className="space-y-4 text-white/80 mb-8">
-                  <li className="flex items-center gap-4">
-                    <div className="w-3 h-3 bg-[#F6E6C3] rounded-full"></div>
-                    <span className="text-base">Akıllı yetenek arama ve filtrele</span>
-                  </li>
-                  <li className="flex items-center gap-4">
-                    <div className="w-3 h-3 bg-[#F6E6C3] rounded-full"></div>
-                    <span className="text-base">Proje ve casting'leri yönet</span>
-                  </li>
-                  <li className="flex items-center gap-4">
-                    <div className="w-3 h-3 bg-[#F6E6C3] rounded-full"></div>
-                    <span className="text-base">Güvenli ödeme ve sözleşme</span>
-                  </li>
-                </ul>
-                <button 
-                  onClick={() => openSignup("agency")}
-                  className="w-full bg-gradient-to-r from-[#F6E6C3] to-white text-black py-4 px-6 rounded-xl hover:scale-105 transition-all duration-300 cursor-pointer font-semibold text-lg shadow-lg"
-                >
-                  Ajans Olarak Başla
-                </button>
-              </div>
+          <div className="grid md:grid-cols-2 gap-8">
+            <div className="bg-[#962901] rounded-2xl p-8 shadow-2xl">
+              <h3 className="text-2xl font-bold text-[#F6E6C3] mb-6">
+                🎭 Yetenekler İçin
+              </h3>
+              <ul className="space-y-4 text-[#F6E6C3]/90 mb-8">
+                <li className="flex items-center gap-4">
+                  <div className="w-3 h-3 bg-[#F6E6C3] rounded-full"></div>
+                  <span className="text-base">Ücretsiz profil oluştur ve sergile</span>
+                </li>
+                <li className="flex items-center gap-4">
+                  <div className="w-3 h-3 bg-[#F6E6C3] rounded-full"></div>
+                  <span className="text-base">Ajanslarla doğrudan buluş</span>
+                </li>
+                <li className="flex items-center gap-4">
+                  <div className="w-3 h-3 bg-[#F6E6C3] rounded-full"></div>
+                  <span className="text-base">Portföyünü profesyonelce yönet</span>
+                </li>
+              </ul>
+              <button 
+                onClick={() => openSignup("talent")}
+                className="w-full bg-white text-[#962901] py-4 px-6 rounded-xl hover:bg-[#F6E6C3] transition-all duration-300 cursor-pointer font-semibold text-lg shadow-lg"
+              >
+                Yetenek Olarak Başla
+              </button>
+            </div>
+            
+            <div className="bg-[#962901] rounded-2xl p-8 shadow-2xl">
+              <h3 className="text-2xl font-bold text-[#F6E6C3] mb-6">
+                🏢 Ajanslar İçin
+              </h3>
+              <ul className="space-y-4 text-[#F6E6C3]/90 mb-8">
+                <li className="flex items-center gap-4">
+                  <div className="w-3 h-3 bg-[#F6E6C3] rounded-full"></div>
+                  <span className="text-base">Akıllı yetenek arama ve filtrele</span>
+                </li>
+                <li className="flex items-center gap-4">
+                  <div className="w-3 h-3 bg-[#F6E6C3] rounded-full"></div>
+                  <span className="text-base">Proje ve casting'leri yönet</span>
+                </li>
+                <li className="flex items-center gap-4">
+                  <div className="w-3 h-3 bg-[#F6E6C3] rounded-full"></div>
+                  <span className="text-base">Güvenli ödeme ve sözleşme</span>
+                </li>
+              </ul>
+              <button 
+                onClick={() => openSignup("agency")}
+                className="w-full bg-white text-[#962901] py-4 px-6 rounded-xl hover:bg-[#F6E6C3] transition-all duration-300 cursor-pointer font-semibold text-lg shadow-lg"
+              >
+                Ajans Olarak Başla
+              </button>
             </div>
           </div>
         </div>
