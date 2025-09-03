@@ -9,7 +9,7 @@ const logos = [
 
 export default function LogoMarquee() {
   return (
-    <section className="bg-[#0E0A1A] py-12 border-y border-white/5">
+    <section className="section-black relative bg-[#0E0A1A] py-12 border-y border-white/5 z-0 -mt-1">
       <div className="mx-auto max-w-6xl px-6">
         <p className="text-center text-white/60 text-sm mb-8">
           Güvenilen ajanslarla ortaklık

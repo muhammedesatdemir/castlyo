@@ -24,7 +24,7 @@ export default function HeroShowreel({ onSignup }: HeroShowreelProps) {
       </div>
       
       {/* Dark Overlay + Gradient Glow */}
-      <div className="absolute inset-0 bg-gradient-to-b from-black/50 via-black/60 to-[#100822]/90" />
+      <div className="absolute inset-0 bg-gradient-to-b from-black/50 via-black/60 to-[#100822]/70" />
       <div className="pointer-events-none absolute -top-24 left-1/2 h-[520px] w-[520px] -translate-x-1/2 rounded-full bg-[radial-gradient(ellipse_at_center,rgba(150,41,1,0.35),rgba(16,8,8,0))] blur-2xl" />
 
       <div className="relative mx-auto max-w-6xl px-6 pt-24 pb-32 text-center z-10">

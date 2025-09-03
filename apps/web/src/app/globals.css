@@ -73,6 +73,16 @@
   body {
     @apply bg-background text-foreground;
   }
+  
+  /* Smooth scroll behavior */
+  html {
+    scroll-behavior: smooth;
+  }
+  
+  /* Offset for fixed header */
+  section[id] {
+    scroll-margin-top: 64px; /* Header height = 16 * 0.25rem = 4rem = 64px */
+  }
 }
 
 /* Custom animations for Castlyo */
@@ -266,4 +276,31 @@
 .auth-menu button.ghost:hover {
   background: #222;
   color: #fff;
+}
+
+/* Section Black - Gradient Fade Effect */
+.section-black {
+  position: relative;
+  background: #0E0A1A;
+  z-index: 0;
+}
+
+/* Üste doğru yumuşak geçiş (sadece bu bölümde!) */
+.section-black::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: -160px;
+  height: 200px;
+  pointer-events: none;
+  z-index: 1;
+  /* siyah -> transparan (yukarıda mor görünür) */
+  background: linear-gradient(
+    to top,
+    #0E0A1A 0%,
+    rgba(14,10,26,0.92) 35%,
+    rgba(32,24,39,0.55) 70%,
+    rgba(0,0,0,0) 100%
+  );
 }
