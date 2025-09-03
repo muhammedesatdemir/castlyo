@@ -110,6 +110,63 @@
   animation: fade-in-up 0.6s ease-out;
 }
 
+/* Header hamburger menu styles */
+.hamburger {
+  @apply relative w-10 h-10 bg-transparent border border-white/20 rounded-lg text-white hover:bg-white/5 transition-all duration-200 flex items-center justify-center;
+}
+
+.hamburger .line {
+  @apply block w-5 h-0.5 bg-current transition-all duration-300;
+}
+
+.hamburger .line:nth-child(1) {
+  @apply mb-1;
+}
+
+.hamburger .line:nth-child(3) {
+  @apply mt-1;
+}
+
+.hamburger.open .line:nth-child(1) {
+  @apply transform rotate-45 translate-y-1.5 mb-0;
+}
+
+.hamburger.open .line:nth-child(2) {
+  @apply opacity-0;
+}
+
+.hamburger.open .line:nth-child(3) {
+  @apply transform -rotate-45 -translate-y-1.5 mt-0;
+}
+
+.auth-menu {
+  @apply absolute top-12 right-0 w-64 bg-black/95 backdrop-blur-sm border border-white/20 rounded-lg shadow-xl opacity-0 invisible transform scale-95 transition-all duration-200;
+}
+
+.auth-menu.open {
+  @apply opacity-100 visible scale-100;
+}
+
+.auth-menu .nav-section {
+  @apply p-3 border-b border-white/10;
+}
+
+.auth-menu .nav-item {
+  @apply block px-3 py-2 text-white/80 hover:text-white hover:bg-white/5 rounded-md transition-colors duration-200;
+}
+
+.auth-menu .auth-section {
+  @apply p-3 space-y-2;
+}
+
+.auth-menu .primary {
+  @apply w-full bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 text-white font-semibold px-4 py-2 rounded-lg transition-all duration-200;
+}
+
+.auth-menu .ghost {
+  @apply w-full border border-white/20 text-white hover:bg-white/5 px-4 py-2 rounded-lg transition-all duration-200;
+}
+
 .animate-fade-in {
   animation: fade-in 0.4s ease-out;
 }

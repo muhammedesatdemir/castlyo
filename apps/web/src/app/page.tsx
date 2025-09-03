@@ -107,68 +107,66 @@ export default function Home() {
       
       <ExploreGrid />
       
-      <section id="register" className="py-20 bg-gradient-to-br from-white to-brand-50 dark:from-gray-900 dark:to-brand-900/20">
+      <section id="register" className="py-20 bg-black text-white">
         <div className="mx-auto max-w-4xl px-6 lg:px-8">
           <div className="text-center mb-12">
-            <h2 className="text-4xl font-bold text-gray-900 dark:text-white mb-4">
+            <h2 className="text-4xl font-bold text-[#F6E6C3] mb-4">
               Sahne Seni Bekliyor! 🎬
             </h2>
-            <p className="text-xl text-gray-600 dark:text-gray-300">
+            <p className="text-xl text-white/80">
               Ücretsiz kayıt ol, profilini oluştur ve hemen başla!
             </p>
           </div>
           
-          <div className="bg-white/80 dark:bg-gray-900/80 rounded-3xl shadow-2xl p-8 backdrop-blur border border-white/20">
+          <div className="bg-white/5 border border-white/10 rounded-3xl shadow-2xl p-8 backdrop-blur">
             <div className="grid md:grid-cols-2 gap-10">
               <div className="relative">
-                <div className="absolute -top-4 -left-4 w-20 h-20 bg-gradient-to-br from-brand-primary to-brand-secondary rounded-2xl opacity-10"></div>
-                <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-6 relative">
+                <h3 className="text-2xl font-bold text-[#F6E6C3] mb-6">
                   🎭 Yetenekler İçin
                 </h3>
-                <ul className="space-y-4 text-gray-600 dark:text-gray-300 mb-8">
+                <ul className="space-y-4 text-white/80 mb-8">
                   <li className="flex items-center gap-4">
-                    <div className="w-3 h-3 bg-gradient-to-r from-brand-primary to-brand-secondary rounded-full"></div>
+                    <div className="w-3 h-3 bg-[#F6E6C3] rounded-full"></div>
                     <span className="text-base">Ücretsiz profil oluştur ve sergile</span>
                   </li>
                   <li className="flex items-center gap-4">
-                    <div className="w-3 h-3 bg-gradient-to-r from-brand-primary to-brand-secondary rounded-full"></div>
+                    <div className="w-3 h-3 bg-[#F6E6C3] rounded-full"></div>
                     <span className="text-base">Ajanslarla doğrudan buluş</span>
                   </li>
                   <li className="flex items-center gap-4">
-                    <div className="w-3 h-3 bg-gradient-to-r from-brand-primary to-brand-secondary rounded-full"></div>
+                    <div className="w-3 h-3 bg-[#F6E6C3] rounded-full"></div>
                     <span className="text-base">Portföyünü profesyonelce yönet</span>
                   </li>
                 </ul>
                 <button 
                   onClick={() => openSignup("talent")}
-                  className="w-full bg-gradient-to-r from-brand-primary to-brand-secondary text-white py-4 px-6 rounded-xl hover:scale-105 transition-all duration-300 cursor-pointer font-semibold text-lg shadow-lg"
+                  className="w-full bg-gradient-to-r from-[#F6E6C3] to-white text-black py-4 px-6 rounded-xl hover:scale-105 transition-all duration-300 cursor-pointer font-semibold text-lg shadow-lg"
                 >
                   Yetenek Olarak Başla
                 </button>
               </div>
               
               <div className="relative">
-                <div className="absolute -top-4 -right-4 w-20 h-20 bg-gradient-to-br from-brand-secondary to-brand-primary rounded-2xl opacity-10"></div>
-                <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-6 relative">
+                <h3 className="text-2xl font-bold text-[#F6E6C3] mb-6">
                   🏢 Ajanslar İçin
                 </h3>
-                <ul className="space-y-4 text-gray-600 dark:text-gray-300 mb-8">
+                <ul className="space-y-4 text-white/80 mb-8">
                   <li className="flex items-center gap-4">
-                    <div className="w-3 h-3 bg-gradient-to-r from-brand-secondary to-brand-primary rounded-full"></div>
+                    <div className="w-3 h-3 bg-[#F6E6C3] rounded-full"></div>
                     <span className="text-base">Akıllı yetenek arama ve filtrele</span>
                   </li>
                   <li className="flex items-center gap-4">
-                    <div className="w-3 h-3 bg-gradient-to-r from-brand-secondary to-brand-primary rounded-full"></div>
+                    <div className="w-3 h-3 bg-[#F6E6C3] rounded-full"></div>
                     <span className="text-base">Proje ve casting'leri yönet</span>
                   </li>
                   <li className="flex items-center gap-4">
-                    <div className="w-3 h-3 bg-gradient-to-r from-brand-secondary to-brand-primary rounded-full"></div>
+                    <div className="w-3 h-3 bg-[#F6E6C3] rounded-full"></div>
                     <span className="text-base">Güvenli ödeme ve sözleşme</span>
                   </li>
                 </ul>
                 <button 
                   onClick={() => openSignup("agency")}
-                  className="w-full bg-gradient-to-r from-brand-700 via-brand-primary to-brand-800 text-white py-4 px-6 rounded-xl hover:scale-105 transition-all duration-300 cursor-pointer font-semibold text-lg shadow-lg"
+                  className="w-full bg-gradient-to-r from-[#F6E6C3] to-white text-black py-4 px-6 rounded-xl hover:scale-105 transition-all duration-300 cursor-pointer font-semibold text-lg shadow-lg"
                 >
                   Ajans Olarak Başla
                 </button>

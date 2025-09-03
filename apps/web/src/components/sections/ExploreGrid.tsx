@@ -1,43 +1,115 @@
 'use client'
 
 import { motion } from 'framer-motion'
+import Image from 'next/image'
 
-const talents = Array.from({ length: 8 }).map((_, i) => ({
-  id: i + 1,
-  name: `Yetenek ${i + 1}`,
-  role: ['Oyuncu', 'Model', 'Müzisyen', 'Dansçı'][i % 4],
-  city: ['İstanbul', 'Ankara', 'İzmir', 'Bursa'][i % 4],
-  image: `/placeholders/talent-${(i % 4) + 1}.jpg`,
-  isNew: i < 3
-}))
+const talents = [
+  {
+    id: 1,
+    name: "Ayşe Demir",
+    role: "Oyuncu",
+    city: "İstanbul",
+    image: "/mock/talents/oyuncu1.jpg",
+    isNew: true,
+    skills: ["Tiyatro", "Sinema"]
+  },
+  {
+    id: 2,
+    name: "Elif Kaya",
+    role: "Model",
+    city: "Ankara",
+    image: "/mock/talents/oyuncu2.jpg",
+    isNew: true,
+    skills: ["Moda", "Reklam"]
+  },
+  {
+    id: 3,
+    name: "Zeynep Yılmaz",
+    role: "Oyuncu",
+    city: "İzmir",
+    image: "/mock/talents/oyuncu3.jpg",
+    isNew: true,
+    skills: ["Dizi", "Reklam"]
+  },
+  {
+    id: 4,
+    name: "Murat Özkan",
+    role: "Oyuncu",
+    city: "Bursa",
+    image: "/mock/talents/oyuncu4.jpg",
+    isNew: false,
+    skills: ["Sinema", "Tiyatro"]
+  },
+  {
+    id: 5,
+    name: "Selin Arslan",
+    role: "Müzisyen",
+    city: "İstanbul", 
+    image: "/mock/talents/oyuncu1.jpg",
+    isNew: false,
+    skills: ["Vokal", "Piyano"]
+  },
+  {
+    id: 6,
+    name: "Can Erdoğan",
+    role: "Dansçı",
+    city: "Ankara",
+    image: "/mock/talents/oyuncu4.jpg", 
+    isNew: false,
+    skills: ["Modern", "Halk Oyunları"]
+  },
+  {
+    id: 7,
+    name: "Deniz Toprak",
+    role: "Model",
+    city: "İzmir",
+    image: "/mock/talents/oyuncu2.jpg",
+    isNew: false,
+    skills: ["Katalog", "Editorial"]
+  },
+  {
+    id: 8,
+    name: "Gizem Çelik",
+    role: "Oyuncu",
+    city: "İstanbul",
+    image: "/mock/talents/oyuncu3.jpg",
+    isNew: false,
+    skills: ["Komedi", "Drama"]
+  }
+]
 
 export default function ExploreGrid() {
   return (
-    <section className="mx-auto max-w-6xl px-6 py-20" id="explore">
-      <div className="text-center mb-12">
-        <h2 className="text-4xl font-bold bg-gradient-to-r from-gray-900 to-gray-600 bg-clip-text text-transparent dark:from-white dark:to-gray-300">
-          Keşfet
-        </h2>
-        <p className="text-gray-600 dark:text-gray-400 mt-4 text-lg">
-          Yeni yüzler, yeni enerjiler, sonsuz olasılıklar
-        </p>
-      </div>
+    <section className="bg-black text-white py-20" id="explore">
+      <div className="mx-auto max-w-6xl px-6">
+        <div className="text-center mb-12">
+          <p className="text-sm tracking-widest text-[#F6E6C3] mb-3">
+            Keşfet
+          </p>
+          <h2 className="text-4xl font-bold text-white mb-4">
+            Yetenekleri ve Fırsatları Keşfet
+          </h2>
+          <p className="text-white/80 text-lg max-w-3xl mx-auto">
+            Oyuncular, modeller ve ajanslar tek platformda buluşuyor. 
+            İlanları incele, fırsatları yakala!
+          </p>
+        </div>
 
-      {/* Filter Chips */}
-      <div className="flex flex-wrap justify-center gap-3 mb-12">
-        {['Tümü', 'Oyuncu', 'Model', 'Müzisyen', 'Dansçı'].map((filter) => (
-          <button
-            key={filter}
-            className={`px-4 py-2 rounded-full text-sm font-medium transition-all duration-300 ${
-              filter === 'Tümü'
-                ? 'bg-gradient-to-r from-brand-primary to-brand-secondary text-white shadow-lg'
-                : 'bg-gray-100 text-gray-700 hover:bg-gray-200 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700'
-            }`}
-          >
-            {filter}
-          </button>
-        ))}
-      </div>
+        {/* Filter Chips */}
+        <div className="flex flex-wrap justify-center gap-3 mb-12">
+          {['Tümü', 'Oyuncu', 'Model', 'Müzisyen', 'Dansçı'].map((filter) => (
+            <button
+              key={filter}
+              className={`px-4 py-2 rounded-full text-sm font-medium transition-all duration-300 ${
+                filter === 'Tümü'
+                  ? 'bg-gradient-to-r from-[#F6E6C3] to-white text-black shadow-lg'
+                  : 'bg-white/10 text-white border border-white/20 hover:bg-white/20'
+              }`}
+            >
+              {filter}
+            </button>
+          ))}
+        </div>
 
       {/* Talent Grid */}
       <div className="grid gap-6 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
@@ -48,17 +120,16 @@ export default function ExploreGrid() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: i * 0.1 }}
             whileHover={{ y: -8, transition: { duration: 0.2 } }}
-            className="group overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm hover:shadow-xl dark:border-gray-800 dark:bg-gray-900 transition-all duration-300"
+            className="group overflow-hidden rounded-2xl border border-white/10 bg-white/5 shadow-lg hover:shadow-xl transition-all duration-300"
           >
-            <div className="relative overflow-hidden">
-              <img 
+            <div className="relative overflow-hidden h-64">
+              <Image 
                 src={talent.image} 
                 alt={talent.name}
-                className="h-64 w-full object-cover transition-transform duration-500 group-hover:scale-110"
-                onError={(e) => {
-                  const target = e.target as HTMLImageElement;
-                  target.src = `https://images.unsplash.com/photo-${1500000000000 + talent.id}?w=400&h=600&fit=crop&crop=face`;
-                }}
+                width={400}
+                height={256}
+                className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
+                unoptimized
               />
               {talent.isNew && (
                 <div className="absolute top-3 right-3">
@@ -80,37 +151,44 @@ export default function ExploreGrid() {
             
             <div className="p-4">
               <div className="flex items-center justify-between mb-2">
-                <h3 className="font-semibold text-gray-900 dark:text-white">
+                <h3 className="font-semibold text-white">
                   {talent.name}
                 </h3>
                 <div className="flex items-center gap-1">
                   <div className="h-2 w-2 rounded-full bg-green-500"></div>
-                  <span className="text-xs text-gray-500 dark:text-gray-400">Aktif</span>
+                  <span className="text-xs text-white/60">Aktif</span>
                 </div>
               </div>
-              <p className="text-sm text-gray-600 dark:text-gray-400">
+              <p className="text-sm text-white/70">
                 {talent.role} • {talent.city}
               </p>
               
               {/* Skills/Tags */}
               <div className="mt-3 flex flex-wrap gap-1">
-                <span className="rounded-md bg-brand-50 px-2 py-1 text-xs text-brand-primary dark:bg-brand-900/30 dark:text-brand-300">
-                  Deneyimli
-                </span>
-                <span className="rounded-md bg-brand-100 px-2 py-1 text-xs text-brand-700">
-                  Profesyonel
-                </span>
+                {talent.skills.map((skill, index) => (
+                  <span 
+                    key={index}
+                    className={`rounded-md px-2 py-1 text-xs ${
+                      index === 0 
+                        ? 'bg-[#F6E6C3]/20 text-[#F6E6C3]' 
+                        : 'bg-white/10 text-white/80'
+                    }`}
+                  >
+                    {skill}
+                  </span>
+                ))}
               </div>
             </div>
           </motion.div>
         ))}
       </div>
 
-      {/* View More Button */}
-      <div className="text-center mt-12">
-        <button className="rounded-xl bg-brand-gradient-smooth px-8 py-3 font-semibold text-white shadow-lg hover:scale-105 transition-all duration-300 hover:shadow-xl">
-          Daha Fazla Keşfet
-        </button>
+        {/* View More Button */}
+        <div className="text-center mt-12">
+          <button className="rounded-xl bg-gradient-to-r from-[#F6E6C3] to-white text-black px-8 py-3 font-semibold shadow-lg hover:scale-105 transition-all duration-300 hover:shadow-xl">
+            Daha Fazla Keşfet
+          </button>
+        </div>
       </div>
     </section>
   )

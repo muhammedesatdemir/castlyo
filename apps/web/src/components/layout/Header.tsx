@@ -61,27 +61,7 @@ export default function Header({ onSignup }: HeaderProps) {
             </Link>
           </div>
 
-          {/* Desktop Navigation */}
-          <nav className="hidden md:flex items-center space-x-8">
-            <Link 
-              href="#explore" 
-              className="nav-link text-[#F6E6C3] hover:text-white transition-colors duration-200"
-            >
-              Keşfet
-            </Link>
-            <Link 
-              href="/jobs" 
-              className="nav-link text-[#F6E6C3] hover:text-white transition-colors duration-200"
-            >
-              İlanlar
-            </Link>
-            <Link 
-              href="#features" 
-              className="nav-link text-[#F6E6C3] hover:text-white transition-colors duration-200"
-            >
-              Özellikler
-            </Link>
-          </nav>
+          {/* Desktop Navigation - REMOVED: Moved to hamburger menu */}
 
           {/* Desktop Hamburger Menu */}
           <div className="hidden md:flex items-center space-x-4 relative">
@@ -97,26 +77,54 @@ export default function Header({ onSignup }: HeaderProps) {
               <span className="line"></span>
             </button>
 
-            {/* Auth Menu Dropdown */}
+            {/* Hamburger Menu Dropdown */}
             <div ref={menuRef} className={`auth-menu ${isMobileMenuOpen ? 'open' : ''}`}>
-              <button
-                onClick={() => {
-                  onSignup("talent")
-                  setIsMobileMenuOpen(false)
-                }}
-                className="primary"
-              >
-                Kayıt Ol
-              </button>
-              <button
-                onClick={() => {
-                  onSignup("agency")
-                  setIsMobileMenuOpen(false)
-                }}
-                className="ghost"
-              >
-                Giriş Yap
-              </button>
+              {/* Navigation Links */}
+              <div className="nav-section">
+                <Link 
+                  href="#explore" 
+                  className="nav-item"
+                  onClick={() => setIsMobileMenuOpen(false)}
+                >
+                  Keşfet
+                </Link>
+                <Link 
+                  href="/jobs" 
+                  className="nav-item"
+                  onClick={() => setIsMobileMenuOpen(false)}
+                >
+                  İlanlar
+                </Link>
+                <Link 
+                  href="#features" 
+                  className="nav-item"
+                  onClick={() => setIsMobileMenuOpen(false)}
+                >
+                  Özellikler
+                </Link>
+              </div>
+              
+              {/* Auth Buttons */}
+              <div className="auth-section">
+                <button
+                  onClick={() => {
+                    onSignup("talent")
+                    setIsMobileMenuOpen(false)
+                  }}
+                  className="primary"
+                >
+                  Kayıt Ol
+                </button>
+                <button
+                  onClick={() => {
+                    onSignup("agency")
+                    setIsMobileMenuOpen(false)
+                  }}
+                  className="ghost"
+                >
+                  Giriş Yap
+                </button>
+              </div>
             </div>
           </div>
 
