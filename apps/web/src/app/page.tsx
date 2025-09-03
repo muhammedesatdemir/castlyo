@@ -119,53 +119,53 @@ export default function Home() {
           </div>
           
           <div className="grid md:grid-cols-2 gap-8">
-            <div className="bg-[#962901] rounded-2xl p-8 shadow-2xl">
-              <h3 className="text-2xl font-bold text-[#F6E6C3] mb-6">
+            <div className="bg-[#962901] rounded-2xl p-8 text-[#F6E6C3] ring-1 ring-white/10 shadow-2xl transition hover:-translate-y-0.5 will-change-transform">
+              <h3 className="text-2xl font-semibold text-[#F6E6C3] mb-6">
                 🎭 Yetenekler İçin
               </h3>
-              <ul className="space-y-4 text-[#F6E6C3]/90 mb-8">
-                <li className="flex items-center gap-4">
-                  <div className="w-3 h-3 bg-[#F6E6C3] rounded-full"></div>
-                  <span className="text-base">Ücretsiz profil oluştur ve sergile</span>
+              <ul className="space-y-3 mb-8">
+                <li className="flex items-start gap-3">
+                  <span className="mt-2 inline-block h-2.5 w-2.5 rounded-full bg-[#F6E6C3]/90"></span>
+                  <span className="text-[#F6E6C3]">Ücretsiz profil oluştur ve sergile</span>
                 </li>
-                <li className="flex items-center gap-4">
-                  <div className="w-3 h-3 bg-[#F6E6C3] rounded-full"></div>
-                  <span className="text-base">Ajanslarla doğrudan buluş</span>
+                <li className="flex items-start gap-3">
+                  <span className="mt-2 inline-block h-2.5 w-2.5 rounded-full bg-[#F6E6C3]/90"></span>
+                  <span className="text-[#F6E6C3]">Ajanslarla doğrudan buluş</span>
                 </li>
-                <li className="flex items-center gap-4">
-                  <div className="w-3 h-3 bg-[#F6E6C3] rounded-full"></div>
-                  <span className="text-base">Portföyünü profesyonelce yönet</span>
+                <li className="flex items-start gap-3">
+                  <span className="mt-2 inline-block h-2.5 w-2.5 rounded-full bg-[#F6E6C3]/90"></span>
+                  <span className="text-[#F6E6C3]">Portföyünü profesyonelce yönet</span>
                 </li>
               </ul>
               <button 
                 onClick={() => openSignup("talent")}
-                className="w-full bg-white text-[#962901] py-4 px-6 rounded-xl hover:bg-[#F6E6C3] transition-all duration-300 cursor-pointer font-semibold text-lg shadow-lg"
+                className="w-full bg-white text-[#962901] py-4 px-6 rounded-2xl hover:bg-[#F6E6C3] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40 transition cursor-pointer font-semibold text-lg shadow-lg"
               >
                 Yetenek Olarak Başla
               </button>
             </div>
             
-            <div className="bg-[#962901] rounded-2xl p-8 shadow-2xl">
-              <h3 className="text-2xl font-bold text-[#F6E6C3] mb-6">
+            <div className="bg-[#962901] rounded-2xl p-8 text-[#F6E6C3] ring-1 ring-white/10 shadow-2xl transition hover:-translate-y-0.5 will-change-transform">
+              <h3 className="text-2xl font-semibold text-[#F6E6C3] mb-6">
                 🏢 Ajanslar İçin
               </h3>
-              <ul className="space-y-4 text-[#F6E6C3]/90 mb-8">
-                <li className="flex items-center gap-4">
-                  <div className="w-3 h-3 bg-[#F6E6C3] rounded-full"></div>
-                  <span className="text-base">Akıllı yetenek arama ve filtrele</span>
+              <ul className="space-y-3 mb-8">
+                <li className="flex items-start gap-3">
+                  <span className="mt-2 inline-block h-2.5 w-2.5 rounded-full bg-[#F6E6C3]/90"></span>
+                  <span className="text-[#F6E6C3]">Akıllı yetenek arama ve filtrele</span>
                 </li>
-                <li className="flex items-center gap-4">
-                  <div className="w-3 h-3 bg-[#F6E6C3] rounded-full"></div>
-                  <span className="text-base">Proje ve casting'leri yönet</span>
+                <li className="flex items-start gap-3">
+                  <span className="mt-2 inline-block h-2.5 w-2.5 rounded-full bg-[#F6E6C3]/90"></span>
+                  <span className="text-[#F6E6C3]">Proje ve casting'leri yönet</span>
                 </li>
-                <li className="flex items-center gap-4">
-                  <div className="w-3 h-3 bg-[#F6E6C3] rounded-full"></div>
-                  <span className="text-base">Güvenli ödeme ve sözleşme</span>
+                <li className="flex items-start gap-3">
+                  <span className="mt-2 inline-block h-2.5 w-2.5 rounded-full bg-[#F6E6C3]/90"></span>
+                  <span className="text-[#F6E6C3]">Güvenli ödeme ve sözleşme</span>
                 </li>
               </ul>
               <button 
                 onClick={() => openSignup("agency")}
-                className="w-full bg-white text-[#962901] py-4 px-6 rounded-xl hover:bg-[#F6E6C3] transition-all duration-300 cursor-pointer font-semibold text-lg shadow-lg"
+                className="w-full bg-white text-[#962901] py-4 px-6 rounded-2xl hover:bg-[#F6E6C3] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40 transition cursor-pointer font-semibold text-lg shadow-lg"
               >
                 Ajans Olarak Başla
               </button>
