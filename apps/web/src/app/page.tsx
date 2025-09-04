@@ -101,45 +101,49 @@ export default function Home() {
           <div className="mt-10 grid gap-6 md:gap-8 grid-cols-1 md:grid-cols-2">
             {/* Yetenekler İçin */}
             <div className="rounded-2xl bg-[#962901] p-8 md:p-10 text-white shadow-inner/30">
-              <h3 className={montserratDisplay.className + " text-2xl md:text-3xl font-bold"}>
-                🎭 Yetenekler İçin
-              </h3>
+              <div className="flex h-full flex-col">
+                <h3 className={montserratDisplay.className + " text-2xl md:text-3xl font-bold leading-tight"}>
+                  🎭 Yetenekler İçin
+                </h3>
 
-              <ul className="mt-4 space-y-3 text-white/90 text-sm md:text-base">
-                <li className="flex items-start gap-2"><span className="mt-2 size-2 rounded-full bg-white/70" />Ücretsiz profil oluştur ve sergile</li>
-                <li className="flex items-start gap-2"><span className="mt-2 size-2 rounded-full bg-white/70" />Ajanslarla doğrudan buluş</li>
-                <li className="flex items-start gap-2"><span className="mt-2 size-2 rounded-full bg-white/70" />Portföyünü profesyonelce yönet</li>
-              </ul>
+                <ul className="mt-4 space-y-3 text-white/90 text-sm md:text-base">
+                  <li className="flex items-start gap-2"><span className="mt-2 size-2 rounded-full bg-white/70" />Ücretsiz profil oluştur ve sergile</li>
+                  <li className="flex items-start gap-2"><span className="mt-2 size-2 rounded-full bg-white/70" />Ajanslarla doğrudan buluş</li>
+                  <li className="flex items-start gap-2"><span className="mt-2 size-2 rounded-full bg-white/70" />Portföyünü profesyonelce yönet</li>
+                </ul>
 
-              <div className="mt-6">
-                <button
-                  onClick={() => handleSignup("talent")}
-                  className={montserratDisplay.className + " inline-flex items-center justify-center rounded-xl bg-white px-5 py-3 text-sm md:text-base font-bold text-[#962901] shadow w-full"}
-                >
-                  Yetenek Olarak Başla
-                </button>
+                <div className="mt-6 md:mt-8 md:pt-2 mt-auto">
+                  <button
+                    onClick={() => handleSignup("talent")}
+                    className={montserratDisplay.className + " inline-flex items-center justify-center rounded-xl bg-white px-5 py-3 text-sm md:text-base font-bold text-[#962901] shadow w-full"}
+                  >
+                    Yetenek Olarak Başla
+                  </button>
+                </div>
               </div>
             </div>
             
-            {/* Ajans Olarak Başla */}
+            {/* Ajanslar İçin */}
             <div className="rounded-2xl bg-[#962901] p-8 md:p-10 text-white shadow-inner/30">
-              <h3 className={montserratDisplay.className + " text-2xl md:text-3xl font-bold"}>
-                🏢 Ajans Olarak Başla
-              </h3>
+              <div className="flex h-full flex-col">
+                <h3 className={montserratDisplay.className + " text-2xl md:text-3xl font-bold leading-tight"}>
+                  🏢 Ajanslar İçin
+                </h3>
 
-              <ul className="mt-4 space-y-3 text-white/90 text-sm md:text-base">
-                <li className="flex items-start gap-2"><span className="mt-2 size-2 rounded-full bg-white/70" />Akıllı yetenek arama ve filtrele</li>
-                <li className="flex items-start gap-2"><span className="mt-2 size-2 rounded-full bg-white/70" />Proje ve casting'leri yönet</li>
-                <li className="flex items-start gap-2"><span className="mt-2 size-2 rounded-full bg-white/70" />Güvenli ödeme ve sözleşme</li>
-              </ul>
+                <ul className="mt-4 space-y-3 text-white/90 text-sm md:text-base">
+                  <li className="flex items-start gap-2"><span className="mt-2 size-2 rounded-full bg-white/70" />Akıllı yetenek arama ve filtrele</li>
+                  <li className="flex items-start gap-2"><span className="mt-2 size-2 rounded-full bg-white/70" />Proje ve casting'leri yönet</li>
+                  <li className="flex items-start gap-2"><span className="mt-2 size-2 rounded-full bg-white/70" />Güvenli ödeme ve sözleşme</li>
+                </ul>
 
-              <div className="mt-6">
-                <button
-                  onClick={() => handleSignup("agency")}
-                  className={montserratDisplay.className + " inline-flex items-center justify-center rounded-xl bg-white px-5 py-3 text-sm md:text-base font-bold text-[#962901] shadow w-full"}
-                >
-                  Ajans Olarak Başla
-                </button>
+                <div className="mt-6 md:mt-8 md:pt-2 mt-auto">
+                  <button
+                    onClick={() => handleSignup("agency")}
+                    className={montserratDisplay.className + " inline-flex items-center justify-center rounded-xl bg-white px-5 py-3 text-sm md:text-base font-bold text-[#962901] shadow w-full"}
+                  >
+                    Ajans Olarak Başla
+                  </button>
+                </div>
               </div>
             </div>
           </div>
