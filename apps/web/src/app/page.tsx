@@ -39,30 +39,30 @@ export default function Home() {
           
           <div className="mx-auto mt-16 max-w-2xl sm:mt-20 lg:mt-24 lg:max-w-none">
             <div className="grid grid-cols-1 gap-8 md:grid-cols-2 lg:grid-cols-3">
-              <div className="text-center p-8 bg-[#F6E6C3] border border-gray-200 rounded-2xl shadow-lg hover:shadow-xl hover:-translate-y-1 transition-all duration-300">
-                <div className="w-16 h-16 bg-black/10 rounded-2xl flex items-center justify-center mx-auto mb-6">
-                  <div className="w-8 h-8 bg-black rounded-lg"></div>
+              <div className="text-center p-8 bg-[#962901] border border-gray-200 rounded-2xl shadow-lg hover:shadow-xl hover:-translate-y-1 hover:scale-105 transition-all duration-300">
+                <div className="w-16 h-16 bg-orange-300/30 rounded-2xl flex items-center justify-center mx-auto mb-6">
+                  <div className="w-8 h-8 bg-white rounded-lg"></div>
                 </div>
-                <h3 className="text-xl font-bold text-black mb-3">Güvenli Platform</h3>
-                <p className="text-gray-800">KVKV uyumlu sistem ile verileriniz güvende, profesyonel deneyim garantili</p>
+                <h3 className="text-xl font-bold text-white mb-3">Güvenli Platform</h3>
+                <p className="text-white/90">KVKV uyumlu sistem ile verileriniz güvende, profesyonel deneyim garantili</p>
               </div>
               
-              <div className="text-center p-8 bg-[#F6E6C3] border border-gray-200 rounded-2xl shadow-lg hover:shadow-xl hover:-translate-y-1 transition-all duration-300">
-                <div className="w-16 h-16 bg-black/10 rounded-2xl flex items-center justify-center mx-auto mb-6" style={{ animationDelay: '1s' }}>
-                  <div className="w-8 h-8 bg-black rounded-lg"></div>
+              <div className="text-center p-8 bg-[#962901] border border-gray-200 rounded-2xl shadow-lg hover:shadow-xl hover:-translate-y-1 hover:scale-105 transition-all duration-300">
+                <div className="w-16 h-16 bg-orange-300/30 rounded-2xl flex items-center justify-center mx-auto mb-6" style={{ animationDelay: '1s' }}>
+                  <div className="w-8 h-8 bg-white rounded-lg"></div>
                 </div>
-                <h3 className="text-xl font-bold text-black mb-3">Canlı Ağ</h3>
-                <p className="text-gray-800">Binlerce yetenek ve yüzlerce ajans aktif olarak buluşuyor, networking hiç bu kadar kolay olmamıştı</p>
+                <h3 className="text-xl font-bold text-white mb-3">Canlı Ağ</h3>
+                <p className="text-white/90">Binlerce yetenek ve yüzlerce ajans aktif olarak buluşuyor, networking hiç bu kadar kolay olmamıştı</p>
                 
                 {/* CTA Diyeti: Bu buton kaldırıldı - sayfa başına tek ana CTA */}
               </div>
               
-              <div className="text-center p-8 bg-[#F6E6C3] border border-gray-200 rounded-2xl shadow-lg hover:shadow-xl hover:-translate-y-1 transition-all duration-300">
-                <div className="w-16 h-16 bg-black/10 rounded-2xl flex items-center justify-center mx-auto mb-6" style={{ animationDelay: '2s' }}>
-                  <div className="w-8 h-8 bg-black rounded-lg"></div>
+              <div className="text-center p-8 bg-[#962901] border border-gray-200 rounded-2xl shadow-lg hover:shadow-xl hover:-translate-y-1 hover:scale-105 transition-all duration-300">
+                <div className="w-16 h-16 bg-orange-300/30 rounded-2xl flex items-center justify-center mx-auto mb-6" style={{ animationDelay: '2s' }}>
+                  <div className="w-8 h-8 bg-white rounded-lg"></div>
                 </div>
-                <h3 className="text-xl font-bold text-black mb-3">Akıllı Eşleştirme</h3>
-                <p className="text-gray-800">AI destekli algoritma ile saniyeler içinde mükemmel eşleştirmeler, doğru rolle doğru yetenek</p>
+                <h3 className="text-xl font-bold text-white mb-3">Akıllı Eşleştirme</h3>
+                <p className="text-white/90">AI destekli algoritma ile saniyeler içinde mükemmel eşleştirmeler, doğru rolle doğru yetenek</p>
               </div>
             </div>
           </div>
