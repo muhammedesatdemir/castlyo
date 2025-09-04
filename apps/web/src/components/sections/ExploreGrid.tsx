@@ -84,6 +84,11 @@ export default function ExploreGrid() {
   const [selectedFilter, setSelectedFilter] = useState('Tümü')
   const filters = ['Tümü', 'Oyuncu', 'Model', 'Müzisyen', 'Dansçı']
 
+  // Filtreleme mantığı
+  const filteredTalents = selectedFilter === 'Tümü' 
+    ? talents 
+    : talents.filter(talent => talent.role === selectedFilter)
+
   return (
     <section className="bg-black text-white py-20" id="explore">
       <div className="mx-auto max-w-6xl px-6">
@@ -122,9 +127,9 @@ export default function ExploreGrid() {
 
       {/* Kartlar */}
       <div className="mt-10 grid gap-6 md:gap-8 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
-        {talents.map((talent, i) => (
+        {filteredTalents.map((talent, i) => (
           <motion.article
-            key={talent.id}
+            key={`${talent.id}-${selectedFilter}`}
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: i * 0.1 }}
