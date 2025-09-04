@@ -1,3 +1,5 @@
+import { montserratDisplay } from '@/lib/fonts'
+
 const logos = [
   { name: 'Maya Casting', src: '/logos/maya.svg' },
   { name: 'DMR Agency', src: '/logos/dmr.svg' },
@@ -14,22 +16,20 @@ export default function LogoMarquee() {
       <div className="pointer-events-none absolute bottom-0 left-0 right-0 h-12
                       bg-gradient-to-b from-transparent to-black" />
       <div className="mx-auto max-w-6xl px-6">
-        <p className="text-center text-white/60 text-sm mb-8">
+        <h3 className={montserratDisplay.className + " text-center text-white/90 text-base md:text-lg font-bold tracking-wide mb-8"}>
           Güvenilen ajanslarla ortaklık
-        </p>
+        </h3>
         
         <div className="relative overflow-hidden">
           <div className="animate-marquee flex whitespace-nowrap will-change-transform">
             {[...logos, ...logos].map((logo, i) => (
               <div 
                 key={i} 
-                className="mx-8 flex items-center justify-center h-12 w-32 flex-shrink-0"
+                className="mx-8 flex items-center justify-center h-12 flex-shrink-0"
               >
-                <img 
-                  src={logo.src} 
-                  alt={logo.name}
-                  className="h-8 w-auto opacity-60 hover:opacity-90 transition-opacity duration-300 filter brightness-0 invert"
-                />
+                <span className={montserratDisplay.className + " text-sm md:text-base font-semibold text-white/80 opacity-80 hover:opacity-100 transition-opacity duration-300"}>
+                  {logo.name}
+                </span>
               </div>
             ))}
           </div>

@@ -1,7 +1,9 @@
 'use client'
 
+import { useState } from 'react'
 import { motion } from 'framer-motion'
 import Image from 'next/image'
+import { montserratDisplay } from '@/lib/fonts'
 
 const talents = [
   {
@@ -79,131 +81,107 @@ const talents = [
 ]
 
 export default function ExploreGrid() {
+  const [selectedFilter, setSelectedFilter] = useState('Tümü')
+  const filters = ['Tümü', 'Oyuncu', 'Model', 'Müzisyen', 'Dansçı']
+
   return (
     <section className="bg-black text-white py-20" id="explore">
       <div className="mx-auto max-w-6xl px-6">
         <div className="text-center mb-12">
-          <p className="text-sm tracking-widest text-[#F6E6C3] mb-3">
-            Keşfet
-          </p>
-          <h2 className="text-4xl font-bold text-white mb-4">
+          {/* Başlık */}
+          <h2 className={montserratDisplay.className + " text-center text-3xl md:text-5xl font-extrabold tracking-tight text-white"}>
             Yetenekleri ve Fırsatları Keşfet
           </h2>
-          <p className="text-white/80 text-lg max-w-3xl mx-auto">
-            Oyuncular, modeller ve ajanslar tek platformda buluşuyor. 
-            İlanları incele, fırsatları yakala!
+
+          {/* Alt başlık */}
+          <p className="mt-3 max-w-3xl mx-auto text-center text-base md:text-lg text-white/80">
+            Oyuncular, modeller ve ajanslar tek platformda buluşuyor. İlanları incele, fırsatları yakala!
           </p>
         </div>
 
-        {/* Filter Chips */}
-        <div className="flex flex-wrap justify-center gap-3 mb-12">
-          {['Tümü', 'Oyuncu', 'Model', 'Müzisyen', 'Dansçı'].map((filter) => (
-            <button
-              key={filter}
-              className={`px-4 py-2 rounded-full text-sm font-medium transition-all duration-300 ${
-                filter === 'Tümü'
-                  ? 'bg-gradient-to-r from-[#F6E6C3] to-white text-black shadow-lg'
-                  : 'bg-white/10 text-white border border-white/20 hover:bg-white/20'
-              }`}
-            >
-              {filter}
-            </button>
-          ))}
+        {/* Filtre pill'leri (erişilebilirlik + aktif stil) */}
+        <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
+          {filters.map((filter) => {
+            const active = filter === selectedFilter;
+            return (
+              <button
+                key={filter}
+                aria-selected={active}
+                onClick={() => setSelectedFilter(filter)}
+                className={montserratDisplay.className + " px-4 py-2 rounded-full text-sm md:text-[15px] font-semibold focus:outline-none focus:ring-2 focus:ring-white/20 " + 
+                  (active 
+                    ? "bg-[#F6E6C3] text-[#29231A]" 
+                    : "bg-white/10 text-white/90 hover:bg-white/15")
+                }
+              >
+                {filter}
+              </button>
+            );
+          })}
         </div>
 
-      {/* Talent Grid */}
-      <div className="grid gap-6 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
+      {/* Kartlar */}
+      <div className="mt-10 grid gap-6 md:gap-8 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
         {talents.map((talent, i) => (
-          <motion.div
+          <motion.article
             key={talent.id}
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: i * 0.1 }}
             whileHover={{ y: -8, transition: { duration: 0.2 } }}
-            className="group overflow-hidden rounded-2xl border border-white/10 bg-white/5 shadow-lg hover:shadow-xl transition-all duration-300"
+            className="overflow-hidden rounded-2xl bg-[#121212] ring-1 ring-white/5
+                       transition-all duration-200 hover:-translate-y-1 hover:shadow-xl"
           >
-            <div className="relative overflow-hidden h-64">
+            <div className="relative aspect-[4/5]">
               <Image 
                 src={talent.image} 
                 alt={talent.name}
-                width={400}
-                height={256}
-                className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
+                fill
+                className="object-cover"
                 unoptimized
               />
+              {/* "Yeni" rozeti varsa */}
               {talent.isNew && (
-                <div className="absolute top-3 right-3">
-                  <span className="rounded-full bg-gradient-to-r from-brand-primary to-brand-secondary px-3 py-1 text-xs font-semibold text-white shadow-lg">
-                    Yeni
-                  </span>
-                </div>
+                <span className={montserratDisplay.className + " absolute top-3 right-3 rounded-full bg-[#C0713A] text-white/95 text-[11px] font-semibold px-2 py-1 shadow-sm"}>
+                  Yeni
+                </span>
               )}
-              
-              {/* Hover Overlay */}
-              <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-                <div className="absolute bottom-4 left-4 right-4 space-y-2">
-                  <button 
-                    onClick={() => {
-                      // TODO: Navigate to talent profile page
-                      console.log('Navigate to profile:', talent.id)
-                    }}
-                    className="w-full rounded-lg bg-white/20 py-2 text-sm font-medium text-white backdrop-blur-sm hover:bg-white/30 transition-colors"
-                  >
-                    Profili Görüntüle
-                  </button>
-                  <button 
-                    onClick={() => {
-                      // TODO: Navigate to auth then offer page
-                      window.location.href = `/auth?next=${encodeURIComponent(`/talent/${talent.id}/offer`)}`
-                    }}
-                    className="w-full rounded-lg bg-brand-primary/80 py-2 text-sm font-medium text-white backdrop-blur-sm hover:bg-brand-primary transition-colors"
-                  >
-                    Teklif Gönder
-                  </button>
-                </div>
-              </div>
             </div>
             
             <div className="p-4">
-              <div className="flex items-center justify-between mb-2">
-                <h3 className="font-semibold text-white">
-                  {talent.name}
-                </h3>
-                <div className="flex items-center gap-1">
-                  <div className="h-2 w-2 rounded-full bg-green-500"></div>
-                  <span className="text-xs text-white/60">Aktif</span>
-                </div>
-              </div>
-              <p className="text-sm text-white/70">
+              {/* İsim */}
+              <h3 className={montserratDisplay.className + " text-white text-lg md:text-xl font-bold tracking-tight"}>
+                {talent.name}
+              </h3>
+
+              {/* Rol • Şehir */}
+              <p className={montserratDisplay.className + " mt-1.5 text-white/80 text-[13px] md:text-sm font-medium"}>
                 {talent.role} • {talent.city}
               </p>
               
-              {/* Skills/Tags */}
-              <div className="mt-3 flex flex-wrap gap-1">
-                {talent.skills.map((skill, index) => (
-                  <span 
-                    key={index}
-                    className={`rounded-md px-2 py-1 text-xs ${
-                      index === 0 
-                        ? 'bg-[#F6E6C3]/20 text-[#F6E6C3]' 
-                        : 'bg-white/10 text-white/80'
-                    }`}
+              {/* Etiketler */}
+              <div className="mt-2.5 flex flex-wrap gap-2">
+                {talent.skills?.map((skill: string) => (
+                  <span
+                    key={skill}
+                    className={montserratDisplay.className + " text-[11px] font-semibold px-2 py-1 rounded-md bg-white/8 text-white/85"}
                   >
                     {skill}
                   </span>
                 ))}
-                
-                {/* Privacy Badge */}
-                <span className="rounded-md px-2 py-1 text-xs bg-green-500/20 text-green-300 border border-green-500/30">
+              </div>
+
+              {/* Gizlilik rozetini de daha "sert" gösterelim */}
+              <div className="mt-3">
+                <span className={montserratDisplay.className + " inline-flex items-center gap-1 text-[11px] font-semibold px-2 py-1 rounded-md bg-green-500/15 text-green-300"}>
                   🔒 İletişim gizli
                 </span>
               </div>
             </div>
-          </motion.div>
+          </motion.article>
         ))}
       </div>
 
-        {/* CTA Diyeti: "Daha Fazla Keşfet" butonu kaldırıldı - sadece Hero'daki ana CTA'lar kalacak */}
       </div>
     </section>
   )

@@ -3,6 +3,7 @@
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { ArrowRight, Play, Star } from 'lucide-react'
+import { montserratDisplay } from '@/lib/fonts'
 
 interface HeroProps {
   onSignup: (type: "talent" | "agency") => void
@@ -21,7 +22,7 @@ export default function Hero({ onSignup }: HeroProps) {
 
 
   return (
-    <section className="relative overflow-hidden bg-gradient-to-br from-slate-900 via-slate-800 to-black py-20 sm:py-32">
+    <section data-hide-sticky className="relative overflow-hidden bg-gradient-to-br from-slate-900 via-slate-800 to-black py-20 sm:py-32">
       <div className="absolute inset-0 bg-[url('/grid.svg')] bg-center [mask-image:linear-gradient(180deg,white,rgba(255,255,255,0))]" />
       <div className="relative mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <div className="mx-auto max-w-2xl text-center">
@@ -30,9 +31,12 @@ export default function Hero({ onSignup }: HeroProps) {
             <span>Türkiye'nin en büyük casting platformu</span>
           </div>
           
-          <h1 className="bg-gradient-to-r from-white to-gray-300 bg-clip-text text-4xl font-bold tracking-tight text-transparent sm:text-6xl">
-            Yetenekler ve Fırsatlar
-            <span className="block text-brand-gradient-smooth">Sahneye Çıkıyor</span>
+          <h1 className={montserratDisplay.className + " bg-gradient-to-r from-white to-gray-300 bg-clip-text text-4xl font-extrabold tracking-tight text-transparent sm:text-6xl"}>
+            Yetenekler{" "}
+            <span className="bg-gradient-to-r from-[#962901] via-[#C0713A] to-[#F1C38E] bg-clip-text text-transparent">
+              Sahneye
+            </span>{" "}
+            Çıkıyor
           </h1>
           
           <p className="mt-6 text-lg leading-8 text-gray-300">

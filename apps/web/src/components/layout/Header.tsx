@@ -2,8 +2,10 @@
 
 import { useState, useEffect, useRef } from 'react'
 import Link from 'next/link'
+import Image from 'next/image'
 import { Button } from '@/components/ui/button'
-import { User, Menu, X, Star } from 'lucide-react'
+import { User, Menu, X } from 'lucide-react'
+import { montserratDisplay } from '@/lib/fonts'
 
 interface HeaderProps {
   onSignup: (type: "talent" | "agency") => void
@@ -51,11 +53,18 @@ export default function Header({ onSignup }: HeaderProps) {
         <div className="flex h-16 items-center justify-between">
           {/* Logo */}
           <div className="flex items-center">
-            <Link href="/" className="flex items-center space-x-2">
-              <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-brand-primary to-brand-secondary flex items-center justify-center">
-                <Star className="w-5 h-5 text-white" />
-              </div>
-              <span className="logo nav-link text-xl font-bold text-[#F6E6C3] hover:text-white transition-colors duration-200">
+            <Link href="/" className="flex items-center gap-3">
+              {/* Logo kutusu: küçük boy, ama görseli scale ile büyütüyoruz */}
+              <span className="relative block h-8 w-8 md:h-9 md:w-9 origin-left scale-125 lg:scale-150 -translate-y-[1px]">
+                <Image
+                  src="/logos/logo.png"
+                  alt="Castlyo logo"
+                  fill
+                  priority
+                  className="object-contain pointer-events-none select-none"
+                />
+              </span>
+              <span className="logo nav-link text-[22px] md:text-[24px] font-bold text-[#F6E6C3] hover:text-white transition-colors duration-200 tracking-wide">
                 Castlyo
               </span>
             </Link>
@@ -83,21 +92,21 @@ export default function Header({ onSignup }: HeaderProps) {
               <div className="nav-section">
                 <Link 
                   href="#explore" 
-                  className="nav-item"
+                  className={montserratDisplay.className + " nav-item font-medium tracking-normal"}
                   onClick={() => setIsMobileMenuOpen(false)}
                 >
                   Keşfet
                 </Link>
                 <Link 
                   href="/jobs" 
-                  className="nav-item"
+                  className={montserratDisplay.className + " nav-item font-medium tracking-normal"}
                   onClick={() => setIsMobileMenuOpen(false)}
                 >
                   İlanlar
                 </Link>
                 <Link 
                   href="#features" 
-                  className="nav-item"
+                  className={montserratDisplay.className + " nav-item font-medium tracking-normal"}
                   onClick={() => setIsMobileMenuOpen(false)}
                 >
                   Özellikler
@@ -111,7 +120,7 @@ export default function Header({ onSignup }: HeaderProps) {
                     onSignup("talent")
                     setIsMobileMenuOpen(false)
                   }}
-                  className="primary"
+                  className={montserratDisplay.className + " primary font-bold tracking-wide"}
                 >
                   Yetenek Olarak Başla
                 </button>
@@ -120,7 +129,7 @@ export default function Header({ onSignup }: HeaderProps) {
                     onSignup("agency")
                     setIsMobileMenuOpen(false)
                   }}
-                  className="secondary"
+                  className={montserratDisplay.className + " secondary font-bold tracking-wide"}
                 >
                   Ajans Olarak Başla
                 </button>
@@ -130,7 +139,7 @@ export default function Header({ onSignup }: HeaderProps) {
                     window.location.href = '/auth'
                     setIsMobileMenuOpen(false)
                   }}
-                  className="ghost"
+                  className={montserratDisplay.className + " ghost font-medium tracking-normal"}
                 >
                   Giriş Yap
                 </button>
@@ -159,21 +168,21 @@ export default function Header({ onSignup }: HeaderProps) {
             <nav className="flex flex-col space-y-3">
               <Link 
                 href="#explore" 
-                className="nav-link text-[#F6E6C3] hover:text-white transition-colors duration-200 py-2"
+                className={montserratDisplay.className + " nav-link text-[#F6E6C3] hover:text-white transition-colors duration-200 py-2 font-medium tracking-normal"}
                 onClick={() => setIsMobileMenuOpen(false)}
               >
                 Keşfet
               </Link>
               <Link 
                 href="/jobs" 
-                className="nav-link text-[#F6E6C3] hover:text-white transition-colors duration-200 py-2"
+                className={montserratDisplay.className + " nav-link text-[#F6E6C3] hover:text-white transition-colors duration-200 py-2 font-medium tracking-normal"}
                 onClick={() => setIsMobileMenuOpen(false)}
               >
                 İlanlar
               </Link>
               <Link 
                 href="#features" 
-                className="nav-link text-[#F6E6C3] hover:text-white transition-colors duration-200 py-2"
+                className={montserratDisplay.className + " nav-link text-[#F6E6C3] hover:text-white transition-colors duration-200 py-2 font-medium tracking-normal"}
                 onClick={() => setIsMobileMenuOpen(false)}
               >
                 Özellikler
@@ -192,7 +201,7 @@ export default function Header({ onSignup }: HeaderProps) {
                         onSignup("talent")
                         setIsMobileMenuOpen(false)
                       }}
-                      className="w-full rounded-lg bg-[#F6E6C3] hover:bg-white text-black font-semibold px-4 py-2 transition-all duration-200"
+                      className={montserratDisplay.className + " w-full rounded-lg bg-[#F6E6C3] hover:bg-white text-black font-bold px-4 py-2 transition-all duration-200 tracking-wide"}
                     >
                       Yetenek Olarak Başla
                     </button>
@@ -201,7 +210,7 @@ export default function Header({ onSignup }: HeaderProps) {
                         onSignup("agency")
                         setIsMobileMenuOpen(false)
                       }}
-                      className="w-full rounded-lg bg-[#962901] hover:bg-[#7a2000] text-white font-semibold px-4 py-2 transition-all duration-200"
+                      className={montserratDisplay.className + " w-full rounded-lg bg-[#962901] hover:bg-[#7a2000] text-white font-bold px-4 py-2 transition-all duration-200 tracking-wide"}
                     >
                       Ajans Olarak Başla
                     </button>
@@ -210,7 +219,7 @@ export default function Header({ onSignup }: HeaderProps) {
                         window.location.href = '/auth'
                         setIsMobileMenuOpen(false)
                       }}
-                      className="w-full rounded-lg border border-[#F6E6C3] text-[#F6E6C3] hover:bg-gray-800 hover:text-white px-4 py-2 transition-all duration-200"
+                      className={montserratDisplay.className + " w-full rounded-lg border border-[#F6E6C3] text-[#F6E6C3] hover:bg-gray-800 hover:text-white px-4 py-2 transition-all duration-200 font-medium tracking-normal"}
                     >
                       Giriş Yap
                     </button>

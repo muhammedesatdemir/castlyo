@@ -5,7 +5,8 @@ import Header from '@/components/layout/Header'
 import HeroShowreel from '@/components/hero/HeroShowreel'
 import LogoMarquee from '@/components/sections/LogoMarquee'
 import ExploreGrid from '@/components/sections/ExploreGrid'
-import CTASticky from '@/components/sections/CTASticky'
+import StickyCta from '@/components/StickyCta'
+import { montserratDisplay } from '@/lib/fonts'
 
 export default function Home() {
   const router = useRouter()
@@ -22,48 +23,59 @@ export default function Home() {
       <HeroShowreel onSignup={handleSignup} />
       <LogoMarquee />
       
-      <section id="features" className="bg-black text-white py-24 sm:py-32 -mt-px">
+      <section id="features" className="bg-black text-white py-24 sm:py-32 pb-32 -mt-px">
         <div className="mx-auto max-w-7xl px-6 lg:px-8">
           <div className="mx-auto max-w-2xl lg:text-center">
-            <h2 className="text-base font-semibold leading-7 text-[#F6E6C3] tracking-widest">
+            <p className={montserratDisplay.className + " text-center text-xs md:text-sm font-semibold tracking-[0.2em] uppercase text-white/70"}>
               Neden Castlyo?
-            </h2>
-            <p className="mt-2 text-3xl font-bold tracking-tight text-white sm:text-4xl">
-              Sahne Senin, Fırsat Bizim!
             </p>
-            <p className="mt-6 text-lg leading-8 text-white/80">
-              Güvenli, hızlı ve eğlenceli casting deneyimi. Yetenekler ve ajanslar 
-              tek platformda buluşuyor, hayaller gerçek oluyor.
+            <h2 className={montserratDisplay.className + " mt-3 text-center text-3xl md:text-5xl font-extrabold tracking-tight text-white"}>
+              Sahne Senin, Fırsat Bizim!
+            </h2>
+            <p className="mt-4 max-w-3xl mx-auto text-center text-base md:text-lg text-white/80">
+              Güvenli, hızlı ve eğlenceli casting deneyimi. Yetenekler ve ajanslar tek platformda
+              buluşuyor, hayaller gerçek oluyor.
             </p>
           </div>
           
-          <div className="mx-auto mt-16 max-w-2xl sm:mt-20 lg:mt-24 lg:max-w-none">
-            <div className="grid grid-cols-1 gap-8 md:grid-cols-2 lg:grid-cols-3">
-              <div className="text-center p-8 bg-[#962901] border border-gray-200 rounded-2xl shadow-lg hover:shadow-xl hover:-translate-y-1 hover:scale-105 transition-all duration-300">
-                <div className="w-16 h-16 bg-orange-300/30 rounded-2xl flex items-center justify-center mx-auto mb-6">
-                  <div className="w-8 h-8 bg-white rounded-lg"></div>
-                </div>
-                <h3 className="text-xl font-bold text-white mb-3">Güvenli Platform</h3>
-                <p className="text-white/90">KVKV uyumlu sistem ile verileriniz güvende, profesyonel deneyim garantili</p>
-              </div>
-              
-              <div className="text-center p-8 bg-[#962901] border border-gray-200 rounded-2xl shadow-lg hover:shadow-xl hover:-translate-y-1 hover:scale-105 transition-all duration-300">
-                <div className="w-16 h-16 bg-orange-300/30 rounded-2xl flex items-center justify-center mx-auto mb-6" style={{ animationDelay: '1s' }}>
-                  <div className="w-8 h-8 bg-white rounded-lg"></div>
-                </div>
-                <h3 className="text-xl font-bold text-white mb-3">Canlı Ağ</h3>
-                <p className="text-white/90">Binlerce yetenek ve yüzlerce ajans aktif olarak buluşuyor, networking hiç bu kadar kolay olmamıştı</p>
-                
-                {/* CTA Diyeti: Bu buton kaldırıldı - sayfa başına tek ana CTA */}
-              </div>
-              
-              <div className="text-center p-8 bg-[#962901] border border-gray-200 rounded-2xl shadow-lg hover:shadow-xl hover:-translate-y-1 hover:scale-105 transition-all duration-300">
-                <div className="w-16 h-16 bg-orange-300/30 rounded-2xl flex items-center justify-center mx-auto mb-6" style={{ animationDelay: '2s' }}>
-                  <div className="w-8 h-8 bg-white rounded-lg"></div>
-                </div>
-                <h3 className="text-xl font-bold text-white mb-3">Akıllı Eşleştirme</h3>
-                <p className="text-white/90">AI destekli algoritma ile saniyeler içinde mükemmel eşleştirmeler, doğru rolle doğru yetenek</p>
-              </div>
+          <div className="mt-12 grid gap-6 md:gap-8 grid-cols-1 md:grid-cols-3">
+            {/* 1 */}
+            <div className="rounded-2xl bg-[#962901] p-8 md:p-10 text-center
+                            flex flex-col items-center justify-between min-h-[360px]
+                            transition-all duration-200 hover:-translate-y-1 hover:shadow-xl/20">
+              <div className="mx-auto mb-5 h-12 w-12 rounded-xl bg-white/15 backdrop-blur-sm" />
+              <h3 className={montserratDisplay.className + " text-xl md:text-2xl font-bold text-white"}>
+                Güvenli Platform
+              </h3>
+              <p className="mt-3 text-sm md:text-base leading-relaxed text-white/90 max-w-[40ch] mx-auto">
+                KVKK uyumlu sistem ile verileriniz güvende, profesyonel deneyim garantili.
+              </p>
+            </div>
+
+            {/* 2 */}
+            <div className="rounded-2xl bg-[#962901] p-8 md:p-10 text-center
+                            flex flex-col items-center justify-between min-h-[360px]
+                            transition-all duration-200 hover:-translate-y-1 hover:shadow-xl/20">
+              <div className="mx-auto mb-5 h-12 w-12 rounded-xl bg-white/15 backdrop-blur-sm" />
+              <h3 className={montserratDisplay.className + " text-xl md:text-2xl font-bold text-white"}>
+                Canlı Ağ
+              </h3>
+              <p className="mt-3 text-sm md:text-base leading-relaxed text-white/90 max-w-[40ch] mx-auto">
+                Binlerce yetenek ve yüzlerce ajans aktif olarak buluşuyor, networking hiç bu kadar kolay olmamıştı.
+              </p>
+            </div>
+
+            {/* 3 */}
+            <div className="rounded-2xl bg-[#962901] p-8 md:p-10 text-center
+                            flex flex-col items-center justify-between min-h-[360px]
+                            transition-all duration-200 hover:-translate-y-1 hover:shadow-xl/20">
+              <div className="mx-auto mb-5 h-12 w-12 rounded-xl bg-white/15 backdrop-blur-sm" />
+              <h3 className={montserratDisplay.className + " text-xl md:text-2xl font-bold text-white"}>
+                Akıllı Eşleştirme
+              </h3>
+              <p className="mt-3 text-sm md:text-base leading-relaxed text-white/90 max-w-[40ch] mx-auto">
+                AI destekli algoritma ile saniyeler içinde doğru rolle doğru yetenek.
+              </p>
             </div>
           </div>
         </div>
@@ -71,74 +83,70 @@ export default function Home() {
       
       <ExploreGrid />
       
-      <section id="register" className="py-20 bg-black text-white">
+      <section id="register" data-hide-sticky className="py-20 bg-black text-white">
         <div className="mx-auto max-w-4xl px-6 lg:px-8">
           <div className="text-center mb-12">
-            <h2 className="text-4xl font-bold text-[#F6E6C3] mb-4">
+            {/* ANA BAŞLIK */}
+            <h2 className={montserratDisplay.className + " text-center text-3xl md:text-5xl font-extrabold tracking-tight text-white"}>
               Sahne Seni Bekliyor! 🎬
             </h2>
-            <p className="text-xl text-white/80">
+
+            {/* ALT BAŞLIK (body fontunda kalsın) */}
+            <p className="mt-3 max-w-3xl mx-auto text-center text-base md:text-lg text-white/80">
               Ücretsiz kayıt ol, profilini oluştur ve hemen başla!
             </p>
           </div>
           
-          <div className="grid md:grid-cols-2 gap-8">
-            <div className="bg-[#962901] rounded-2xl p-8 text-[#F6E6C3] ring-1 ring-white/10 shadow-2xl transition hover:-translate-y-0.5 will-change-transform">
-              <h3 className="text-2xl font-semibold text-[#F6E6C3] mb-6">
+          {/* KARTLAR */}
+          <div className="mt-10 grid gap-6 md:gap-8 grid-cols-1 md:grid-cols-2">
+            {/* Yetenekler İçin */}
+            <div className="rounded-2xl bg-[#962901] p-8 md:p-10 text-white shadow-inner/30">
+              <h3 className={montserratDisplay.className + " text-2xl md:text-3xl font-bold"}>
                 🎭 Yetenekler İçin
               </h3>
-              <ul className="space-y-3 mb-8">
-                <li className="flex items-start gap-3">
-                  <span className="mt-2 inline-block h-2.5 w-2.5 rounded-full bg-[#F6E6C3]/90"></span>
-                  <span className="text-[#F6E6C3]">Ücretsiz profil oluştur ve sergile</span>
-                </li>
-                <li className="flex items-start gap-3">
-                  <span className="mt-2 inline-block h-2.5 w-2.5 rounded-full bg-[#F6E6C3]/90"></span>
-                  <span className="text-[#F6E6C3]">Ajanslarla doğrudan buluş</span>
-                </li>
-                <li className="flex items-start gap-3">
-                  <span className="mt-2 inline-block h-2.5 w-2.5 rounded-full bg-[#F6E6C3]/90"></span>
-                  <span className="text-[#F6E6C3]">Portföyünü profesyonelce yönet</span>
-                </li>
+
+              <ul className="mt-4 space-y-3 text-white/90 text-sm md:text-base">
+                <li className="flex items-start gap-2"><span className="mt-2 size-2 rounded-full bg-white/70" />Ücretsiz profil oluştur ve sergile</li>
+                <li className="flex items-start gap-2"><span className="mt-2 size-2 rounded-full bg-white/70" />Ajanslarla doğrudan buluş</li>
+                <li className="flex items-start gap-2"><span className="mt-2 size-2 rounded-full bg-white/70" />Portföyünü profesyonelce yönet</li>
               </ul>
-              <button 
-                onClick={() => handleSignup("talent")}
-                className="w-full bg-white text-[#962901] py-4 px-6 rounded-2xl hover:bg-[#F6E6C3] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40 transition cursor-pointer font-semibold text-lg shadow-lg"
-              >
-                Yetenek Olarak Başla
-              </button>
+
+              <div className="mt-6">
+                <button
+                  onClick={() => handleSignup("talent")}
+                  className={montserratDisplay.className + " inline-flex items-center justify-center rounded-xl bg-white px-5 py-3 text-sm md:text-base font-bold text-[#962901] shadow w-full"}
+                >
+                  Yetenek Olarak Başla
+                </button>
+              </div>
             </div>
             
-            <div className="bg-[#962901] rounded-2xl p-8 text-[#F6E6C3] ring-1 ring-white/10 shadow-2xl transition hover:-translate-y-0.5 will-change-transform">
-              <h3 className="text-2xl font-semibold text-[#F6E6C3] mb-6">
+            {/* Ajans Olarak Başla */}
+            <div className="rounded-2xl bg-[#962901] p-8 md:p-10 text-white shadow-inner/30">
+              <h3 className={montserratDisplay.className + " text-2xl md:text-3xl font-bold"}>
                 🏢 Ajans Olarak Başla
               </h3>
-              <ul className="space-y-3 mb-8">
-                <li className="flex items-start gap-3">
-                  <span className="mt-2 inline-block h-2.5 w-2.5 rounded-full bg-[#F6E6C3]/90"></span>
-                  <span className="text-[#F6E6C3]">Akıllı yetenek arama ve filtrele</span>
-                </li>
-                <li className="flex items-start gap-3">
-                  <span className="mt-2 inline-block h-2.5 w-2.5 rounded-full bg-[#F6E6C3]/90"></span>
-                  <span className="text-[#F6E6C3]">Proje ve casting'leri yönet</span>
-                </li>
-                <li className="flex items-start gap-3">
-                  <span className="mt-2 inline-block h-2.5 w-2.5 rounded-full bg-[#F6E6C3]/90"></span>
-                  <span className="text-[#F6E6C3]">Güvenli ödeme ve sözleşme</span>
-                </li>
+
+              <ul className="mt-4 space-y-3 text-white/90 text-sm md:text-base">
+                <li className="flex items-start gap-2"><span className="mt-2 size-2 rounded-full bg-white/70" />Akıllı yetenek arama ve filtrele</li>
+                <li className="flex items-start gap-2"><span className="mt-2 size-2 rounded-full bg-white/70" />Proje ve casting'leri yönet</li>
+                <li className="flex items-start gap-2"><span className="mt-2 size-2 rounded-full bg-white/70" />Güvenli ödeme ve sözleşme</li>
               </ul>
-              <button 
-                onClick={() => handleSignup("agency")}
-                className="w-full bg-white text-[#962901] py-4 px-6 rounded-2xl hover:bg-[#F6E6C3] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40 transition cursor-pointer font-semibold text-lg shadow-lg"
-              >
-                Ajans Olarak Başla
-              </button>
+
+              <div className="mt-6">
+                <button
+                  onClick={() => handleSignup("agency")}
+                  className={montserratDisplay.className + " inline-flex items-center justify-center rounded-xl bg-white px-5 py-3 text-sm md:text-base font-bold text-[#962901] shadow w-full"}
+                >
+                  Ajans Olarak Başla
+                </button>
+              </div>
             </div>
           </div>
         </div>
       </section>
 
-      <CTASticky />
+      <StickyCta />
     </main>
-  );
+  )
 }
