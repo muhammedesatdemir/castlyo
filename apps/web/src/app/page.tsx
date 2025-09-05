@@ -40,10 +40,14 @@ export default function Home() {
           
           <div className="mt-12 grid gap-6 md:gap-8 grid-cols-1 md:grid-cols-3">
             {/* 1 */}
-            <div className="rounded-2xl bg-[#962901] p-8 md:p-10 text-center
-                            flex flex-col items-center justify-between min-h-[360px]
+            <div className="rounded-2xl bg-[#962901] p-4 md:p-6 text-center
+                            flex flex-col items-center justify-between min-h-[240px]
                             transition-all duration-200 hover:-translate-y-1 hover:shadow-xl/20">
-              <div className="mx-auto mb-5 h-12 w-12 rounded-xl bg-white/15 backdrop-blur-sm" />
+              <div className="mx-auto mb-4 flex items-center justify-center">
+                <div className="flex items-center justify-center w-14 h-14 rounded-2xl bg-[#F6E6C3] shadow-[0_6px_24px_rgba(0,0,0,0.12)] ring-1 ring-black/5">
+                  <div className="w-7 h-7 rounded-md bg-[#962901]" />
+                </div>
+              </div>
               <h3 className={montserratDisplay.className + " text-xl md:text-2xl font-bold text-white"}>
                 Güvenli Platform
               </h3>
@@ -53,10 +57,14 @@ export default function Home() {
             </div>
 
             {/* 2 */}
-            <div className="rounded-2xl bg-[#962901] p-8 md:p-10 text-center
-                            flex flex-col items-center justify-between min-h-[360px]
+            <div className="rounded-2xl bg-[#962901] p-4 md:p-6 text-center
+                            flex flex-col items-center justify-between min-h-[240px]
                             transition-all duration-200 hover:-translate-y-1 hover:shadow-xl/20">
-              <div className="mx-auto mb-5 h-12 w-12 rounded-xl bg-white/15 backdrop-blur-sm" />
+              <div className="mx-auto mb-4 flex items-center justify-center">
+                <div className="flex items-center justify-center w-14 h-14 rounded-2xl bg-[#F6E6C3] shadow-[0_6px_24px_rgba(0,0,0,0.12)] ring-1 ring-black/5">
+                  <div className="w-7 h-7 rounded-md bg-[#962901]" />
+                </div>
+              </div>
               <h3 className={montserratDisplay.className + " text-xl md:text-2xl font-bold text-white"}>
                 Canlı Ağ
               </h3>
@@ -66,10 +74,14 @@ export default function Home() {
             </div>
 
             {/* 3 */}
-            <div className="rounded-2xl bg-[#962901] p-8 md:p-10 text-center
-                            flex flex-col items-center justify-between min-h-[360px]
+            <div className="rounded-2xl bg-[#962901] p-4 md:p-6 text-center
+                            flex flex-col items-center justify-between min-h-[240px]
                             transition-all duration-200 hover:-translate-y-1 hover:shadow-xl/20">
-              <div className="mx-auto mb-5 h-12 w-12 rounded-xl bg-white/15 backdrop-blur-sm" />
+              <div className="mx-auto mb-4 flex items-center justify-center">
+                <div className="flex items-center justify-center w-14 h-14 rounded-2xl bg-[#F6E6C3] shadow-[0_6px_24px_rgba(0,0,0,0.12)] ring-1 ring-black/5">
+                  <div className="w-7 h-7 rounded-md bg-[#962901]" />
+                </div>
+              </div>
               <h3 className={montserratDisplay.className + " text-xl md:text-2xl font-bold text-white"}>
                 Akıllı Eşleştirme
               </h3>

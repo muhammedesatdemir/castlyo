@@ -53,18 +53,8 @@ export default function Header({ onSignup }: HeaderProps) {
         <div className="flex h-16 items-center justify-between">
           {/* Logo */}
           <div className="flex items-center">
-            <Link href="/" className="flex items-center gap-3">
-              {/* Logo kutusu: küçük boy, ama görseli scale ile büyütüyoruz */}
-              <span className="relative block h-8 w-8 md:h-9 md:w-9 origin-left scale-125 lg:scale-150 -translate-y-[1px]">
-                <Image
-                  src="/logos/logo.png"
-                  alt="Castlyo logo"
-                  fill
-                  priority
-                  className="object-contain pointer-events-none select-none"
-                />
-              </span>
-              <span className="logo nav-link text-[22px] md:text-[24px] font-bold text-[#F6E6C3] hover:text-white transition-colors duration-200 tracking-wide">
+            <Link href="/" className="flex items-center">
+              <span className={`${montserratDisplay.className} logo nav-link text-[22px] md:text-[24px] font-bold text-[#F6E6C3] hover:text-white transition-colors duration-200 tracking-wide`}>
                 Castlyo
               </span>
             </Link>
