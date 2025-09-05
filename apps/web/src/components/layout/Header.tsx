@@ -54,7 +54,17 @@ export default function Header({ onSignup }: HeaderProps) {
           {/* Logo */}
           <div className="flex items-center">
             <Link href="/" className="flex items-center">
-              <span className={`${montserratDisplay.className} logo nav-link text-[22px] md:text-[24px] font-bold text-[#F6E6C3] hover:text-white transition-colors duration-200 tracking-wide`}>
+              <span
+                className="
+                  font-brand uppercase
+                  text-[#F6E6C3]
+                  text-2xl md:text-3xl
+                  font-extrabold
+                  tracking-[0.10em] md:tracking-[0.12em]
+                  drop-shadow-[0_0_6px_rgba(246,230,195,0.38)]
+                  hover:text-white transition-colors duration-200
+                "
+              >
                 Castlyo
               </span>
             </Link>

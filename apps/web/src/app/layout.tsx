@@ -1,9 +1,15 @@
 import type { Metadata, Viewport } from 'next'
-import { Inter } from 'next/font/google'
+import { Inter, Cinzel } from 'next/font/google'
 import { AuthProvider } from '@/providers/auth-provider'
 import './globals.css'
 
 const inter = Inter({ subsets: ['latin'] })
+
+export const cinzel = Cinzel({
+  subsets: ["latin"],
+  weight: ["700", "800"], // başlık için
+  variable: "--font-cinzel",
+})
 
 export const metadata: Metadata = {
   title: 'Castlyo - Profesyonel Casting ve Yetenek Eşleştirme Platformu',
@@ -45,7 +51,7 @@ export default function RootLayout({
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
         <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@700;800&display=swap" rel="stylesheet" />
       </head>
-      <body className={inter.className}>
+      <body className={`${inter.className} ${cinzel.variable} antialiased`}>
         <AuthProvider>
           <div className="min-h-screen bg-background">
             {children}
