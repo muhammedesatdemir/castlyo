@@ -86,65 +86,97 @@ export default function Header({ onSignup }: HeaderProps) {
               <span className="line"></span>
             </button>
 
-            {/* Hamburger Menu Dropdown */}
-            <div ref={menuRef} className={`auth-menu ${isMobileMenuOpen ? 'open' : ''}`}>
-              {/* Navigation Links */}
-              <div className="nav-section">
-                <Link 
-                  href="#explore" 
-                  className={montserratDisplay.className + " nav-item font-medium tracking-normal"}
-                  onClick={() => setIsMobileMenuOpen(false)}
-                >
-                  Keşfet
-                </Link>
-                <Link 
-                  href="/jobs" 
-                  className={montserratDisplay.className + " nav-item font-medium tracking-normal"}
-                  onClick={() => setIsMobileMenuOpen(false)}
-                >
-                  İlanlar
-                </Link>
-                <Link 
-                  href="#features" 
-                  className={montserratDisplay.className + " nav-item font-medium tracking-normal"}
-                  onClick={() => setIsMobileMenuOpen(false)}
-                >
-                  Özellikler
-                </Link>
+            {/* Compact Hamburger Menu Dropdown */}
+            {isMobileMenuOpen && (
+              <div 
+                ref={menuRef}
+                className="
+                  absolute right-4 top-12 z-50
+                  w-56 rounded-lg bg-black/95 ring-1 ring-white/10 shadow-lg
+                "
+                role="menu"
+                aria-label="Ana menü"
+              >
+                {/* Compact navigation */}
+                <nav className="py-3">
+                  <ul className="px-2 space-y-1 text-sm leading-5">
+                    <li>
+                      <Link 
+                        href="#explore" 
+                        className="block rounded-md px-2.5 py-2 text-[#F6E6C3] hover:bg-white/5"
+                        onClick={() => setIsMobileMenuOpen(false)}
+                      >
+                        Keşfet
+                      </Link>
+                    </li>
+                    <li>
+                      <Link 
+                        href="/jobs" 
+                        className="block rounded-md px-2.5 py-2 text-[#F6E6C3] hover:bg-white/5"
+                        onClick={() => setIsMobileMenuOpen(false)}
+                      >
+                        İlanlar
+                      </Link>
+                    </li>
+                    <li>
+                      <Link 
+                        href="#features" 
+                        className="block rounded-md px-2.5 py-2 text-[#F6E6C3] hover:bg-white/5"
+                        onClick={() => setIsMobileMenuOpen(false)}
+                      >
+                        Özellikler
+                      </Link>
+                    </li>
+
+                    {/* Subtle divider */}
+                    <li className="my-1 border-t border-white/10" />
+
+                    <li>
+                      <button
+                        onClick={() => {
+                          onSignup("talent")
+                          setIsMobileMenuOpen(false)
+                        }}
+                        className="
+                          block w-full text-left whitespace-nowrap
+                          rounded-md px-2.5 py-2 font-semibold
+                          bg-[#F6E6C3] text-[#1b1b1b]
+                          hover:opacity-90
+                        "
+                      >
+                        Yetenek Olarak Başla
+                      </button>
+                    </li>
+                    <li>
+                      <button
+                        onClick={() => {
+                          onSignup("agency")
+                          setIsMobileMenuOpen(false)
+                        }}
+                        className="
+                          block w-full text-left whitespace-nowrap
+                          rounded-md px-2.5 py-2
+                          text-[#F6E6C3] hover:bg-white/5
+                        "
+                      >
+                        Ajans Olarak Başla
+                      </button>
+                    </li>
+                    <li>
+                      <button
+                        onClick={() => {
+                          window.location.href = '/auth'
+                          setIsMobileMenuOpen(false)
+                        }}
+                        className="block w-full text-left rounded-md px-2.5 py-2 text-[#F6E6C3] hover:bg-white/5"
+                      >
+                        Giriş Yap
+                      </button>
+                    </li>
+                  </ul>
+                </nav>
               </div>
-              
-              {/* Auth Buttons */}
-              <div className="auth-section">
-                <button
-                  onClick={() => {
-                    onSignup("talent")
-                    setIsMobileMenuOpen(false)
-                  }}
-                  className={montserratDisplay.className + " primary font-bold tracking-wide"}
-                >
-                  Yetenek Olarak Başla
-                </button>
-                <button
-                  onClick={() => {
-                    onSignup("agency")
-                    setIsMobileMenuOpen(false)
-                  }}
-                  className={montserratDisplay.className + " secondary font-bold tracking-wide"}
-                >
-                  Ajans Olarak Başla
-                </button>
-                <button
-                  onClick={() => {
-                    // Login için role parametresi olmadan auth sayfasına yönlendir
-                    window.location.href = '/auth'
-                    setIsMobileMenuOpen(false)
-                  }}
-                  className={montserratDisplay.className + " ghost font-medium tracking-normal"}
-                >
-                  Giriş Yap
-                </button>
-              </div>
-            </div>
+            )}
           </div>
 
           {/* Mobile Menu Button */}

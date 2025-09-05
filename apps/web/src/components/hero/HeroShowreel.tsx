@@ -23,6 +23,17 @@ export default function HeroShowreel({ onSignup }: HeroShowreelProps) {
         />
       </div>
       
+      {/* Header Gradient Transition - Smooth black to transparent */}
+      <div 
+        className="
+          pointer-events-none absolute inset-x-0 top-0 z-20
+          h-16 md:h-20
+          bg-gradient-to-b
+          from-black via-[#222]/80 to-transparent
+        "
+        aria-hidden="true"
+      />
+      
       {/* Dark Overlay + Gradient Glow */}
       <div className="absolute inset-0 bg-gradient-to-b from-black/50 via-black/60 to-[#100822]/70" />
       <div className="pointer-events-none absolute -top-24 left-1/2 h-[520px] w-[520px] -translate-x-1/2 rounded-full bg-[radial-gradient(ellipse_at_center,rgba(150,41,1,0.35),rgba(16,8,8,0))] blur-2xl" />
