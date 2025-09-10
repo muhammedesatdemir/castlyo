@@ -12,6 +12,15 @@ const phoneSchema = z
     }
   }, 'Geçerli bir telefon numarası giriniz');
 
+// Güçlü şifre validasyonu
+const passwordSchema = z
+  .string()
+  .min(8, 'Şifre en az 8 karakter olmalı')
+  .regex(/[A-Z]/, 'Şifre en az bir büyük harf içermeli')
+  .regex(/[a-z]/, 'Şifre en az bir küçük harf içermeli')
+  .regex(/[0-9]/, 'Şifre en az bir rakam içermeli')
+  .regex(/[^A-Za-z0-9]/, 'Şifre en az bir özel karakter içermeli');
+
 export const loginSchema = z.object({
   email: z
     .string()
@@ -19,7 +28,7 @@ export const loginSchema = z.object({
     .email('Geçerli bir e-posta adresi giriniz'),
   password: z
     .string()
-    .min(8, 'Şifre en az 8 karakter olmalı'),
+    .min(1, 'Şifre gerekli'),
 });
 
 export const talentRegistrationSchema = z.object({
@@ -30,13 +39,7 @@ export const talentRegistrationSchema = z.object({
     .email('Geçerli bir e-posta adresi giriniz')
     .transform((email) => email.toLowerCase()),
   
-  password: z
-    .string()
-    .min(8, 'Şifre en az 8 karakter olmalı')
-    .regex(
-      /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/,
-      'Şifre en az bir büyük harf, bir küçük harf ve bir rakam içermeli'
-    ),
+  password: passwordSchema,
   
   passwordConfirm: z
     .string()
@@ -137,13 +140,7 @@ export const agencyRegistrationSchema = z.object({
     .email('Geçerli bir e-posta adresi giriniz')
     .transform((email) => email.toLowerCase()),
   
-  password: z
-    .string()
-    .min(8, 'Şifre en az 8 karakter olmalı')
-    .regex(
-      /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/,
-      'Şifre en az bir büyük harf, bir küçük harf ve bir rakam içermeli'
-    ),
+  password: passwordSchema,
   
   passwordConfirm: z
     .string()
@@ -233,13 +230,7 @@ export const forgotPasswordSchema = z.object({
 
 export const resetPasswordSchema = z.object({
   token: z.string().min(1, 'Token gerekli'),
-  password: z
-    .string()
-    .min(8, 'Şifre en az 8 karakter olmalı')
-    .regex(
-      /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/,
-      'Şifre en az bir büyük harf, bir küçük harf ve bir rakam içermeli'
-    ),
+  password: passwordSchema,
   passwordConfirm: z
     .string()
     .min(8, 'Şifre tekrarı gerekli'),

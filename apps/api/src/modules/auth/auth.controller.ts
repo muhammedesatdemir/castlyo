@@ -49,11 +49,13 @@ export class AuthController {
   }
 
   @Public()
-  @Throttle({ auth: { limit: 5, ttl: 15 * 60 * 1000 } }) // 5 attempts per 15 minutes
+  @Throttle({ default: { limit: 5, ttl: 15 * 60 * 1000 } }) // 5 attempts per 15 minutes
   @UseGuards(LocalAuthGuard)
   @Post('login')
   @HttpCode(HttpStatus.OK)
-  async login(@Request() req, @Body() loginDto: LoginDto) {
+  async login(@Request() req, @Body() loginDto: LoginDto, @Ip() ipAddress: string) {
+    // Rate limiting için IP ve email kombinasyonu logla
+    console.log(`[LOGIN_ATTEMPT] IP: ${ipAddress} | Email: ${loginDto.email} | Timestamp: ${new Date().toISOString()}`);
     return this.authService.login(loginDto);
   }
 

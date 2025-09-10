@@ -17,6 +17,7 @@ export const users = pgTable('users', {
   emailVerified: boolean('email_verified').default(false).notNull(),
   phoneVerified: boolean('phone_verified').default(false).notNull(),
   twoFactorEnabled: boolean('two_factor_enabled').default(false).notNull(),
+  onboardingCompleted: boolean('onboarding_completed').default(false).notNull(),
   lastLoginAt: timestamp('last_login_at'),
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at').defaultNow().notNull(),

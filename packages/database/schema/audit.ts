@@ -4,7 +4,8 @@ import { users } from './users';
 
 // Enums
 export const auditActionEnum = pgEnum('audit_action', [
-  'CREATE', 'UPDATE', 'DELETE', 'LOGIN', 'LOGOUT', 'VIEW', 'DOWNLOAD', 'EXPORT'
+  'CREATE', 'UPDATE', 'DELETE', 'LOGIN', 'LOGOUT', 'VIEW', 'DOWNLOAD', 'EXPORT',
+  'DATA_SHARED', 'CONTACT_GRANTED', 'CONTACT_REQUESTED'
 ]);
 export const auditEntityTypeEnum = pgEnum('audit_entity_type', [
   'USER', 'TALENT_PROFILE', 'AGENCY_PROFILE', 'JOB_POST', 'APPLICATION', 'MESSAGE', 'PAYMENT', 'SUBSCRIPTION'

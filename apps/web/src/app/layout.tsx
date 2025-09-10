@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from 'next'
 import { Inter, Cinzel } from 'next/font/google'
 import { AuthProvider } from '@/providers/auth-provider'
+import { ToastContainer } from '@/components/ui/toast'
 import './globals.css'
 
 const inter = Inter({ subsets: ['latin'] })
@@ -56,6 +57,7 @@ export default function RootLayout({
           <div className="min-h-screen bg-background">
             {children}
           </div>
+          <ToastContainer />
         </AuthProvider>
       </body>
     </html>

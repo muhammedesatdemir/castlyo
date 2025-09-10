@@ -11,25 +11,25 @@ import {
   users, 
   talentProfiles, 
   agencyProfiles 
-} from '@packages/database/schema/users';
-import { contactPermissions } from '@packages/database/schema/permissions';
+} from '@packages/database/schema';
+import { contactPermissions } from '@packages/database/schema';
 import { 
   CreateTalentProfileDto, 
   UpdateTalentProfileDto,
   CreateAgencyProfileDto,
   UpdateAgencyProfileDto 
 } from './dto/profile.dto';
-import type { Database } from '@packages/database';
+import { db } from '@packages/database';
 
 @Injectable()
 export class ProfilesService {
   constructor(
-    @Inject(DATABASE_CONNECTION) private readonly db: Database,
+    @Inject(DATABASE_CONNECTION) private readonly database: any,
   ) {}
 
   async createTalentProfile(userId: string, profileData: CreateTalentProfileDto) {
     // Check if user exists and is a talent
-    const user = await this.db.select()
+    const user = await this.database.select()
       .from(users)
       .where(eq(users.id, userId))
       .limit(1);
@@ -43,7 +43,7 @@ export class ProfilesService {
     }
 
     // Check if profile already exists
-    const existingProfile = await this.db.select()
+    const existingProfile = await this.database.select()
       .from(talentProfiles)
       .where(eq(talentProfiles.userId, userId))
       .limit(1);
@@ -52,7 +52,7 @@ export class ProfilesService {
       throw new BadRequestException('Talent profile already exists');
     }
 
-    const newProfile = await this.db.insert(talentProfiles)
+    const newProfile = await this.database.insert(talentProfiles)
       .values({
         userId,
         ...profileData,
@@ -71,7 +71,7 @@ export class ProfilesService {
 
   async createAgencyProfile(userId: string, profileData: CreateAgencyProfileDto) {
     // Check if user exists and is an agency
-    const user = await this.db.select()
+    const user = await this.database.select()
       .from(users)
       .where(eq(users.id, userId))
       .limit(1);
@@ -85,7 +85,7 @@ export class ProfilesService {
     }
 
     // Check if profile already exists
-    const existingProfile = await this.db.select()
+    const existingProfile = await this.database.select()
       .from(agencyProfiles)
       .where(eq(agencyProfiles.userId, userId))
       .limit(1);
@@ -94,7 +94,7 @@ export class ProfilesService {
       throw new BadRequestException('Agency profile already exists');
     }
 
-    const newProfile = await this.db.insert(agencyProfiles)
+    const newProfile = await this.database.insert(agencyProfiles)
       .values({
         userId,
         ...profileData,
@@ -109,7 +109,7 @@ export class ProfilesService {
   }
 
   async getTalentProfile(userId: string, requestingUserId?: string) {
-    const profile = await this.db.select()
+    const profile = await this.database.select()
       .from(talentProfiles)
       .leftJoin(users, eq(talentProfiles.userId, users.id))
       .where(eq(talentProfiles.userId, userId))
@@ -129,7 +129,7 @@ export class ProfilesService {
 
     // Increment profile views if different user is viewing
     if (requestingUserId && requestingUserId !== userId) {
-      await this.db.update(talentProfiles)
+      await this.database.update(talentProfiles)
         .set({ 
           profileViews: (talentProfile.profileViews || 0) + 1,
           updatedAt: new Date()
@@ -160,7 +160,7 @@ export class ProfilesService {
    * Get public talent profile without PII (for public viewing)
    */
   async getPublicTalentProfile(userId: string, requestingUserId?: string) {
-    const profile = await this.db.select()
+    const profile = await this.database.select()
       .from(talentProfiles)
       .leftJoin(users, eq(talentProfiles.userId, users.id))
       .where(eq(talentProfiles.userId, userId))
@@ -185,7 +185,7 @@ export class ProfilesService {
 
     if (talentProfile.visibility === 'only-applied-agencies' && requestingUserId) {
       // Check if requesting user is an agency that has applied/has permission
-      const hasPermission = await this.db.select()
+      const hasPermission = await this.database.select()
         .from(contactPermissions)
         .where(
           and(
@@ -202,7 +202,7 @@ export class ProfilesService {
 
     // Increment profile views if different user is viewing
     if (requestingUserId && requestingUserId !== userId) {
-      await this.db.update(talentProfiles)
+      await this.database.update(talentProfiles)
         .set({ 
           profileViews: (talentProfile.profileViews || 0) + 1,
           updatedAt: new Date()
@@ -252,7 +252,7 @@ export class ProfilesService {
   }
 
   async getAgencyProfile(userId: string, requestingUserId?: string) {
-    const profile = await this.db.select()
+    const profile = await this.database.select()
       .from(agencyProfiles)
       .leftJoin(users, eq(agencyProfiles.userId, users.id))
       .where(eq(agencyProfiles.userId, userId))
@@ -287,7 +287,7 @@ export class ProfilesService {
       throw new ForbiddenException('Cannot update another user\'s profile');
     }
 
-    const existingProfile = await this.db.select()
+    const existingProfile = await this.database.select()
       .from(talentProfiles)
       .where(eq(talentProfiles.userId, userId))
       .limit(1);
@@ -296,7 +296,7 @@ export class ProfilesService {
       throw new NotFoundException('Talent profile not found');
     }
 
-    const updatedProfile = await this.db.update(talentProfiles)
+    const updatedProfile = await this.database.update(talentProfiles)
       .set({
         ...profileData,
         updatedAt: new Date()
@@ -317,7 +317,7 @@ export class ProfilesService {
       throw new ForbiddenException('Cannot update another user\'s profile');
     }
 
-    const existingProfile = await this.db.select()
+    const existingProfile = await this.database.select()
       .from(agencyProfiles)
       .where(eq(agencyProfiles.userId, userId))
       .limit(1);
@@ -326,7 +326,7 @@ export class ProfilesService {
       throw new NotFoundException('Agency profile not found');
     }
 
-    const updatedProfile = await this.db.update(agencyProfiles)
+    const updatedProfile = await this.database.update(agencyProfiles)
       .set({
         ...profileData,
         updatedAt: new Date()
@@ -339,7 +339,7 @@ export class ProfilesService {
 
   async getMyProfile(userId: string) {
     // First check user role
-    const user = await this.db.select()
+    const user = await this.database.select()
       .from(users)
       .where(eq(users.id, userId))
       .limit(1);
@@ -377,7 +377,7 @@ export class ProfilesService {
       throw new ForbiddenException('Cannot delete another user\'s profile');
     }
 
-    const user = await this.db.select()
+    const user = await this.database.select()
       .from(users)
       .where(eq(users.id, userId))
       .limit(1);
@@ -387,10 +387,10 @@ export class ProfilesService {
     }
 
     if (user[0].role === 'TALENT') {
-      await this.db.delete(talentProfiles)
+      await this.database.delete(talentProfiles)
         .where(eq(talentProfiles.userId, userId));
     } else if (user[0].role === 'AGENCY') {
-      await this.db.delete(agencyProfiles)
+      await this.database.delete(agencyProfiles)
         .where(eq(agencyProfiles.userId, userId));
     }
 
@@ -406,7 +406,7 @@ export class ProfilesService {
       throw new ForbiddenException('Cannot export another user\'s data');
     }
 
-    const user = await this.db.select()
+    const user = await this.database.select()
       .from(users)
       .where(eq(users.id, userId))
       .limit(1);
@@ -420,14 +420,14 @@ export class ProfilesService {
 
     // Get profile data based on role
     if (userData.role === 'TALENT') {
-      const profile = await this.db.select()
+      const profile = await this.database.select()
         .from(talentProfiles)
         .where(eq(talentProfiles.userId, userId))
         .limit(1);
       
       profileData = profile.length > 0 ? profile[0] : null;
     } else if (userData.role === 'AGENCY') {
-      const profile = await this.db.select()
+      const profile = await this.database.select()
         .from(agencyProfiles)
         .where(eq(agencyProfiles.userId, userId))
         .limit(1);
@@ -436,7 +436,7 @@ export class ProfilesService {
     }
 
     // Get contact permissions
-    const contactPerms = await this.db.select()
+    const contactPerms = await this.database.select()
       .from(contactPermissions)
       .where(eq(contactPermissions.talentId, userId));
 

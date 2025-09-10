@@ -4,3 +4,4 @@ export * from './messages';
 export * from './subscriptions';
 export * from './audit';
 export * from './permissions';
+export * from './verification';

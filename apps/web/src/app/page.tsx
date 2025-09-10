@@ -1,20 +1,113 @@
 'use client'
 
 import { useRouter } from 'next/navigation'
+import { useSession } from 'next-auth/react'
 import Header from '@/components/layout/Header'
 import HeroShowreel from '@/components/hero/HeroShowreel'
 import LogoMarquee from '@/components/sections/LogoMarquee'
 import ExploreGrid from '@/components/sections/ExploreGrid'
 import StickyCta from '@/components/StickyCta'
+import { NotificationPermission } from '@/components/ui/notification-permission'
 import { montserratDisplay } from '@/lib/fonts'
 
 export default function Home() {
   const router = useRouter()
+  const { data: session, status } = useSession()
 
   const handleSignup = (type: "talent" | "agency") => {
     // First show privacy info, then redirect to auth page with role and return URL
     const returnUrl = encodeURIComponent(`/onboarding/${type}`)
     router.push(`/privacy-info?role=${type}&next=${returnUrl}`)
+  }
+
+  const handleStartOnboarding = (type: "talent" | "agency") => {
+    // Kullanıcı giriş yapmış ve onboarding başlatmak istiyor
+    router.push(`/onboarding/${type}`)
+  }
+
+  // Loading state
+  if (status === 'loading') {
+    return (
+      <div className="min-h-screen bg-black flex items-center justify-center">
+        <div className="text-white">Yükleniyor...</div>
+      </div>
+    )
+  }
+
+  // Giriş yapmış kullanıcı için farklı ana sayfa
+  if (session) {
+    return (
+      <main className="min-h-screen bg-black text-white">
+        <Header />
+        <div className="container mx-auto px-4 py-16">
+          <div className="max-w-4xl mx-auto text-center">
+            <h1 className="text-4xl font-bold mb-4">
+              Hoş Geldin, {session.user?.email}! 🎭
+            </h1>
+            <p className="text-xl text-white/80 mb-8">
+              Castlyo'da ne yapmak istiyorsun?
+            </p>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mt-12">
+              {/* Yetenek Profili Oluştur */}
+              <div className="bg-white/5 backdrop-blur-lg rounded-2xl border border-white/10 p-8">
+                <div className="text-6xl mb-4">🎭</div>
+                <h3 className="text-2xl font-bold mb-4">Yetenek Olarak Başla</h3>
+                <p className="text-white/70 mb-6">
+                  Oyuncu, model, müzisyen veya diğer yeteneklerin için profil oluştur
+                </p>
+                <button
+                  onClick={() => handleStartOnboarding('talent')}
+                  className="w-full bg-brand-primary hover:bg-brand-primary/90 text-white font-semibold py-3 px-6 rounded-lg transition-colors"
+                >
+                  Yetenek Profili Oluştur
+                </button>
+              </div>
+
+              {/* Ajans Profili Oluştur */}
+              <div className="bg-white/5 backdrop-blur-lg rounded-2xl border border-white/10 p-8">
+                <div className="text-6xl mb-4">🏢</div>
+                <h3 className="text-2xl font-bold mb-4">Ajans Olarak Başla</h3>
+                <p className="text-white/70 mb-6">
+                  Casting ajansı, prodüksiyon şirketi veya medya ajansı olarak katıl
+                </p>
+                <button
+                  onClick={() => handleStartOnboarding('agency')}
+                  className="w-full bg-brand-primary hover:bg-brand-primary/90 text-white font-semibold py-3 px-6 rounded-lg transition-colors"
+                >
+                  Ajans Profili Oluştur
+                </button>
+              </div>
+            </div>
+
+            {/* Diğer Seçenekler */}
+            <div className="mt-12 pt-8 border-t border-white/10">
+              <h3 className="text-xl font-semibold mb-6">Diğer Seçenekler</h3>
+              <div className="flex flex-wrap gap-4 justify-center">
+                <button
+                  onClick={() => router.push('/search')}
+                  className="bg-white/10 hover:bg-white/20 text-white px-6 py-2 rounded-lg transition-colors"
+                >
+                  Yetenek Ara
+                </button>
+                <button
+                  onClick={() => router.push('/jobs')}
+                  className="bg-white/10 hover:bg-white/20 text-white px-6 py-2 rounded-lg transition-colors"
+                >
+                  İş İlanlarını Görüntüle
+                </button>
+                <button
+                  onClick={() => router.push('/profile')}
+                  className="bg-white/10 hover:bg-white/20 text-white px-6 py-2 rounded-lg transition-colors"
+                >
+                  Profilim
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </main>
+    )
   }
 
   return (
@@ -163,6 +256,9 @@ export default function Home() {
       </section>
 
       <StickyCta />
+      
+      {/* Modern Notification Permission Popup - only for non-authenticated users */}
+      {!session && <NotificationPermission />}
     </main>
   )
 }

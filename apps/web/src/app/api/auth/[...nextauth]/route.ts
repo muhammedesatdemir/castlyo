@@ -2,6 +2,10 @@ import NextAuth from 'next-auth'
 import { NextAuthOptions } from 'next-auth'
 import CredentialsProvider from 'next-auth/providers/credentials'
 import { loginSchema } from '@/lib/validations/auth'
+import store from '@/lib/mock-store'
+import * as bcrypt from 'bcryptjs'
+
+export const runtime = 'nodejs'
 
 const authOptions: NextAuthOptions = {
   providers: [
@@ -14,6 +18,7 @@ const authOptions: NextAuthOptions = {
       async authorize(credentials) {
         try {
           if (!credentials?.email || !credentials?.password) {
+            console.log('[NextAuth] Missing credentials')
             return null
           }
 
@@ -23,37 +28,44 @@ const authOptions: NextAuthOptions = {
             password: credentials.password,
           })
 
-          // Call our API
-          const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'
-          const response = await fetch(`${apiUrl}/auth/login`, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify(validatedCredentials),
-          })
+          // Normalize email for consistency
+          const normalizedEmail = validatedCredentials.email.trim().toLowerCase()
+          console.log(`[NextAuth] Attempting login for: ${normalizedEmail}`)
 
-          if (!response.ok) {
-            return null
+          // Use mock store for user lookup (same source as register/verify)
+          console.log(`[NextAuth] 📊 Mock Store Stats:`, store.stats())
+          
+          const user = store.findUserByEmail(normalizedEmail)
+          
+          if (!user) {
+            console.log(`[NextAuth] User not found: ${normalizedEmail}`)
+            throw new Error('INVALID_CREDENTIALS')
           }
-
-          const data = await response.json()
-
-          if (data.access_token && data.user) {
-            return {
-              id: data.user.id,
-              email: data.user.email,
-              role: data.user.role,
-              status: data.user.status,
-              emailVerified: data.user.emailVerified,
-              accessToken: data.access_token,
-              refreshToken: data.refresh_token,
-            }
+          
+          // Password check using bcrypt
+          const isPasswordValid = await bcrypt.compare(validatedCredentials.password, user.passwordHash)
+          
+          if (!isPasswordValid) {
+            console.log(`[NextAuth] Invalid password for: ${normalizedEmail}`)
+            console.log(`[NextAuth] Password hash: ${user.passwordHash.substring(0, 10)}...`)
+            throw new Error('INVALID_CREDENTIALS')
           }
-
-          return null
+          
+          // Email verification check - this is the key check
+          if (!user.emailVerified) {
+            console.log(`[NextAuth] Email not verified for user: ${user.id}`)
+            throw new Error('EMAIL_NOT_VERIFIED')
+          }
+          
+          console.log(`[NextAuth] ✅ Login successful for user: ${user.id}`)
+          return {
+            id: user.id,
+            email: user.email,
+            role: user.role,
+            emailVerified: user.emailVerified,
+          }
         } catch (error) {
-          console.error('Auth error:', error)
+          console.error('[NextAuth] Authorization error:', error)
           return null
         }
       }
@@ -69,10 +81,7 @@ const authOptions: NextAuthOptions = {
   callbacks: {
     async jwt({ token, user }) {
       if (user) {
-        token.accessToken = user.accessToken
-        token.refreshToken = user.refreshToken
         token.role = user.role
-        token.status = user.status
         token.emailVerified = user.emailVerified
       }
       return token
@@ -81,10 +90,7 @@ const authOptions: NextAuthOptions = {
       if (token) {
         session.user.id = token.sub!
         session.user.role = token.role as string
-        session.user.status = token.status as string
         session.user.emailVerified = token.emailVerified as boolean
-        session.accessToken = token.accessToken as string
-        session.refreshToken = token.refreshToken as string
       }
       return session
     },

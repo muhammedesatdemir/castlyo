@@ -24,33 +24,7 @@ export const contactPermissions = pgTable('contact_permissions', {
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
 });
 
-// Audit logs for all data sharing activities
-export const auditLogs = pgTable('audit_logs', {
-  id: uuid('id').defaultRandom().primaryKey(),
-  
-  // Who performed the action
-  userId: uuid('user_id').references(() => users.id).notNull(),
-  userRole: varchar('user_role', { length: 20 }).notNull(), // TALENT, AGENCY, ADMIN
-  
-  // What was the action
-  action: varchar('action', { length: 50 }).notNull(), // CONTACT_REQUESTED, CONTACT_GRANTED, CONTACT_REVOKED, DATA_SHARED, DATA_ACCESSED
-  resource: varchar('resource', { length: 50 }).notNull(), // TALENT_PROFILE, CONTACT_INFO, etc.
-  resourceId: uuid('resource_id'), // ID of the resource being accessed
-  
-  // Who was affected
-  targetUserId: uuid('target_user_id').references(() => users.id),
-  
-  // Context and details
-  details: text('details'), // JSON string with additional context
-  ipAddress: varchar('ip_address', { length: 45 }),
-  userAgent: text('user_agent'),
-  
-  // Success/failure
-  success: boolean('success').default(true).notNull(),
-  errorMessage: text('error_message'),
-  
-  createdAt: timestamp('created_at').defaultNow().notNull(),
-});
+// Data sharing specific audit logs will use the main auditLogs table from audit.ts
 
 // Consent logs - tracks all KVKK and other consent activities
 export const consentLogs = pgTable('consent_logs', {
@@ -86,16 +60,7 @@ export const contactPermissionsRelations = relations(contactPermissions, ({ one 
   }),
 }));
 
-export const auditLogsRelations = relations(auditLogs, ({ one }) => ({
-  user: one(users, {
-    fields: [auditLogs.userId],
-    references: [users.id],
-  }),
-  targetUser: one(users, {
-    fields: [auditLogs.targetUserId],
-    references: [users.id],
-  }),
-}));
+// auditLogsRelations is defined in audit.ts
 
 export const consentLogsRelations = relations(consentLogs, ({ one }) => ({
   user: one(users, {

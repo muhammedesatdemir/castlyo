@@ -86,8 +86,8 @@ export const jobApplications = pgTable('job_applications', {
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
 });
 
-// Contact permissions - for secure communication
-export const contactPermissions = pgTable('contact_permissions', {
+// Application-specific contact permissions - for secure communication during job applications
+export const applicationContactPermissions = pgTable('application_contact_permissions', {
   id: uuid('id').defaultRandom().primaryKey(),
   applicationId: uuid('application_id').references(() => jobApplications.id).notNull(),
   agencyId: uuid('agency_id').references(() => agencyProfiles.id).notNull(),
@@ -145,20 +145,20 @@ export const jobApplicationsRelations = relations(jobApplications, ({ one, many 
     fields: [jobApplications.reviewedBy],
     references: [users.id],
   }),
-  contactPermissions: many(contactPermissions),
+  applicationContactPermissions: many(applicationContactPermissions),
 }));
 
-export const contactPermissionsRelations = relations(contactPermissions, ({ one }) => ({
+export const applicationContactPermissionsRelations = relations(applicationContactPermissions, ({ one }) => ({
   application: one(jobApplications, {
-    fields: [contactPermissions.applicationId],
+    fields: [applicationContactPermissions.applicationId],
     references: [jobApplications.id],
   }),
   agency: one(agencyProfiles, {
-    fields: [contactPermissions.agencyId],
+    fields: [applicationContactPermissions.agencyId],
     references: [agencyProfiles.id],
   }),
   talent: one(talentProfiles, {
-    fields: [contactPermissions.talentId],
+    fields: [applicationContactPermissions.talentId],
     references: [talentProfiles.id],
   }),
 }));

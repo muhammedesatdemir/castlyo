@@ -3,7 +3,8 @@ import {
   UnauthorizedException, 
   ConflictException, 
   BadRequestException,
-  Inject 
+  Inject,
+  Logger 
 } from '@nestjs/common';
 import { JwtService, JwtSignOptions } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
@@ -19,12 +20,14 @@ import {
 import * as bcrypt from 'bcryptjs';
 import * as crypto from 'crypto';
 import { DATABASE_CONNECTION } from '../../config/database.module';
-import { users, userConsents } from '@packages/database/schema/users';
+import { users, userConsents } from '@castlyo/database';
 import { eq } from 'drizzle-orm';
-import type { Database } from '@packages/database';
+import type { Database } from '@castlyo/database';
 
 @Injectable()
 export class AuthService {
+  private readonly logger = new Logger(AuthService.name);
+
   constructor(
     private usersService: UsersService,
     private jwtService: JwtService,
@@ -42,50 +45,75 @@ export class AuthService {
   }
 
   async register(registerDto: RegisterDto) {
-    // Check if passwords match
-    if (registerDto.password !== registerDto.passwordConfirm) {
-      throw new BadRequestException('Passwords do not match');
+    this.logger.log(`[REGISTER] Starting registration for email: ${registerDto.email}`);
+    
+    try {
+      // Check if passwords match
+      if (registerDto.password !== registerDto.passwordConfirm) {
+        this.logger.warn(`[REGISTER] Password mismatch for email: ${registerDto.email}`);
+        throw new BadRequestException('Passwords do not match');
+      }
+
+      // Check if user already exists
+      const existingUser = await this.usersService.findByEmail(registerDto.email);
+      if (existingUser) {
+        this.logger.warn(`[REGISTER] User already exists: ${registerDto.email}`);
+        throw new ConflictException('User with this email already exists');
+      }
+
+      // Check KVKK consent
+      if (!registerDto.kvkkConsent) {
+        this.logger.warn(`[REGISTER] KVKK consent missing for email: ${registerDto.email}`);
+        throw new BadRequestException('KVKK consent is required');
+      }
+
+      // Check Terms consent
+      if (!registerDto.termsConsent) {
+        this.logger.warn(`[REGISTER] Terms consent missing for email: ${registerDto.email}`);
+        throw new BadRequestException('Terms and conditions consent is required');
+      }
+
+      // Hash password
+      const saltRounds = this.configService.get<number>('BCRYPT_ROUNDS', 12);
+      const passwordHash = await bcrypt.hash(registerDto.password, saltRounds);
+      this.logger.debug(`[REGISTER] Password hashed for email: ${registerDto.email}`);
+
+      // Create user
+      const newUser = await this.db.insert(users).values({
+        email: registerDto.email.toLowerCase(),
+        phone: registerDto.phone,
+        passwordHash,
+        role: registerDto.role,
+        status: 'PENDING', // User needs email verification
+      }).returning();
+
+      const userId = newUser[0].id;
+      this.logger.log(`[REGISTER] User created successfully: ${userId} | Email: ${registerDto.email} | Role: ${registerDto.role}`);
+      this.logger.debug(`[REGISTER] Password hash exists: ${!!passwordHash} | Hash length: ${passwordHash.length}`);
+
+      // Record consents
+      await this.recordConsents(userId, registerDto);
+      this.logger.log(`[REGISTER] Consents recorded for user: ${userId}`);
+
+      // Generate email verification token
+      const verificationToken = this.generateEmailVerificationToken(userId);
+      this.logger.debug(`[REGISTER] Verification token generated for user: ${userId}`);
+
+      // TODO: Send verification email
+
+      const response = {
+        message: 'Registration successful. Please check your email for verification.',
+        userId,
+        verificationToken, // Remove this in production
+      };
+
+      this.logger.log(`[REGISTER] Registration completed successfully for user: ${userId}`);
+      return response;
+
+    } catch (error) {
+      this.logger.error(`[REGISTER] Registration failed for email: ${registerDto.email}`, error.stack);
+      throw error;
     }
-
-    // Check if user already exists
-    const existingUser = await this.usersService.findByEmail(registerDto.email);
-    if (existingUser) {
-      throw new ConflictException('User with this email already exists');
-    }
-
-    // Check KVKK consent
-    if (!registerDto.kvkkConsent) {
-      throw new BadRequestException('KVKK consent is required');
-    }
-
-    // Hash password
-    const saltRounds = this.configService.get<number>('BCRYPT_ROUNDS', 12);
-    const passwordHash = await bcrypt.hash(registerDto.password, saltRounds);
-
-    // Create user
-    const newUser = await this.db.insert(users).values({
-      email: registerDto.email.toLowerCase(),
-      phone: registerDto.phone,
-      passwordHash,
-      role: registerDto.role,
-      status: 'PENDING', // User needs email verification
-    }).returning();
-
-    const userId = newUser[0].id;
-
-    // Record consents
-    await this.recordConsents(userId, registerDto);
-
-    // Generate email verification token
-    const verificationToken = this.generateEmailVerificationToken(userId);
-
-    // TODO: Send verification email
-
-    return {
-      message: 'Registration successful. Please check your email for verification.',
-      userId,
-      verificationToken, // Remove this in production
-    };
   }
 
   async verifyEmail(verificationDto: EmailVerificationDto) {
@@ -110,36 +138,48 @@ export class AuthService {
   }
 
   async login(loginDto: LoginDto) {
-    const user = await this.validateUser(loginDto.email, loginDto.password);
-    if (!user) {
-      throw new UnauthorizedException('Invalid credentials');
-    }
-
-    // Check if user is active
-    if (user.status !== 'ACTIVE') {
-      if (user.status === 'PENDING') {
-        throw new UnauthorizedException('Please verify your email first');
+    this.logger.log(`[LOGIN] Login attempt for email: ${loginDto.email}`);
+    
+    try {
+      const user = await this.validateUser(loginDto.email, loginDto.password);
+      if (!user) {
+        this.logger.warn(`[LOGIN] Invalid credentials for email: ${loginDto.email}`);
+        throw new UnauthorizedException('Invalid credentials');
       }
-      throw new UnauthorizedException('Account is suspended');
+
+      // Check if user is active
+      if (user.status !== 'ACTIVE') {
+        if (user.status === 'PENDING') {
+          this.logger.warn(`[LOGIN] Email verification required for user: ${user.id} | Email: ${loginDto.email}`);
+          throw new UnauthorizedException('Please verify your email first');
+        }
+        this.logger.warn(`[LOGIN] Account suspended for user: ${user.id} | Email: ${loginDto.email} | Status: ${user.status}`);
+        throw new UnauthorizedException('Account is suspended');
+      }
+
+      // Update last login
+      await this.db.update(users)
+        .set({ lastLoginAt: new Date() })
+        .where(eq(users.id, user.id));
+
+      const tokens = await this.generateTokens(user);
+      this.logger.log(`[LOGIN] Login successful for user: ${user.id} | Email: ${loginDto.email} | Role: ${user.role}`);
+
+      return {
+        ...tokens,
+        user: {
+          id: user.id,
+          email: user.email,
+          role: user.role,
+          status: user.status,
+          emailVerified: user.emailVerified,
+        },
+      };
+
+    } catch (error) {
+      this.logger.error(`[LOGIN] Login failed for email: ${loginDto.email}`, error.stack);
+      throw error;
     }
-
-    // Update last login
-    await this.db.update(users)
-      .set({ lastLoginAt: new Date() })
-      .where(eq(users.id, user.id));
-
-    const tokens = await this.generateTokens(user);
-
-    return {
-      ...tokens,
-      user: {
-        id: user.id,
-        email: user.email,
-        role: user.role,
-        status: user.status,
-        emailVerified: user.emailVerified,
-      },
-    };
   }
 
   async refreshToken(refreshDto: RefreshTokenDto) {
@@ -249,6 +289,14 @@ export class AuthService {
         consentType: 'KVKK',
         version: '1.0',
         consented: registerDto.kvkkConsent,
+        ipAddress: registerDto.ipAddress,
+        userAgent: registerDto.userAgent,
+      },
+      {
+        userId,
+        consentType: 'TERMS',
+        version: '1.0',
+        consented: registerDto.termsConsent,
         ipAddress: registerDto.ipAddress,
         userAgent: registerDto.userAgent,
       }

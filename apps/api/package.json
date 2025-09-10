@@ -41,7 +41,7 @@
     "class-validator": "^0.14.2",
     "compression": "^1.7.4",
     "cookie-parser": "^1.4.6",
-    "drizzle-orm": "^0.29.1",
+    "drizzle-orm": "^0.44.5",
     "express-rate-limit": "^7.1.5",
     "helmet": "^7.1.0",
     "meilisearch": "^0.52.0",
@@ -61,7 +61,7 @@
     "winston": "^3.11.0"
   },
   "devDependencies": {
-    "@nestjs/cli": "^10.0.0",
+    "@nestjs/cli": "^11.0.10",
     "@nestjs/schematics": "^10.0.0",
     "@nestjs/testing": "^10.0.0",
     "@types/bcryptjs": "^2.4.6",
@@ -75,6 +75,7 @@
     "@types/supertest": "^2.0.12",
     "@typescript-eslint/eslint-plugin": "^6.0.0",
     "@typescript-eslint/parser": "^6.0.0",
+    "drizzle-kit": "^0.31.4",
     "eslint": "^8.42.0",
     "eslint-config-prettier": "^9.0.0",
     "eslint-plugin-prettier": "^5.0.0",

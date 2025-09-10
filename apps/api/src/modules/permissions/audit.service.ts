@@ -101,7 +101,7 @@ export class AuditService {
       .select()
       .from(auditLogs)
       .where(eq(auditLogs.userId, userId))
-      .orderBy(desc(auditLogs.createdAt))
+      .orderBy(desc(auditLogs.performedAt))
       .limit(limit);
   }
 
@@ -119,7 +119,7 @@ export class AuditService {
           eq(auditLogs.action, 'CONTACT_REQUESTED')
         )
       )
-      .orderBy(desc(auditLogs.createdAt))
+      .orderBy(desc(auditLogs.performedAt))
       .limit(limit);
   }
 }

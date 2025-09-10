@@ -2,9 +2,13 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
+import { signIn } from 'next-auth/react'
 import { Button } from '@/components/ui/button'
+import { logger } from '@/lib/logger'
 import { Input } from '@/components/ui/input'
 import { Checkbox } from '@/components/ui/checkbox'
+import { NotificationPermission } from '@/components/ui/notification-permission'
+import { KvkkDialog } from '@/components/ui/kvkk-dialog'
 import { ArrowLeft, Eye, EyeOff } from 'lucide-react'
 import Link from 'next/link'
 
@@ -19,6 +23,16 @@ export default function AuthPage() {
   const [role, setRole] = useState<UserRole>('talent')
   const [showPassword, setShowPassword] = useState(false)
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
+  const [isLoading, setIsLoading] = useState(false)
+  
+  // Dialog states
+  const [showKvkkDialog, setShowKvkkDialog] = useState(false)
+  const [dialogMessage, setDialogMessage] = useState('')
+  const [dialogTitle, setDialogTitle] = useState('')
+  
+  // Email verification state
+  const [emailVerificationRequired, setEmailVerificationRequired] = useState(false)
+  const [registeredEmail, setRegisteredEmail] = useState('')
   
   // Form state
   const [formData, setFormData] = useState({
@@ -33,6 +47,10 @@ export default function AuthPage() {
   // Get next URL and role from URL params
   const nextUrl = searchParams.get('next')
   const urlRole = searchParams.get('role') as UserRole
+  
+  // Check for verification status
+  const verified = searchParams.get('verified')
+  const verificationMessage = searchParams.get('message')
 
   useEffect(() => {
     if (urlRole && ['talent', 'agency'].includes(urlRole)) {
@@ -41,6 +59,22 @@ export default function AuthPage() {
       setMode('register')
     }
   }, [urlRole])
+  
+  // Handle verification status
+  useEffect(() => {
+    if (verified && verificationMessage) {
+      if (verified === 'true') {
+        setDialogTitle('E-posta Doğrulandı! ✅')
+        setDialogMessage(verificationMessage)
+        setEmailVerificationRequired(false)
+        setMode('login') // Switch to login mode
+      } else {
+        setDialogTitle('Doğrulama Hatası ❌')
+        setDialogMessage(verificationMessage)
+      }
+      setShowKvkkDialog(true)
+    }
+  }, [verified, verificationMessage])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -48,29 +82,169 @@ export default function AuthPage() {
     if (mode === 'register') {
       // Validate required consents
       if (!formData.kvkkConsent || !formData.termsConsent) {
-        alert('KVKK Aydınlatma Metni ve Kullanım Şartlarını kabul etmeniz gerekmektedir.')
+        setDialogTitle('KVKK ve Kullanım Şartları')
+        setDialogMessage('KVKK Aydınlatma Metni ve Kullanım Şartlarını kabul etmeniz gerekmektedir.')
+        setShowKvkkDialog(true)
         return
       }
       
       if (formData.password !== formData.confirmPassword) {
-        alert('Şifreler eşleşmiyor!')
+        setDialogTitle('Şifre Uyarısı')
+        setDialogMessage('Şifreler eşleşmiyor! Lütfen şifrelerinizi kontrol edin.')
+        setShowKvkkDialog(true)
+        return
+      }
+
+      // Validate password strength
+      const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/
+      if (!passwordRegex.test(formData.password)) {
+        setDialogTitle('Şifre Güvenliği')
+        setDialogMessage('Şifre en az 8 karakter olmalı ve en az bir büyük harf, bir küçük harf, bir rakam ve bir özel karakter (@$!%*?&) içermelidir.')
+        setShowKvkkDialog(true)
         return
       }
     }
 
+    setIsLoading(true)
     try {
-      // TODO: API call for login/register
-      console.log('Auth request:', { mode, role, formData })
-      
-      // On success, redirect to next URL or onboarding
       if (mode === 'register') {
-        const onboardingUrl = `/onboarding/${role}`
-        router.push(nextUrl || onboardingUrl)
+        logger.info('AUTH', 'Starting registration process', { email: formData.email, role: role.toUpperCase() })
+        
+        // Kayıt işlemi için API çağrısı
+        const payload = {
+          email: formData.email,
+          password: formData.password,
+          passwordConfirm: formData.confirmPassword,
+          role: role.toUpperCase(),
+          kvkkConsent: formData.kvkkConsent,
+          termsConsent: formData.termsConsent,
+          marketingConsent: formData.marketingConsent,
+          // Temporary dummy values for profile fields
+          firstName: 'Test',
+          lastName: 'User',
+          gender: 'OTHER' as const,
+          city: 'Istanbul',
+          experience: 'BEGINNER' as const,
+          specialties: ['Model'],
+          languages: ['TR'],
+        }
+        
+        const response = await fetch('/api/v1/auth/register', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(payload),
+        })
+
+        const result = await response.json()
+        
+        // Log API call details
+        logger.logApiCall('POST', '/api/v1/auth/register', payload, result, response.status)
+
+        if (!result.success) {
+          logger.error('AUTH', 'Registration failed', { status: response.status, error: result })
+          
+          // Yeni API format: { success: false, message, errors?, code? }
+          if (result.errors && Array.isArray(result.errors)) {
+            throw new Error(result.errors.join(', '))
+          }
+          
+          throw new Error(result.message || 'Kayıt işlemi başarısız')
+        }
+
+        logger.info('AUTH', 'Registration successful', { userId: result.data?.userId, email: formData.email })
+        
+        // Check if email verification is required
+        if (result.data?.emailVerificationRequired) {
+          setEmailVerificationRequired(true)
+          setRegisteredEmail(formData.email)
+          setDialogTitle('E-posta Doğrulaması Gerekli 📧')
+          setDialogMessage(`${formData.email} adresine gönderilen doğrulama linkine tıklayarak hesabınızı aktifleştirin. Geliştirme ortamında: Konsol'da doğrulama linkini görebilirsiniz.`)
+          setShowKvkkDialog(true)
+        } else {
+          // Email verification not required, show success and switch to login
+          setDialogTitle('Kayıt Başarılı! 🎉')
+          setDialogMessage('Kayıt işleminiz başarıyla tamamlandı! Şimdi giriş yapabilirsiniz.')
+          setShowKvkkDialog(true)
+          
+          // Kayıt sonrası login moduna geç
+          setMode('login')
+          setFormData({
+            email: formData.email, // Email'i koruyalım
+            password: '',
+            confirmPassword: '',
+            kvkkConsent: false,
+            marketingConsent: false,
+            termsConsent: false
+          })
+        }
+        
+        logger.info('NAVIGATION', 'Switched to login mode after registration', { email: formData.email })
+        
       } else {
-        router.push(nextUrl || '/profile')
+        logger.info('AUTH', 'Starting login process', { email: formData.email })
+        
+        // Login işlemi için NextAuth kullan
+        const result = await signIn('credentials', {
+          email: formData.email,
+          password: formData.password,
+          redirect: false,
+          callbackUrl: nextUrl || '/',
+        })
+
+        logger.logAuthAction('login', !!result?.ok, { email: formData.email, error: result?.error })
+
+        if (result?.error) {
+          logger.error('AUTH', 'Login failed', { email: formData.email, error: result.error })
+          
+          // Özel hata mesajları
+          if (result.error === 'CredentialsSignin') {
+            // Check if this is due to email verification
+            if (formData.email === registeredEmail && emailVerificationRequired) {
+              setDialogTitle('E-posta Doğrulaması Gerekli 📧')
+              setDialogMessage('Hesabınıza giriş yapmadan önce e-posta adresinizi doğrulamanız gerekmektedir. E-posta kutunuzu kontrol edin.')
+            } else {
+              setDialogTitle('Giriş Hatası')
+              setDialogMessage('Geçersiz e-posta adresi veya şifre. Lütfen bilgilerinizi kontrol edin.')
+            }
+            setShowKvkkDialog(true)
+            return
+          } else if (result.error === 'AccessDenied') {
+            setDialogTitle('Erişim Reddedildi')
+            setDialogMessage('Hesap erişimi reddedildi. Lütfen destek ekibi ile iletişime geçin.')
+            setShowKvkkDialog(true)
+            return
+          } else if (result.error === 'EMAIL_NOT_VERIFIED' || result.error.includes('E-posta doğrulaması')) {
+            setDialogTitle('E-posta Doğrulaması Gerekli 📧')
+            setDialogMessage('Hesabınıza giriş yapmadan önce e-posta adresinizi doğrulamanız gerekmektedir. E-posta kutunuzu kontrol edin veya konsol\'dan doğrulama linkini kullanın.')
+            setShowKvkkDialog(true)
+            return
+          } else if (result.error === 'USER_NOT_ACTIVE') {
+            setDialogTitle('Hesap Aktif Değil')
+            setDialogMessage('Hesabınız henüz aktif değil. Lütfen e-posta doğrulamasını tamamlayın.')
+            setShowKvkkDialog(true)
+            return
+          } else {
+            throw new Error('Giriş yapılamadı. Lütfen tekrar deneyin.')
+          }
+        }
+
+        if (result?.ok) {
+          logger.info('AUTH', 'Login successful', { email: formData.email })
+          logger.info('NAVIGATION', 'Redirecting after login', { destination: nextUrl || '/' })
+          // Login başarılı, ana sayfaya yönlendir (onboarding değil)
+          router.replace(nextUrl || '/')
+        }
       }
     } catch (error) {
+      logger.error('AUTH', 'Auth process failed', { mode, email: formData.email, error: error.message })
       console.error('Auth error:', error)
+      setDialogTitle('Hata Oluştu')
+      setDialogMessage(error instanceof Error ? error.message : 'Bir hata oluştu. Lütfen tekrar deneyin.')
+      setShowKvkkDialog(true)
+    } finally {
+      setIsLoading(false)
     }
   }
 
@@ -293,9 +467,10 @@ export default function AuthPage() {
             {/* Submit button */}
             <Button
               type="submit"
+              disabled={isLoading}
               className="w-full bg-brand-primary hover:bg-brand-primary/90 text-white font-semibold py-3 mt-6"
             >
-              {mode === 'login' ? 'Giriş Yap' : 'Kayıt Ol ve Devam Et'}
+              {isLoading ? 'İşleniyor...' : (mode === 'login' ? 'Giriş Yap' : 'Kayıt Ol ve Devam Et')}
             </Button>
           </form>
 
@@ -314,6 +489,38 @@ export default function AuthPage() {
           </div>
         </div>
       </div>
+
+      {/* Modern Notification Permission Popup */}
+      <NotificationPermission 
+        onPermissionChange={(permission) => {
+          logger.info('NOTIFICATION', 'Permission changed', { permission })
+        }}
+      />
+
+      {/* Modern KVKK Dialog - replaces all alert() calls */}
+      <KvkkDialog
+        open={showKvkkDialog}
+        onClose={() => setShowKvkkDialog(false)}
+        title={dialogTitle}
+        message={dialogMessage}
+        variant={
+          dialogTitle.includes('Başarılı') || dialogTitle.includes('Doğrulandı') 
+            ? 'success' 
+            : dialogTitle.includes('Hata') || dialogTitle.includes('Geçersiz')
+              ? 'error'
+              : 'default'
+        }
+        onConfirm={() => {
+          // Auto-focus checkboxes if it's a validation error
+          if (dialogTitle.includes('KVKK')) {
+            // Scroll to checkboxes section
+            setTimeout(() => {
+              const checkboxes = document.querySelector('[name="kvkkConsent"]')
+              checkboxes?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+            }, 100)
+          }
+        }}
+      />
     </div>
   )
 }

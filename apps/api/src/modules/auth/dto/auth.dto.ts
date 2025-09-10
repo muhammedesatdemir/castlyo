@@ -1,4 +1,4 @@
-import { IsEmail, IsString, MinLength, IsEnum, IsBoolean, IsOptional, IsPhoneNumber } from 'class-validator';
+import { IsEmail, IsString, MinLength, IsEnum, IsBoolean, IsOptional, IsPhoneNumber, Matches, Length, IsArray } from 'class-validator';
 
 export class LoginDto {
   @IsEmail()
@@ -15,6 +15,9 @@ export class RegisterDto {
 
   @IsString()
   @MinLength(8, { message: 'Password must be at least 8 characters' })
+  @Matches(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]/, {
+    message: 'Password must contain at least one uppercase letter, one lowercase letter, one number and one special character'
+  })
   password: string;
 
   @IsString()
@@ -31,9 +34,45 @@ export class RegisterDto {
   @IsBoolean()
   kvkkConsent: boolean;
 
+  @IsBoolean()
+  termsConsent: boolean;
+
   @IsOptional()
   @IsBoolean()
   marketingConsent?: boolean;
+
+  // Profile fields for immediate registration
+  @IsOptional()
+  @IsString()
+  @Length(2, 50)
+  firstName?: string;
+
+  @IsOptional()
+  @IsString()
+  @Length(2, 50)
+  lastName?: string;
+
+  @IsOptional()
+  @IsEnum(['MALE', 'FEMALE', 'OTHER'])
+  gender?: 'MALE' | 'FEMALE' | 'OTHER';
+
+  @IsOptional()
+  @IsString()
+  city?: string;
+
+  @IsOptional()
+  @IsEnum(['BEGINNER', 'AMATEUR', 'SEMI_PRO', 'PROFESSIONAL'])
+  experience?: 'BEGINNER' | 'AMATEUR' | 'SEMI_PRO' | 'PROFESSIONAL';
+
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  specialties?: string[];
+
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  languages?: string[];
 
   @IsOptional()
   @IsString()

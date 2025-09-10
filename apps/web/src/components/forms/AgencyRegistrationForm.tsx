@@ -1,7 +1,9 @@
 'use client'
 
 import { useState } from 'react'
+import { useRouter } from 'next/navigation'
 import { useForm, Controller } from 'react-hook-form'
+import { toast } from '@/components/ui/toast'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
@@ -34,6 +36,7 @@ interface AgencyRegistrationFormProps {
 }
 
 export default function AgencyRegistrationForm({ onClose }: AgencyRegistrationFormProps) {
+  const router = useRouter()
   const [step, setStep] = useState(1)
   const [isSubmitting, setIsSubmitting] = useState(false)
   
@@ -61,7 +64,7 @@ export default function AgencyRegistrationForm({ onClose }: AgencyRegistrationFo
     try {
       setIsSubmitting(true)
       
-      const response = await fetch('/api/auth/register', {
+      const res = await fetch('/api/v1/auth/register', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -72,18 +75,25 @@ export default function AgencyRegistrationForm({ onClose }: AgencyRegistrationFo
         }),
       })
 
-      if (!response.ok) {
-        throw new Error('Registration failed')
-      }
+      const json = await res.json()
 
-      const result = await response.json()
+      if (!json.success) {
+        // Yeni API format: { success: false, message, errors?, code? }
+        if (json.errors && Array.isArray(json.errors)) {
+          throw new Error(json.errors.join(', '))
+        }
+        throw new Error(json.message || 'Kayıt işlemi başarısız')
+      }
       
-      alert('Ajans kaydınız başarıyla oluşturuldu! E-posta adresinizi kontrol ederek hesabınızı doğrulayın.')
+      toast.success('Kayıt Başarılı! 🎉', 'Ajans kaydınız başarıyla oluşturuldu! E-posta adresinizi kontrol ederek hesabınızı doğrulayın.')
+      
+      // Kayıt sonrası login sayfasına yönlendir
       onClose?.()
+      router.replace('/auth?mode=login&message=registration-success')
       
-    } catch (error) {
+    } catch (error: any) {
       console.error('Registration error:', error)
-      alert('Kayıt sırasında bir hata oluştu. Lütfen tekrar deneyin.')
+      toast.error('Kayıt Hatası', error.message || 'Kayıt sırasında bir hata oluştu. Lütfen tekrar deneyin.')
     } finally {
       setIsSubmitting(false)
     }
@@ -506,3 +516,4 @@ export default function AgencyRegistrationForm({ onClose }: AgencyRegistrationFo
     </form>
   )
 }
+

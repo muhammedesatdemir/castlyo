@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { ArrowLeft, ArrowRight, Check } from 'lucide-react'
+import { AuthGuard } from '@/components/auth/AuthGuard'
 
 const STEPS = [
   { id: 1, title: 'Şirket Bilgileri', description: 'Temel şirket bilgilerinizi girin' },
@@ -13,7 +14,7 @@ const STEPS = [
   { id: 4, title: 'Tamamlandı', description: 'Doğrulama beklemede!' }
 ]
 
-export default function AgencyOnboarding() {
+function AgencyOnboardingContent() {
   const router = useRouter()
   const [currentStep, setCurrentStep] = useState(1)
   const [formData, setFormData] = useState({
@@ -481,5 +482,13 @@ export default function AgencyOnboarding() {
         </div>
       </div>
     </div>
+  )
+}
+
+export default function AgencyOnboarding() {
+  return (
+    <AuthGuard checkOnboardingCompleted={true}>
+      <AgencyOnboardingContent />
+    </AuthGuard>
   )
 }
