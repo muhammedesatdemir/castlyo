@@ -9,6 +9,7 @@ import ExploreGrid from '@/components/sections/ExploreGrid'
 import StickyCta from '@/components/StickyCta'
 import { NotificationPermission } from '@/components/ui/notification-permission'
 import { montserratDisplay } from '@/lib/fonts'
+import { UI } from '@/config/ui'
 
 export default function Home() {
   const router = useRouter()
@@ -34,8 +35,8 @@ export default function Home() {
     )
   }
 
-  // Giriş yapmış kullanıcı için farklı ana sayfa
-  if (session) {
+  // Giriş yapmış kullanıcı için minimal varyant (sadece UI ayarı ile)
+  if (session && UI.landingVariant === 'minimal') {
     return (
       <main className="min-h-screen bg-black text-white">
         <Header />
