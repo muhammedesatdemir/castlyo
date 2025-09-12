@@ -41,7 +41,23 @@ function TalentOnboardingContent() {
     specialties: [] as string[]
   })
 
-  const handleNext = () => {
+  const handleNext = async () => {
+    // Profesyonel Bilgiler adımındayken ara kaydet
+    if (currentStep === 4) {
+      try {
+        await fetch('/api/profile/me', {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            bio: formData.bio,
+            experience: formData.experience,
+            specialties: formData.specialties,
+          }),
+        })
+      } catch (e) {
+        console.error('Ara kaydet başarısız', e)
+      }
+    }
     if (currentStep < STEPS.length) {
       setCurrentStep(currentStep + 1)
     }
@@ -55,13 +71,10 @@ function TalentOnboardingContent() {
 
   const handleSubmit = async () => {
     try {
-      // TODO: API call to save profile
-      console.log('Saving profile:', formData)
-      
-      // Redirect to profile page
-      router.push('/profile')
+      await fetch('/api/onboarding/talent/complete', { method: 'POST' })
+      window.location.href = '/profile'
     } catch (error) {
-      console.error('Error saving profile:', error)
+      console.error('Tamamlama hatası:', error)
     }
   }
 

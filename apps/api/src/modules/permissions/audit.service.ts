@@ -1,20 +1,21 @@
 import { Injectable } from '@nestjs/common';
 import { eq, desc, or } from 'drizzle-orm';
 import { db } from '@castlyo/database';
-import { auditLogs } from '@castlyo/database/schema';
+import { auditLogs, auditActionEnum, auditEntityTypeEnum } from '@castlyo/database/schema/audit';
 
 export interface AuditLogEntry {
-  userId: string;
-  userRole: 'TALENT' | 'AGENCY' | 'ADMIN';
-  action: string;
-  resource: string;
-  resourceId?: string;
-  targetUserId?: string;
-  details?: string;
+  userId?: string;
+  userEmail?: string;
+  userRole?: string;
+  action: typeof auditActionEnum.enumValues[number];
+  entityType: typeof auditEntityTypeEnum.enumValues[number];
+  entityId?: string;
+  description?: string;
+  oldValues?: any;
+  newValues?: any;
   ipAddress?: string;
   userAgent?: string;
-  success?: boolean;
-  errorMessage?: string;
+  metadata?: any;
 }
 
 @Injectable()
@@ -26,16 +27,17 @@ export class AuditService {
     try {
       await db.insert(auditLogs).values({
         userId: entry.userId,
+        userEmail: entry.userEmail,
         userRole: entry.userRole,
         action: entry.action,
-        resource: entry.resource,
-        resourceId: entry.resourceId,
-        targetUserId: entry.targetUserId,
-        details: entry.details,
+        entityType: entry.entityType,
+        entityId: entry.entityId,
+        description: entry.description,
+        oldValues: entry.oldValues,
+        newValues: entry.newValues,
         ipAddress: entry.ipAddress,
         userAgent: entry.userAgent,
-        success: entry.success ?? true,
-        errorMessage: entry.errorMessage,
+        metadata: entry.metadata,
       });
     } catch (error) {
       // Audit logging should not break the main application flow
@@ -46,14 +48,13 @@ export class AuditService {
   /**
    * Log successful data access
    */
-  async logDataAccess(userId: string, userRole: 'TALENT' | 'AGENCY' | 'ADMIN', resource: string, resourceId: string, targetUserId?: string, ipAddress?: string, userAgent?: string) {
+  async logDataAccess(userId: string, userRole: string, entityType: typeof auditEntityTypeEnum.enumValues[number], entityId: string, ipAddress?: string, userAgent?: string) {
     await this.log({
       userId,
       userRole,
-      action: 'DATA_ACCESSED',
-      resource,
-      resourceId,
-      targetUserId,
+      action: 'VIEW',
+      entityType,
+      entityId,
       ipAddress,
       userAgent,
     });
@@ -62,15 +63,14 @@ export class AuditService {
   /**
    * Log data sharing event
    */
-  async logDataSharing(userId: string, userRole: 'TALENT' | 'AGENCY' | 'ADMIN', resource: string, resourceId: string, targetUserId: string, details?: string, ipAddress?: string, userAgent?: string) {
+  async logDataSharing(userId: string, userRole: string, entityType: typeof auditEntityTypeEnum.enumValues[number], entityId: string, description?: string, ipAddress?: string, userAgent?: string) {
     await this.log({
       userId,
       userRole,
       action: 'DATA_SHARED',
-      resource,
-      resourceId,
-      targetUserId,
-      details,
+      entityType,
+      entityId,
+      description,
       ipAddress,
       userAgent,
     });
@@ -79,15 +79,14 @@ export class AuditService {
   /**
    * Log failed access attempt
    */
-  async logAccessDenied(userId: string, userRole: 'TALENT' | 'AGENCY' | 'ADMIN', resource: string, resourceId: string, reason: string, ipAddress?: string, userAgent?: string) {
+  async logAccessDenied(userId: string, userRole: string, entityType: typeof auditEntityTypeEnum.enumValues[number], entityId: string, reason: string, ipAddress?: string, userAgent?: string) {
     await this.log({
       userId,
       userRole,
-      action: 'ACCESS_DENIED',
-      resource,
-      resourceId,
-      success: false,
-      errorMessage: reason,
+      action: 'VIEW',
+      entityType,
+      entityId,
+      description: `access_denied: ${reason}`,
       ipAddress,
       userAgent,
     });

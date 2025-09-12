@@ -2,7 +2,7 @@ import { Module, Global } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import postgres from 'postgres';
 import { drizzle } from 'drizzle-orm/postgres-js';
-import * as schema from '@packages/database/schema';
+import * as schema from '@castlyo/database/schema';
 
 export const DATABASE_CONNECTION = 'DATABASE_CONNECTION';
 

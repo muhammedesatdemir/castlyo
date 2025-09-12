@@ -11,17 +11,17 @@ import {
   users,
   agencyProfiles,
   talentProfiles
-} from '@packages/database/schema/users';
+} from '@castlyo/database/schema/users';
 import { 
   jobPosts,
   jobApplications,
-  contactPermissions
-} from '@packages/database/schema/jobs';
+  applicationContactPermissions
+} from '@castlyo/database/schema/jobs';
 import { 
   CreateContactPermissionRequestDto,
   RespondToContactRequestDto
 } from './dto/message.dto';
-import type { Database } from '@packages/database';
+import type { Database } from '@castlyo/database';
 
 @Injectable()
 export class ContactPermissionsService {
@@ -58,8 +58,8 @@ export class ContactPermissionsService {
 
     // Check if permission request already exists
     const existingRequest = await this.db.select()
-      .from(contactPermissions)
-      .where(eq(contactPermissions.applicationId, requestData.jobApplicationId))
+      .from(applicationContactPermissions)
+      .where(eq(applicationContactPermissions.applicationId, requestData.jobApplicationId))
       .limit(1);
 
     if (existingRequest.length > 0) {
@@ -67,10 +67,10 @@ export class ContactPermissionsService {
     }
 
     // Create permission request
-    const permissionRequest = await this.db.insert(contactPermissions)
+    const permissionRequest = await this.db.insert(applicationContactPermissions)
       .values({
         applicationId: requestData.jobApplicationId,
-        agencyId: requesterId,
+        agencyId: job.agencyId,
         talentId: talent.id,
         requestMessage: requestData.requestMessage,
         status: 'PENDING',
@@ -90,8 +90,8 @@ export class ContactPermissionsService {
   ) {
     // Get permission request
     const permissionRequest = await this.db.select()
-      .from(contactPermissions)
-      .where(eq(contactPermissions.id, requestId))
+      .from(applicationContactPermissions)
+      .where(eq(applicationContactPermissions.id, requestId))
       .limit(1);
 
     if (!permissionRequest.length) {
@@ -116,7 +116,7 @@ export class ContactPermissionsService {
     }
 
     // Update permission request
-    const updatedRequest = await this.db.update(contactPermissions)
+    const updatedRequest = await this.db.update(applicationContactPermissions)
       .set({
         status: responseData.status,
         responseMessage: responseData.responseMessage,
@@ -126,7 +126,7 @@ export class ContactPermissionsService {
         allowMessaging: responseData.status === 'GRANTED',
         updatedAt: new Date()
       })
-      .where(eq(contactPermissions.id, requestId))
+      .where(eq(applicationContactPermissions.id, requestId))
       .returning();
 
     // TODO: Send notification to agency about response
@@ -216,12 +216,12 @@ export class ContactPermissionsService {
     expiresAt?: Date;
   }> {
     const permission = await this.db.select()
-      .from(contactPermissions)
+      .from(applicationContactPermissions)
       .where(
         and(
-          eq(contactPermissions.agencyId, agencyId),
-          eq(contactPermissions.talentId, talentId),
-          eq(contactPermissions.status, 'GRANTED')
+          eq(applicationContactPermissions.agencyId, agencyId),
+          eq(applicationContactPermissions.talentId, talentId),
+          eq(applicationContactPermissions.status, 'GRANTED')
         )
       )
       .limit(1);

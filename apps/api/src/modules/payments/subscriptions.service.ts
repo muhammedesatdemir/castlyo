@@ -4,16 +4,15 @@ import {
   BadRequestException,
   NotFoundException 
 } from '@nestjs/common';
-import { eq, and, gte, lte } from 'drizzle-orm';
+import { eq, and, gte } from 'drizzle-orm';
 import { DATABASE_CONNECTION } from '../../config/database.module';
 import { 
   users,
   subscriptionPlans,
   userSubscriptions,
-  planEntitlements,
   userEntitlements
-} from '@packages/database/schema';
-import type { Database } from '@packages/database';
+} from '@castlyo/database/schema';
+import type { Database } from '@castlyo/database';
 
 @Injectable()
 export class SubscriptionsService {
@@ -27,26 +26,12 @@ export class SubscriptionsService {
       .where(eq(subscriptionPlans.isActive, true));
 
     if (userType) {
-      query = query.where(eq(subscriptionPlans.userType, userType));
+      query = query.where(eq(subscriptionPlans.planType, userType));
     }
 
     const plans = await query.orderBy(subscriptionPlans.price);
 
-    // Get entitlements for each plan
-    const plansWithEntitlements = await Promise.all(
-      plans.map(async (plan) => {
-        const entitlements = await this.db.select()
-          .from(planEntitlements)
-          .where(eq(planEntitlements.planId, plan.id));
-
-        return {
-          ...plan,
-          entitlements,
-        };
-      })
-    );
-
-    return plansWithEntitlements;
+    return plans;
   }
 
   async getUserActiveSubscription(userId: string) {
@@ -60,7 +45,7 @@ export class SubscriptionsService {
         and(
           eq(userSubscriptions.userId, userId),
           eq(userSubscriptions.status, 'ACTIVE'),
-          gte(userSubscriptions.endsAt, new Date())
+          gte(userSubscriptions.endDate, new Date())
         )
       )
       .limit(1);
@@ -85,7 +70,7 @@ export class SubscriptionsService {
     return subscriptions;
   }
 
-  async activateSubscription(userId: string, planId: string, paymentTransactionId: string) {
+  async activateSubscription(userId: string, planId: string) {
     // Get plan details
     const plan = await this.db.select()
       .from(subscriptionPlans)
@@ -98,23 +83,9 @@ export class SubscriptionsService {
 
     const planData = plan[0];
 
-    // Calculate subscription period
+    // Calculate subscription period using durationDays
     const startDate = new Date();
-    const endDate = new Date();
-    
-    switch (planData.billingCycle) {
-      case 'MONTHLY':
-        endDate.setMonth(endDate.getMonth() + 1);
-        break;
-      case 'QUARTERLY':
-        endDate.setMonth(endDate.getMonth() + 3);
-        break;
-      case 'YEARLY':
-        endDate.setFullYear(endDate.getFullYear() + 1);
-        break;
-      default:
-        throw new BadRequestException('Invalid billing cycle');
-    }
+    const endDate = new Date(startDate.getTime() + planData.durationDays * 24 * 60 * 60 * 1000);
 
     // Deactivate any existing active subscriptions for the same user type
     await this.db.update(userSubscriptions)
@@ -134,16 +105,15 @@ export class SubscriptionsService {
       .values({
         userId,
         planId,
-        paymentTransactionId,
         status: 'ACTIVE',
-        startsAt: startDate,
-        endsAt: endDate,
+        startDate: startDate,
+        endDate: endDate,
         autoRenew: true,
       })
       .returning();
 
     // Setup entitlements for the user
-    await this.setupUserEntitlements(userId, planId);
+    await this.setupUserEntitlements(userId, planId, planData);
 
     return newSubscription[0];
   }
@@ -192,69 +162,66 @@ export class SubscriptionsService {
       throw new NotFoundException('Subscription not found');
     }
 
-    const { user_subscriptions: subData, subscription_plans: planData } = subscription[0];
+    const { user_subscriptions: subData, subscription_plans: planData } = subscription[0] as any;
 
     if (!subData.autoRenew) {
       return { success: false, message: 'Auto-renewal is disabled' };
     }
 
     // Calculate new end date
-    const newEndDate = new Date(subData.endsAt);
-    
-    switch (planData.billingCycle) {
-      case 'MONTHLY':
-        newEndDate.setMonth(newEndDate.getMonth() + 1);
-        break;
-      case 'QUARTERLY':
-        newEndDate.setMonth(newEndDate.getMonth() + 3);
-        break;
-      case 'YEARLY':
-        newEndDate.setFullYear(newEndDate.getFullYear() + 1);
-        break;
-    }
+    const newEndDate = new Date(subData.endDate);
+    newEndDate.setDate(newEndDate.getDate() + planData.durationDays);
 
     // Update subscription
     await this.db.update(userSubscriptions)
       .set({
-        endsAt: newEndDate,
-        renewedAt: new Date(),
+        endDate: newEndDate,
         updatedAt: new Date()
       })
       .where(eq(userSubscriptions.id, subscriptionId));
 
     // Reset entitlements for the new period
-    await this.resetUserEntitlements(subData.userId, subData.planId);
+    await this.resetUserEntitlements(subData.userId, subData.planId, planData);
 
     return { success: true, message: 'Subscription renewed successfully' };
   }
 
-  private async setupUserEntitlements(userId: string, planId: string) {
-    // Get plan entitlements
-    const planEntitlementsList = await this.db.select()
-      .from(planEntitlements)
-      .where(eq(planEntitlements.planId, planId));
+  private async setupUserEntitlements(userId: string, planId: string, planData: any) {
+    const features = planData.features || {};
+    const entitlements: Array<{ type: string; balance: number; totalAllocated: number; }> = [];
 
-    // Create user entitlements based on plan
-    const userEntitlementValues = planEntitlementsList.map(entitlement => ({
-      userId,
-      entitlementType: entitlement.entitlementType,
-      entitlementValue: entitlement.entitlementValue,
-      usedValue: 0,
-      resetDate: this.calculateResetDate(entitlement.resetPeriod),
-    }));
+    if (typeof features.applicationQuota === 'number') {
+      entitlements.push({ type: 'APPLICATION_QUOTA', balance: features.applicationQuota, totalAllocated: features.applicationQuota });
+    }
+    if (typeof features.jobPostQuota === 'number') {
+      entitlements.push({ type: 'JOB_POST_QUOTA', balance: features.jobPostQuota, totalAllocated: features.jobPostQuota });
+    }
+    if (typeof features.contactPermissionQuota === 'number') {
+      entitlements.push({ type: 'CONTACT_PERMISSION_QUOTA', balance: features.contactPermissionQuota, totalAllocated: features.contactPermissionQuota });
+    }
+    if (typeof features.boostDays === 'number') {
+      entitlements.push({ type: 'PROFILE_BOOST_DAYS', balance: features.boostDays, totalAllocated: features.boostDays });
+    }
 
-    if (userEntitlementValues.length > 0) {
-      await this.db.insert(userEntitlements).values(userEntitlementValues);
+    if (entitlements.length > 0) {
+      await this.db.insert(userEntitlements).values(
+        entitlements.map(e => ({
+          userId,
+          subscriptionId: undefined,
+          type: e.type as any,
+          balance: e.balance,
+          totalAllocated: e.totalAllocated,
+          source: 'SUBSCRIPTION',
+        }))
+      );
     }
   }
 
-  private async resetUserEntitlements(userId: string, planId: string) {
-    // Delete existing entitlements
+  private async resetUserEntitlements(userId: string, planId: string, planData: any) {
     await this.db.delete(userEntitlements)
       .where(eq(userEntitlements.userId, userId));
 
-    // Setup new entitlements
-    await this.setupUserEntitlements(userId, planId);
+    await this.setupUserEntitlements(userId, planId, planData);
   }
 
   private calculateResetDate(resetPeriod: string): Date | null {
@@ -298,7 +265,7 @@ export class SubscriptionsService {
       .where(
         and(
           eq(userEntitlements.userId, userId),
-          eq(userEntitlements.entitlementType, entitlementType)
+          eq(userEntitlements.type as any, entitlementType as any)
         )
       )
       .limit(1);
@@ -307,13 +274,13 @@ export class SubscriptionsService {
       return { hasAccess: false, remaining: 0, total: 0 };
     }
 
-    const ent = entitlement[0];
-    const remaining = ent.entitlementValue - ent.usedValue;
+    const ent = entitlement[0] as any;
+    const remaining = ent.balance;
 
     return {
       hasAccess: remaining > 0,
       remaining,
-      total: ent.entitlementValue,
+      total: ent.totalAllocated,
     };
   }
 
@@ -327,13 +294,13 @@ export class SubscriptionsService {
     // Update used value
     await this.db.update(userEntitlements)
       .set({
-        usedValue: entitlement.total - entitlement.remaining + amount,
+        balance: entitlement.remaining - amount,
         updatedAt: new Date()
       })
       .where(
         and(
           eq(userEntitlements.userId, userId),
-          eq(userEntitlements.entitlementType, entitlementType)
+          eq(userEntitlements.type as any, entitlementType as any)
         )
       );
 

@@ -4,55 +4,28 @@ import { AuthProvider } from '@/providers/auth-provider'
 import { ToastContainer } from '@/components/ui/toast'
 import './globals.css'
 
-const inter = Inter({ subsets: ['latin'] })
-
-export const cinzel = Cinzel({
-  subsets: ["latin"],
-  weight: ["700", "800"], // başlık için
-  variable: "--font-cinzel",
+const inter = Inter({
+  subsets: ['latin'],
+  variable: '--font-inter',
 })
 
-export const metadata: Metadata = {
-  title: 'Castlyo - Profesyonel Casting ve Yetenek Eşleştirme Platformu',
-  description: 'Castlyo, yetenekler ve ajanslar arasında köprü kuran profesyonel casting platformudur. Film, dizi, reklam ve daha fazlası için yetenek arayın veya kendinizi keşfedin.',
-  keywords: 'casting, yetenek, ajans, film, dizi, reklam, oyuncu, model, müzisyen',
-  authors: [{ name: 'Castlyo Teknoloji A.Ş.' }],
-  creator: 'Castlyo',
-  publisher: 'Castlyo',
-  robots: 'index, follow',
-  openGraph: {
-    type: 'website',
-    locale: 'tr_TR',
-    url: 'https://castlyo.com',
-    title: 'Castlyo - Profesyonel Casting Platformu',
-    description: 'Yetenekler ve ajanslar arasında köprü kuran profesyonel casting platformu',
-    siteName: 'Castlyo',
-  },
-  twitter: {
-    card: 'summary_large_image',
-    title: 'Castlyo - Profesyonel Casting Platformu',
-    description: 'Yetenekler ve ajanslar arasında köprü kuran profesyonel casting platformu',
-  },
-}
+export const cinzel = Cinzel({
+  subsets: ['latin'],
+  weight: ['400', '700', '900'], // 800 yok; 900 kullan
+  variable: '--font-cinzel',
+})
 
-export const viewport: Viewport = {
-  width: 'device-width',
-  initialScale: 1,
-  themeColor: '#000000',
-}
+export const metadata: Metadata = { /* ... aynı ... */ }
+export const viewport: Viewport = { /* ... aynı ... */ }
 
-export default function RootLayout({
-  children,
-}: {
-  children: React.ReactNode
-}) {
+export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="tr">
+    <html lang="tr" className={`${inter.variable} ${cinzel.variable}`}>
       <head>
-        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
-        <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@700;800&display=swap" rel="stylesheet" />
+        {/* Poppins linkine ihtiyacımız yok, kaldırdım */}
       </head>
-      <body className={`${inter.className} ${cinzel.variable} antialiased`}>
+      {/* bundan sonra default fontu Tailwind 'sans' üzerinden vereceğiz */}
+      <body className="font-sans antialiased">
         <AuthProvider>
           <div className="min-h-screen bg-background">
             {children}

@@ -90,7 +90,7 @@ export default function ExploreGrid() {
     : talents.filter(talent => talent.role === selectedFilter)
 
   return (
-    <section className="bg-black text-white py-20" id="explore">
+    <section className="bg-black text-white py-20" id="discover">
       <div className="mx-auto max-w-6xl px-6">
         <div className="text-center mb-12">
           {/* Başlık */}

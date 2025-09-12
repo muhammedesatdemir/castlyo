@@ -1,3 +1,19 @@
+// POST /api/v1/auth/verify
+import { NextResponse } from "next/server";
+
+export async function POST(req: Request) {
+  const body = await req.json();
+  const apiBase = process.env.API_URL ?? process.env.NEXT_PUBLIC_API_URL ?? "";
+  const res = await fetch(`${apiBase}/v1/auth/verify`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+
+  const data = await res.json().catch(() => ({}));
+  return NextResponse.json(data, { status: res.status });
+}
+
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import store from '@/lib/mock-store'

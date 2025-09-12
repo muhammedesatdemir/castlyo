@@ -12,10 +12,10 @@ import {
   subscriptionPlans,
   userSubscriptions,
   paymentTransactions
-} from '@packages/database/schema';
+} from '@castlyo/database/schema';
 import { CreateCheckoutSessionDto, PaymentWebhookDto } from './dto/payment.dto';
 import { SubscriptionsService } from './subscriptions.service';
-import type { Database } from '@packages/database';
+import type { Database } from '@castlyo/database';
 
 export interface PaymentProvider {
   createCheckoutSession(
@@ -102,7 +102,7 @@ export class PaymentsService {
 
     // Check if user already has an active subscription
     const existingSubscription = await this.subscriptionsService.getUserActiveSubscription(userId);
-    if (existingSubscription && plan[0].userType === existingSubscription.plan.userType) {
+    if (existingSubscription && plan[0].planType === (existingSubscription as any).plan.planType) {
       throw new BadRequestException('User already has an active subscription for this user type');
     }
 
@@ -110,11 +110,11 @@ export class PaymentsService {
     const transaction = await this.db.insert(paymentTransactions)
       .values({
         userId,
-        planId: checkoutData.planId,
-        amount: plan[0].price,
+        amount: plan[0].price as unknown as any,
         currency: plan[0].currency,
         status: 'PENDING',
         provider: this.configService.get('PAYMENT_PROVIDER', 'mock'),
+        providerResponse: { planId: checkoutData.planId },
       })
       .returning();
 
@@ -177,10 +177,13 @@ export class PaymentsService {
 
     // If payment is successful, create/update subscription
     if (webhookData.status === 'COMPLETED') {
+      const storedPlanId = (transactionRecord as any).providerResponse?.planId;
+      if (!storedPlanId) {
+        throw new BadRequestException('Missing planId metadata on transaction');
+      }
       await this.subscriptionsService.activateSubscription(
         transactionRecord.userId,
-        transactionRecord.planId,
-        transactionRecord.id
+        storedPlanId,
       );
     }
 
@@ -198,13 +201,9 @@ export class PaymentsService {
       createdAt: paymentTransactions.createdAt,
       completedAt: paymentTransactions.completedAt,
       failureReason: paymentTransactions.failureReason,
-      plan: {
-        name: subscriptionPlans.name,
-        description: subscriptionPlans.description,
-      }
+      providerResponse: paymentTransactions.providerResponse,
     })
       .from(paymentTransactions)
-      .leftJoin(subscriptionPlans, eq(paymentTransactions.planId, subscriptionPlans.id))
       .where(eq(paymentTransactions.userId, userId))
       .orderBy(paymentTransactions.createdAt)
       .limit(limit)
@@ -216,7 +215,6 @@ export class PaymentsService {
   async getTransactionDetails(transactionId: string, userId: string) {
     const transaction = await this.db.select()
       .from(paymentTransactions)
-      .leftJoin(subscriptionPlans, eq(paymentTransactions.planId, subscriptionPlans.id))
       .where(eq(paymentTransactions.id, transactionId))
       .limit(1);
 
@@ -225,7 +223,7 @@ export class PaymentsService {
     }
 
     // Verify user ownership
-    if (transaction[0].payment_transactions.userId !== userId) {
+    if ((transaction[0] as any).payment_transactions.userId !== userId && (transaction[0] as any).userId !== userId) {
       throw new BadRequestException('Unauthorized access to transaction');
     }
 

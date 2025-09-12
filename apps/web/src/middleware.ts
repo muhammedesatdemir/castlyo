@@ -7,6 +7,18 @@ export default withAuth(
     const token = req.nextauth.token
     const { pathname } = req.nextUrl
 
+    // Statik asset ve Next.js internal yolları erken bypass et
+    if (
+      pathname.startsWith('/_next') ||
+      pathname.startsWith('/api/auth') ||
+      /\.(?:png|jpg|jpeg|gif|svg|webp|mp4|mov|mp3|woff2|ttf)$/i.test(pathname) ||
+      pathname === '/favicon.ico' ||
+      pathname === '/robots.txt' ||
+      pathname === '/sitemap.xml'
+    ) {
+      return NextResponse.next()
+    }
+
     // API yollarını bypass et - middleware dokunmasın
     if (pathname.startsWith('/api/')) {
       return NextResponse.next()
@@ -64,14 +76,7 @@ export default withAuth(
 // Middleware'in çalışacağı route'ları belirt
 export const config = {
   matcher: [
-    /*
-     * Match all request paths except for the ones starting with:
-     * - api (API routes)
-     * - _next/static (static files)
-     * - _next/image (image optimization files)
-     * - favicon.ico (favicon file)
-     * - public folder
-     */
-    '/((?!api|_next/static|_next/image|favicon.ico|public).*)',
+    // Statik dosyaları ve bazı özel yolları hariç tut
+    '/((?!_next/static|_next/image|favicon.ico|robots.txt|sitemap.xml|.*\\.(?:png|jpg|jpeg|gif|svg|webp|mp4|mov|mp3|woff2|ttf)).*)',
   ],
 }

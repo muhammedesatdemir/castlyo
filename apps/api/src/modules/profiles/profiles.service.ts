@@ -11,15 +11,15 @@ import {
   users, 
   talentProfiles, 
   agencyProfiles 
-} from '@packages/database/schema';
-import { contactPermissions } from '@packages/database/schema';
+} from '@castlyo/database/schema';
+import { contactPermissions } from '@castlyo/database/schema';
 import { 
   CreateTalentProfileDto, 
   UpdateTalentProfileDto,
   CreateAgencyProfileDto,
   UpdateAgencyProfileDto 
 } from './dto/profile.dto';
-import { db } from '@packages/database';
+import { db } from '@castlyo/database';
 
 @Injectable()
 export class ProfilesService {
