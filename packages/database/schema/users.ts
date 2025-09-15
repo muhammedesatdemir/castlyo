@@ -49,7 +49,8 @@ export const talentProfiles = pgTable('talent_profiles', {
   specialties: jsonb('specialties').$type<string[]>().default([]), // acting, modeling, voice-over, etc.
   
   // Media
-  profileImage: varchar('profile_image', { length: 500 }),
+  profilePhotoUrl: text('profile_photo_url').default(null), // Avatar URL
+  profilePhotoKey: text('profile_photo_key').default(null), // (Opsiyonel) S3/Supabase path
   portfolioImages: jsonb('portfolio_images').$type<string[]>().default([]),
   portfolioVideos: jsonb('portfolio_videos').$type<string[]>().default([]),
   

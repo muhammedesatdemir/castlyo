@@ -42,20 +42,23 @@ export default function VerifyPage() {
       })
 
       const result = await response.json()
+      const ok = (result?.success ?? result?.ok ?? response.ok) as boolean
 
-      if (result.success) {
+      if (ok) {
         setVerificationStatus('success')
-        setMessage('E-posta adresiniz başarıyla doğrulandı!')
+        setMessage(result?.message || 'E-posta adresiniz başarıyla doğrulandı!')
         toast.success('Doğrulama Başarılı! 🎉', 'Artık giriş yapabilirsiniz.')
         
         // 3 saniye sonra login sayfasına yönlendir
         setTimeout(() => {
-          router.push('/auth?mode=login&message=verification-success')
+          const cb = typeof window !== 'undefined' ? new URLSearchParams(window.location.search).get('callbackUrl') : null
+          const target = `/auth?mode=login&message=verification-success${cb ? `&callbackUrl=${encodeURIComponent(cb)}` : ''}`
+          router.replace(target)
         }, 3000)
       } else {
         setVerificationStatus('error')
-        setMessage(result.message || 'Doğrulama işlemi başarısız')
-        toast.error('Doğrulama Hatası', result.message)
+        setMessage(result?.message || 'Doğrulama işlemi başarısız')
+        toast.error('Doğrulama Hatası', result?.message)
       }
     } catch (error) {
       console.error('Verification error:', error)

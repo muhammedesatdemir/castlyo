@@ -5,6 +5,7 @@
  */
 
 import crypto from 'crypto'
+const isProd = process.env.NODE_ENV === 'production'
 
 export type User = {
   id: string
@@ -57,21 +58,28 @@ class MockStore {
     const raw = crypto.randomBytes(24).toString('hex') // 48 char
     const hash = this.sha(raw)
     this.tokens.set(hash, { userId, expiresAt: Date.now() + ttlMs, used: false })
-    
+
     const url = `${process.env.NEXT_PUBLIC_WEB_URL || 'http://localhost:3000'}/auth/verify?token=${raw}`
-    console.log(`[STORE] Verification token created for user: ${userId}`)
-    console.log(`[STORE] Raw token: ${raw.slice(0, 8)}... (${raw.length} chars)`)
-    console.log(`[STORE] Hash: ${hash.slice(0, 8)}... (stored in Map)`)
-    
-    return { raw, url }
+
+    if (!isProd) {
+      // Prod'da ham token/hashing detaylarını loglamıyoruz
+      console.log(`[STORE] Verification token created for user: ${userId}`)
+      console.log(`[STORE] Raw token (masked): ${raw.slice(0, 6)}***... (${raw.length} chars)`) 
+      console.log(`[STORE] Hash (prefix): ${hash.slice(0, 8)}...`) 
+    }
+
+    // Ham token sadece linkte kullanılıyor; dışarıya sadece URL veriyoruz
+    return { url }
   }
 
   consumeVerificationToken(raw: string) {
     const hash = this.sha(raw)
     const rec = this.tokens.get(hash)
-    
-    console.log(`[STORE] Consuming token: ${raw.slice(0, 8)}... -> hash: ${hash.slice(0, 8)}...`)
-    console.log(`[STORE] Token found: ${!!rec}`)
+
+    if (!isProd) {
+      console.log(`[STORE] Consuming token (masked): ${raw.slice(0, 6)}***... -> hash: ${hash.slice(0, 8)}...`)
+      console.log(`[STORE] Token found: ${!!rec}`)
+    }
     
     if (!rec) return { ok: false as const, reason: 'not_found' as const }
 
@@ -89,7 +97,7 @@ class MockStore {
 
     rec.used = true
     this.tokens.delete(hash) // tek kullanımlık
-    console.log(`[STORE] Token consumed successfully for user: ${rec.userId}`)
+    if (!isProd) console.log(`[STORE] Token consumed successfully for user: ${rec.userId}`)
     return { ok: true as const, userId: rec.userId }
   }
 

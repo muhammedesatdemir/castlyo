@@ -96,8 +96,12 @@ const authOptions: NextAuthOptions = {
     },
   },
   pages: {
-    signIn: '/auth/signin',
-    signUp: '/auth/signup',
+    // Castlyo'da tekleştirilmiş kimlik sayfası `/auth` altında.
+    // NextAuth default signIn ekranını bu sayfaya yönlendiriyoruz.
+    signIn: '/auth',
+    // Kayıt ekranı da aynı sayfa içinde mod ile yönetiliyor.
+    // İsterseniz `'/auth?mode=register'` yapabilirsiniz; şimdilik gerek yok.
+    signUp: '/auth',
     error: '/auth/error',
   },
   events: {

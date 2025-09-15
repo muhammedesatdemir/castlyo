@@ -1,129 +1,125 @@
-// POST /api/v1/auth/verify
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
+import { z } from "zod";
+import store from "@/lib/mock-store";
+import type { ApiResult } from "@/lib/api-types";
 
-export async function POST(req: Request) {
-  const body = await req.json();
-  const apiBase = process.env.API_URL ?? process.env.NEXT_PUBLIC_API_URL ?? "";
-  const res = await fetch(`${apiBase}/v1/auth/verify`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(body),
-  });
+export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
 
-  const data = await res.json().catch(() => ({}));
-  return NextResponse.json(data, { status: res.status });
+const verifySchema = z.object({ token: z.string().min(1, "Token gerekli") });
+
+// Basit IP-bazlı rate limit (verify için)
+const RATE_LIMIT_WINDOW_MS = 60_000
+const RATE_LIMIT_MAX = Number(process.env.RATE_LIMIT_MAX ?? 30)
+const rateMap = new Map<string, { count: number; ts: number }>()
+
+function ipKey(req: NextRequest): string {
+  const fwd = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim()
+  const cf = req.headers.get('cf-connecting-ip')?.trim()
+  const ip = fwd || cf || (req as any).ip || 'unknown'
+  return ip
 }
 
-import { NextRequest, NextResponse } from 'next/server'
-import { z } from 'zod'
-import store from '@/lib/mock-store'
-import {
-  successResponse,
-  errorResponse,
-  validationErrorResponse,
-  parseRequestBody,
-  logAuthAction
-} from '../utils'
-import type { VerifyRequest, VerifyResponse } from '../types'
-
-export const runtime = 'nodejs'
-export const dynamic = 'force-dynamic'
-
-// Verify schema
-const verifySchema = z.object({
-  token: z.string().min(1, 'Token gerekli')
-})
-
-export async function POST(request: NextRequest) {
-  logAuthAction('VERIFY_START')
-
+export async function POST(req: NextRequest) {
   try {
-    // Parse and validate request
-    const data = await parseRequestBody(request, verifySchema)
-    logAuthAction('VERIFY_TOKEN_RECEIVED', undefined, { tokenLength: data.token.length })
-
-    // Consume verification token (raw)
-    const result = store.consumeVerificationToken(data.token)
-
-    if (!result.ok) {
-      const reasonMap: Record<string, string> = {
-        not_found: 'Geçersiz doğrulama linki',
-        expired: 'Süresi dolmuş doğrulama linki',
-        used: 'Bu link daha önce kullanılmış',
+    // Rate limit
+    const key = ipKey(req)
+    const now = Date.now()
+    const rec = rateMap.get(key)
+    if (!rec || now - rec.ts > RATE_LIMIT_WINDOW_MS) {
+      rateMap.set(key, { count: 1, ts: now })
+    } else {
+      rec.count += 1
+      rateMap.set(key, rec)
+      if (rec.count > RATE_LIMIT_MAX) {
+        const retryAfterSec = Math.ceil((RATE_LIMIT_WINDOW_MS - (now - rec.ts)) / 1000)
+        return NextResponse.json(
+          { success: false, message: 'Çok fazla istek. Lütfen daha sonra tekrar deneyin.' },
+          { status: 429, headers: { 'Retry-After': String(retryAfterSec) } }
+        )
       }
-      
-      logAuthAction('VERIFY_TOKEN_INVALID', undefined, { reason: result.reason })
-      return errorResponse(reasonMap[result.reason] || 'Doğrulama hatası', 400, undefined, 'INVALID_TOKEN')
     }
 
-    // Find user by ID and update email verification
-    const users = Array.from(store.users.values())
-    const user = users.find(u => u.id === result.userId)
-    
-    if (!user) {
-      logAuthAction('VERIFY_USER_NOT_FOUND', undefined, { userId: result.userId })
-      return errorResponse('Kullanıcı bulunamadı', 400, undefined, 'USER_NOT_FOUND')
+    const body = await req.json();
+    const parsed = verifySchema.safeParse(body);
+    if (!parsed.success) {
+      return NextResponse.json(
+        { ok: false, error: "Geçersiz istek", issues: parsed.error.flatten() },
+        { status: 400 }
+      );
     }
 
-    // Update user email verification
-    const updated = store.updateUserEmailVerified(user.email, true)
-    if (!updated) {
-      logAuthAction('VERIFY_UPDATE_FAILED', user.email)
-      return errorResponse('E-posta doğrulama güncelleme hatası', 500, undefined, 'UPDATE_FAILED')
+    const useMock = (process.env.USE_MOCK_VERIFICATION ?? "true").toLowerCase() === "true";
+
+    if (useMock) {
+      // Doğrudan mock-store üzerinden doğrulama yap
+      const consumed = store.consumeVerificationToken(parsed.data.token);
+      if (!consumed.ok) {
+        const reasonMap: Record<string, string> = {
+          not_found: "Geçersiz veya bulunamadı",
+          used: "Bu doğrulama bağlantısı zaten kullanılmış",
+          expired: "Doğrulama bağlantısının süresi dolmuş",
+        };
+        const status = consumed.reason === 'used' ? 409 : 400
+        return NextResponse.json<ApiResult>(
+          { success: false, ok: false, message: reasonMap[consumed.reason] ?? "Doğrulama başarısız" },
+          { status }
+        );
+      }
+
+      // Kullanıcıyı ID ile bul ve emailVerified=true yap
+      const user = Array.from(store.users.values()).find((u) => u.id === consumed.userId);
+      if (user) {
+        user.emailVerified = true;
+        store.users.set(user.email, user);
+      }
+
+      return NextResponse.json<ApiResult>(
+        { success: true, ok: true, message: "E-posta doğrulandı", data: { userId: consumed.userId, emailVerified: true } },
+        { status: 200 }
+      );
     }
 
-    logAuthAction('VERIFY_SUCCESS', user.email, { userId: user.id })
+    // Gerçek API'ye proxy
+    const apiBase = process.env.API_URL ?? process.env.NEXT_PUBLIC_API_URL ?? "";
+    const res = await fetch(`${apiBase}/v1/auth/verify`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(parsed.data),
+      cache: "no-store",
+    });
 
-    // Response
-    const responseData: VerifyResponse = {
-      userId: user.id,
-      email: user.email,
-      emailVerified: true
-    }
-
-    return successResponse('E-posta adresiniz başarıyla doğrulandı!', responseData)
-
-  } catch (error: any) {
-    logAuthAction('VERIFY_ERROR', undefined, { error: error.message })
-
-    if (error instanceof z.ZodError) {
-      return validationErrorResponse(error)
-    }
-
-    if (error.message.includes('Content-Type') || error.message.includes('JSON')) {
-      return errorResponse('Geçersiz istek formatı', 400, undefined, 'INVALID_FORMAT')
-    }
-
-    return errorResponse('E-posta doğrulama sırasında bir hata oluştu', 500, undefined, 'INTERNAL_ERROR')
+    const data = await res.json().catch(() => ({}));
+    return NextResponse.json<ApiResult>(data, { status: res.status });
+  } catch (e) {
+    return NextResponse.json<ApiResult>({ success: false, message: "Sunucu hatası" }, { status: 500 });
   }
 }
 
-// GET support for email links
-export async function GET(request: NextRequest) {
-  const { searchParams } = new URL(request.url)
-  const token = searchParams.get('token')
-
+export async function GET(req: NextRequest) {
+  const { searchParams } = new URL(req.url);
+  const token = searchParams.get("token");
   if (!token) {
-    return errorResponse('Token parametresi gerekli', 400, undefined, 'MISSING_TOKEN')
+    return NextResponse.json({ ok: false, error: "Token parametresi gerekli" }, { status: 400 });
   }
-
-  // Forward to POST with token in body
-  return POST(new NextRequest(request.url, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ token })
-  }))
+  return POST(
+    new NextRequest(req.url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ token }),
+    })
+  );
 }
 
-// CORS support
 export async function OPTIONS() {
+  const origin = process.env.WEB_ORIGIN || '*'
   return new Response(null, {
     status: 204,
     headers: {
-      'Access-Control-Allow-Origin': '*',
-      'Access-Control-Allow-Methods': 'POST, GET, OPTIONS',
-      'Access-Control-Allow-Headers': 'Content-Type, Authorization',
-      'Cache-Control': 'no-store',
+      "Access-Control-Allow-Origin": origin,
+      "Access-Control-Allow-Methods": "POST, GET, OPTIONS",
+      "Access-Control-Allow-Headers": "Content-Type, Authorization",
+      "Cache-Control": "no-store",
     },
-  })
+  });
 }

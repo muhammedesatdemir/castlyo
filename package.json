@@ -28,6 +28,8 @@
   },
   "devDependencies": {
     "@turbo/gen": "^1.11.2",
+    "@types/aws-sdk": "^0.0.42",
+    "@types/react-easy-crop": "^1.16.0",
     "drizzle-kit": "^0.31.4",
     "prettier": "^3.1.1",
     "turbo": "^1.11.2",
@@ -38,12 +40,17 @@
     "node": ">=18"
   },
   "dependencies": {
+    "@aws-sdk/client-s3": "^3.888.0",
+    "@aws-sdk/s3-request-presigner": "^3.888.0",
     "bcryptjs": "^3.0.2",
     "drizzle-orm": "^0.44.5",
     "next": "^15.5.3",
     "postgres": "^3.4.7",
     "react": "^19.1.1",
     "react-dom": "^19.1.1",
-    "undici": "^7.16.0"
+    "react-easy-crop": "^5.5.1",
+    "react-hook-form": "^7.62.0",
+    "undici": "^7.16.0",
+    "zod": "^4.1.8"
   }
 }
