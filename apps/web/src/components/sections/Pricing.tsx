@@ -1,5 +1,7 @@
 import { Check, Star } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import Link from 'next/link'
+import { getTalentHref } from '@/lib/routes'
 
 const plans = [
   {
@@ -123,9 +125,9 @@ export default function Pricing() {
                     : 'bg-gray-900 hover:bg-gray-700'
                 }`}
               >
-                <a href="/register">
+                <Link href={getTalentHref()}>
                   {plan.name === 'Ücretsiz' ? 'Ücretsiz Başla' : 'Paketi Seç'}
-                </a>
+                </Link>
               </Button>
             </div>
           ))}

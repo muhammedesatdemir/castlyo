@@ -16,9 +16,8 @@ export default function Home() {
   const { data: session, status } = useSession()
 
   const handleSignup = (type: "talent" | "agency") => {
-    // First show privacy info, then redirect to auth page with role and return URL
-    const returnUrl = encodeURIComponent(`/onboarding/${type}`)
-    router.push(`/privacy-info?role=${type}&next=${returnUrl}`)
+    // Doğrudan onboarding sayfasına yönlendir
+    router.push(`/onboarding/${type}`)
   }
 
   const handleStartOnboarding = (type: "talent" | "agency") => {

@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { ArrowRight, Star, Users, Zap } from 'lucide-react'
+import { getTalentHref } from '@/lib/routes'
 
 export default function CTA() {
   return (
@@ -17,7 +18,7 @@ export default function CTA() {
           
           <div className="mt-10 flex items-center justify-center gap-x-6">
             <Button asChild size="lg" className="bg-brand-gradient-smooth hover:from-brand-700 hover:to-brand-300 text-white font-semibold">
-              <Link href="/register">
+              <Link href={getTalentHref()}>
                 Ücretsiz Başla
                 <ArrowRight className="ml-2 h-4 w-4" />
               </Link>

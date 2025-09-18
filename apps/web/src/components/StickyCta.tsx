@@ -1,7 +1,9 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { montserratDisplay } from "@/lib/fonts";
+import { getTalentHref } from "@/lib/routes";
 
 export default function StickyCta() {
   const [visible, setVisible] = useState(false);
@@ -58,8 +60,8 @@ export default function StickyCta() {
 
   return (
     <div className="fixed inset-x-0 bottom-5 z-[60] flex justify-center">
-      <a
-        href="/register"
+      <Link
+        href={getTalentHref()}
         aria-hidden={!visible}
         className={
           montserratDisplay.className +
@@ -73,7 +75,7 @@ export default function StickyCta() {
         }
       >
         Hemen Başla
-      </a>
+      </Link>
     </div>
   );
 }
