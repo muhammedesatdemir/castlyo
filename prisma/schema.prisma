@@ -1,0 +1,41 @@
+// Prisma schema for Castlyo profile storage
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  role      String   @default("TALENT")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  profile   Profile?
+}
+
+model Profile {
+  id              String   @id @default(cuid())
+  userId          String   @unique
+  firstName       String?
+  lastName        String?
+  phone           String?
+  company         String?
+  position        String?
+  status          String?
+  lastLogin       String?
+  profilePhotoUrl String?
+
+  professional    Json?
+  personal        Json?
+  activities      Json?
+
+  user            User     @relation(fields: [userId], references: [id])
+}
+
+

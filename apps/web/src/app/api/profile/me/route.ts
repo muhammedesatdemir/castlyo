@@ -1,38 +1,111 @@
-// GET/PATCH /api/profile/me
+// apps/web/src/app/api/profile/me/route.ts
 import { NextResponse } from "next/server";
-import { headers } from "next/headers";
+import { prisma } from "@/lib/prisma";
 
-export async function GET() {
-  const apiBase = process.env.API_URL ?? process.env.NEXT_PUBLIC_API_URL ?? "";
-  const hdrs = headers();
-  const cookie = hdrs.get("cookie") ?? "";
-
-  const res = await fetch(`${apiBase}/v1/profile/me`, {
-    method: "GET",
-    headers: { cookie, Accept: "application/json" },
-    cache: "no-store",
-  });
-
-  if (!res.ok) return NextResponse.json({ profile: null }, { status: 200 });
-  const data = await res.json().catch(() => ({ profile: null }));
-  return NextResponse.json(data);
+// DEV için pratik: prod'da gerçek session'dan email al
+function getEmailFromHeaders(req: Request) {
+  return req.headers.get("x-user-email") ?? "merve@example.com";
 }
 
-export async function PATCH(req: Request) {
-  const apiBase = process.env.API_URL ?? process.env.NEXT_PUBLIC_API_URL ?? "";
-  const hdrs = headers();
-  const cookie = hdrs.get("cookie") ?? "";
-  const body = await req.json().catch(() => ({}));
+export async function GET(req: Request) {
+  const email = getEmailFromHeaders(req);
+  if (!email) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
 
-  const res = await fetch(`${apiBase}/v1/profile/me`, {
-    method: "PATCH",
-    headers: { cookie, "Content-Type": "application/json" },
-    body: JSON.stringify(body),
+  const user = await prisma.user.upsert({
+    where: { email },
+    update: {},
+    create: { email },
+    include: { talentProfile: true },
   });
 
-  if (!res.ok) return NextResponse.json({ profile: null }, { status: 200 });
-  const data = await res.json().catch(() => ({ profile: null }));
-  return NextResponse.json(data);
+  const p = user.talentProfile;
+
+  return NextResponse.json({
+    firstName: p?.firstName ?? null,
+    lastName:  p?.lastName  ?? null,
+    email:     user.email,
+    phone:     p?.phone ?? null,
+    role:      user.role ?? "TALENT",
+    status:    p?.status ?? "Aktif",
+    lastLogin: p?.lastLogin ?? null,
+    company:   p?.company ?? null,
+    position:  p?.position ?? null,
+    profilePhotoUrl: p?.profilePhotoUrl ?? null,
+    professional: {
+      bio:         p?.bio ?? "",
+      experience:  p?.experience ?? "",
+      specialties: (p?.specialties as string[]) ?? [],
+    },
+    personal: {
+      city:      p?.city ?? "",
+      birthDate: p?.birthDate ?? "",
+      gender:    p?.gender ?? "",
+      heightCm:  p?.heightCm ?? null,
+      weightKg:  p?.weightKg ?? null,
+    },
+    activities: (p?.activities as any[]) ?? [],
+  });
 }
 
+export async function PUT(req: Request) {
+  const email = getEmailFromHeaders(req);
+  if (!email) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
 
+  const body = await req.json();
+  const user = await prisma.user.upsert({ where: { email }, update: {}, create: { email } });
+
+  const prof = body || {};
+  const professional = prof.professional || {};
+  const personal = prof.personal || {};
+
+  await prisma.talentProfile.upsert({
+    where: { userId: user.id },
+    create: {
+      userId: user.id,
+      firstName: prof.firstName ?? null,
+      lastName:  prof.lastName  ?? null,
+      phone:     prof.phone ?? null,
+      company:   prof.company ?? null,
+      position:  prof.position ?? null,
+      status:    prof.status ?? "Aktif",
+      lastLogin: prof.lastLogin ?? null,
+      profilePhotoUrl: prof.profilePhotoUrl ?? null,
+
+      bio:         professional.bio ?? null,
+      experience:  professional.experience ?? null,
+      specialties: professional.specialties ?? [],
+
+      city:      personal.city ?? null,
+      birthDate: personal.birthDate ?? null,
+      gender:    personal.gender ?? null,
+      heightCm:  personal.heightCm ?? null,
+      weightKg:  personal.weightKg ?? null,
+
+      activities: prof.activities ?? [],
+    },
+    update: {
+      firstName: prof.firstName ?? null,
+      lastName:  prof.lastName  ?? null,
+      phone:     prof.phone ?? null,
+      company:   prof.company ?? null,
+      position:  prof.position ?? null,
+      status:    prof.status ?? "Aktif",
+      lastLogin: prof.lastLogin ?? null,
+      profilePhotoUrl: prof.profilePhotoUrl ?? null,
+
+      bio:         professional.bio ?? null,
+      experience:  professional.experience ?? null,
+      specialties: professional.specialties ?? [],
+
+      city:      personal.city ?? null,
+      birthDate: personal.birthDate ?? null,
+      gender:    personal.gender ?? null,
+      heightCm:  personal.heightCm ?? null,
+      weightKg:  personal.weightKg ?? null,
+
+      activities: prof.activities ?? [],
+    },
+  });
+
+  return NextResponse.json({ ok: true });
+}

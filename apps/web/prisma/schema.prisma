@@ -1,0 +1,54 @@
+datasource db {
+  provider = "sqlite"           // İstersen postgres yazarsın
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  role      String   @default("TALENT")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  talentProfile TalentProfile?
+}
+
+model TalentProfile {
+  id              String   @id @default(cuid())
+  userId          String   @unique
+  firstName       String?
+  lastName        String?
+  phone           String?
+  company         String?
+  position        String?
+  status          String?
+  lastLogin       String?
+  profilePhotoUrl String?
+
+  // Onboarding & profil için ortak alanlar
+  bio        String?
+  city       String?
+  gender     String?
+  birthDate  String?
+  heightCm   Int?
+  weightKg   Int?
+  specialties Json?     // ["Oyunculuk","Modellik"] gibi
+  experience  String?
+  activities  Json?
+
+  // geleceğe dönük
+  portfolioImages Json?
+  portfolioVideos Json?
+  isPublic       Boolean? @default(true)
+  boostedUntil   DateTime?
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@map("talent_profiles")
+}
+
+// (Eğer daha önce "Profile" isimli bir model oluşturduysan onu kaldır.)
