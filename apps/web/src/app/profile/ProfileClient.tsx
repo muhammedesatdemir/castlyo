@@ -1,3 +1,4 @@
+// apps/web/src/app/profile/ProfileClient.tsx
 "use client";
 
 import * as React from "react";
@@ -22,8 +23,10 @@ type Profile = {
 export default function ProfileClient(props: {
   initialProfile: Profile;
   theme: { light: string; dark: string; black: string };
+  onSaved?: (fresh: Profile) => void;
+  onDemandRefetch?: () => Promise<void>;
 }) {
-  const { initialProfile, theme } = props;
+  const { initialProfile, theme, onSaved, onDemandRefetch } = props;
   const router = useRouter();
 
   // yalnızca başlık/rozet & chip’ler için hafif state
@@ -32,7 +35,7 @@ export default function ProfileClient(props: {
   const [role] = React.useState(initialProfile.role ?? "Yetenek");
   const chips = (initialProfile.professional?.specialties ?? []).slice(0, 4);
 
-  // --- Uncontrolled refs (odak asla kaybolmaz) ---
+  // --- Uncontrolled refs ---
   const firstNameRef = React.useRef<HTMLInputElement>(null);
   const lastNameRef  = React.useRef<HTMLInputElement>(null);
   const emailRef     = React.useRef<HTMLInputElement>(null);
@@ -47,43 +50,38 @@ export default function ProfileClient(props: {
   const bioRef       = React.useRef<HTMLTextAreaElement>(null);
   const expRef       = React.useRef<HTMLTextAreaElement>(null);
 
-  // ilk değerleri doldur
-  React.useEffect(() => {
-    if (firstNameRef.current) firstNameRef.current.value = initialProfile.firstName ?? "";
-    if (lastNameRef.current)  lastNameRef.current.value  = initialProfile.lastName ?? "";
-    if (emailRef.current)     emailRef.current.value     = initialProfile.email ?? "";
-    if (phoneRef.current)     phoneRef.current.value     = initialProfile.phone ?? "";
+  // “düzenle” basınca boş görünmesin diye ilk değerleri defaultValue ile veriyoruz
+  // (mount sonrası yine ref üzerinden erişiyoruz)
+  const defaults = {
+    firstName: initialProfile.firstName ?? "",
+    lastName : initialProfile.lastName ?? "",
+    email    : initialProfile.email ?? "",
+    phone    : initialProfile.phone ?? "",
+    city     : initialProfile.personal?.city ?? "",
+    gender   : initialProfile.personal?.gender ?? "",
+    birth    : initialProfile.personal?.birthDate ?? "",
+    height   : initialProfile.personal?.heightCm ?? "",
+    weight   : initialProfile.personal?.weightKg ?? "",
+    bio      : initialProfile.professional?.bio ?? "",
+    exp      : initialProfile.professional?.experience ?? "",
+  };
 
-    if (cityRef.current)      cityRef.current.value      = initialProfile.personal?.city ?? "";
-    if (genderRef.current)    genderRef.current.value    = initialProfile.personal?.gender ?? "";
-    if (birthRef.current)     birthRef.current.value     = initialProfile.personal?.birthDate ?? "";
-
-    if (heightRef.current)    heightRef.current.value    = (initialProfile.personal?.heightCm ?? "") as any;
-    if (weightRef.current)    weightRef.current.value    = (initialProfile.personal?.weightKg ?? "") as any;
-
-    if (bioRef.current)       bioRef.current.value       = initialProfile.professional?.bio ?? "";
-    if (expRef.current)       expRef.current.value       = initialProfile.professional?.experience ?? "";
-  }, [initialProfile]);
-
-  const [editing, setEditing] = React.useState(true); // ekranda zaten düzenleme açık gibi, açık başlayalım
+  const [editing, setEditing] = React.useState(true);
   const [saving, setSaving]   = React.useState(false);
   const [msg, setMsg]         = React.useState<string | null>(null);
 
-  // başlıktaki isim göstermesi için “canlı” ama uncontrolled kalalım:
   const displayName = React.useMemo(() => {
-    const f = firstNameRef.current?.value ?? initialProfile.firstName ?? "";
-    const l = lastNameRef.current?.value ?? initialProfile.lastName ?? "";
+    const f = firstNameRef.current?.value ?? defaults.firstName;
+    const l = lastNameRef.current?.value  ?? defaults.lastName;
     const n = `${f} ${l}`.trim();
     return n || "Ad Soyad";
-  }, [initialProfile.firstName, initialProfile.lastName, // ilk mount
-      // ref değişince de güncelleyelim
-      photoUrl, status, editing]); // cheap invalidation (başlık tekrar render olur)
+  }, [defaults.firstName, defaults.lastName, photoUrl, status, editing]);
 
   const initials = React.useMemo(() => {
-    const f = firstNameRef.current?.value?.[0] ?? initialProfile.firstName?.[0] ?? "";
-    const l = lastNameRef.current?.value?.[0]  ?? initialProfile.lastName?.[0]  ?? "";
+    const f = (firstNameRef.current?.value ?? defaults.firstName)?.[0] ?? "";
+    const l = (lastNameRef.current?.value  ?? defaults.lastName)?.[0] ?? "";
     return ((f + l) || "YP").toUpperCase();
-  }, [initialProfile.firstName, initialProfile.lastName, editing, photoUrl]);
+  }, [defaults.firstName, defaults.lastName, editing, photoUrl]);
 
   async function handlePhotoChange(file?: File) {
     if (!file) return;
@@ -134,9 +132,33 @@ export default function ProfileClient(props: {
       });
       if (!res.ok) throw new Error("save failed");
 
+      // TAZELEME: taze profili çek ve hem parent’a gönder, hem formu rehydrate et
+      const fresh: Profile = await fetch("/api/profile/me", { cache: "no-store" }).then(r => r.json());
+
+      // inputları taze değerlerle doldur
+      if (firstNameRef.current) firstNameRef.current.value = fresh.firstName ?? "";
+      if (lastNameRef.current)  lastNameRef.current.value  = fresh.lastName ?? "";
+      if (emailRef.current)     emailRef.current.value     = fresh.email ?? "";
+      if (phoneRef.current)     phoneRef.current.value     = fresh.phone ?? "";
+      if (cityRef.current)      cityRef.current.value      = fresh.personal?.city ?? "";
+      if (genderRef.current)    genderRef.current.value    = fresh.personal?.gender ?? "";
+      if (birthRef.current)     birthRef.current.value     = fresh.personal?.birthDate ?? "";
+      if (heightRef.current)    heightRef.current.value    = (fresh.personal?.heightCm ?? "") as any;
+      if (weightRef.current)    weightRef.current.value    = (fresh.personal?.weightKg ?? "") as any;
+      if (bioRef.current)       bioRef.current.value       = fresh.professional?.bio ?? "";
+      if (expRef.current)       expRef.current.value       = fresh.professional?.experience ?? "";
+
+      setPhotoUrl(fresh.profilePhotoUrl ?? null);
+      setStatus(fresh.status ?? "Aktif");
+
+      onSaved?.(fresh);               // parent state güncelle
+      await onDemandRefetch?.();      // güvence amaçlı (isteğe bağlı)
+
       setMsg("Profil kaydedildi.");
       setEditing(false);
-      router.refresh(); // SSR verilerini tazele (UI uncontrolled olduğu için odak bozulmaz)
+
+      // Not: Bu mimaride router.refresh() gerekmez; parent state zaten güncellendi.
+      // router.refresh();
     } catch {
       setMsg("Kaydetme sırasında hata oluştu.");
     } finally {
@@ -145,33 +167,34 @@ export default function ProfileClient(props: {
   }
 
   function handleCancel() {
-    // formu ilk değerlere geri döndür
     setEditing(false);
     setMsg(null);
-    if (firstNameRef.current) firstNameRef.current.value = initialProfile.firstName ?? "";
-    if (lastNameRef.current)  lastNameRef.current.value  = initialProfile.lastName ?? "";
-    if (emailRef.current)     emailRef.current.value     = initialProfile.email ?? "";
-    if (phoneRef.current)     phoneRef.current.value     = initialProfile.phone ?? "";
-    if (cityRef.current)      cityRef.current.value      = initialProfile.personal?.city ?? "";
-    if (genderRef.current)    genderRef.current.value    = initialProfile.personal?.gender ?? "";
-    if (birthRef.current)     birthRef.current.value     = initialProfile.personal?.birthDate ?? "";
-    if (heightRef.current)    heightRef.current.value    = (initialProfile.personal?.heightCm ?? "") as any;
-    if (weightRef.current)    weightRef.current.value    = (initialProfile.personal?.weightKg ?? "") as any;
-    if (bioRef.current)       bioRef.current.value       = initialProfile.professional?.bio ?? "";
-    if (expRef.current)       expRef.current.value       = initialProfile.professional?.experience ?? "";
+    // formu ilk değerlere geri döndür
+    if (firstNameRef.current) firstNameRef.current.value = defaults.firstName;
+    if (lastNameRef.current)  lastNameRef.current.value  = defaults.lastName;
+    if (emailRef.current)     emailRef.current.value     = defaults.email;
+    if (phoneRef.current)     phoneRef.current.value     = defaults.phone;
+    if (cityRef.current)      cityRef.current.value      = defaults.city;
+    if (genderRef.current)    genderRef.current.value    = defaults.gender;
+    if (birthRef.current)     birthRef.current.value     = defaults.birth;
+    if (heightRef.current)    heightRef.current.value    = (defaults.height as any);
+    if (weightRef.current)    weightRef.current.value    = (defaults.weight as any);
+    if (bioRef.current)       bioRef.current.value       = defaults.bio;
+    if (expRef.current)       expRef.current.value       = defaults.exp;
     setPhotoUrl(initialProfile.profilePhotoUrl ?? null);
     setStatus(initialProfile.status ?? "Aktif");
   }
 
-  // küçük yardımcı input (uncontrolled)
+  // Küçük input helper (uncontrolled + defaultValue)
   function UField({
-    label, type = "text", inputRef, disabled = false, placeholder,
+    label, type = "text", inputRef, disabled = false, placeholder, defaultValue,
   }: {
     label: string;
     type?: string;
     inputRef: React.RefObject<HTMLInputElement>;
     disabled?: boolean;
     placeholder?: string;
+    defaultValue?: string | number;
   }) {
     return (
       <div>
@@ -181,6 +204,7 @@ export default function ProfileClient(props: {
           type={type}
           placeholder={placeholder}
           disabled={disabled}
+          defaultValue={defaultValue}
           className={`w-full rounded-lg px-3 py-2 ring-1 bg-white ${
             disabled ? "ring-neutral-200/70" : "ring-neutral-300 focus:outline-none focus:ring-2"
           }`}
@@ -284,29 +308,29 @@ export default function ProfileClient(props: {
           <h2 className="text-lg font-semibold mb-4">Kişisel Bilgiler</h2>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <UField label="Ad"          inputRef={firstNameRef} disabled={!editing} />
-            <UField label="Soyad"       inputRef={lastNameRef}  disabled={!editing} />
-            <UField label="E-posta"     inputRef={emailRef}     disabled={!editing} type="email" />
-            <UField label="Telefon"     inputRef={phoneRef}     disabled={!editing} />
-            <UField label="Şehir"       inputRef={cityRef}      disabled={!editing} />
-            <UField label="Cinsiyet"    inputRef={genderRef}    disabled={!editing} />
-            <UField label="Doğum Tarihi" inputRef={birthRef}    disabled={!editing} type="date" />
+            <UField label="Ad"          inputRef={firstNameRef} disabled={!editing} defaultValue={defaults.firstName} />
+            <UField label="Soyad"       inputRef={lastNameRef}  disabled={!editing} defaultValue={defaults.lastName} />
+            <UField label="E-posta"     inputRef={emailRef}     disabled={!editing} type="email" defaultValue={defaults.email} />
+            <UField label="Telefon"     inputRef={phoneRef}     disabled={!editing} defaultValue={defaults.phone} />
+            <UField label="Şehir"       inputRef={cityRef}      disabled={!editing} defaultValue={defaults.city} />
+            <UField label="Cinsiyet"    inputRef={genderRef}    disabled={!editing} defaultValue={defaults.gender} />
+            <UField label="Doğum Tarihi" inputRef={birthRef}    disabled={!editing} type="date" defaultValue={defaults.birth} />
 
             <div className="grid grid-cols-2 gap-4">
-              <UField label="Boy (cm)"  inputRef={heightRef} disabled={!editing} type="number" />
-              <UField label="Kilo (kg)" inputRef={weightRef} disabled={!editing} type="number" />
+              <UField label="Boy (cm)"  inputRef={heightRef} disabled={!editing} type="number" defaultValue={defaults.height} />
+              <UField label="Kilo (kg)" inputRef={weightRef} disabled={!editing} type="number" defaultValue={defaults.weight} />
             </div>
           </div>
 
           <div className="my-6 h-px bg-neutral-200/70" />
           <div>
             <div className="text-xs opacity-70 mb-1">Biyografi</div>
-            <textarea ref={bioRef} disabled={!editing}
+            <textarea ref={bioRef} disabled={!editing} defaultValue={defaults.bio}
               className={`w-full rounded-lg px-3 py-2 ring-1 bg-white min-h-[80px] ${editing ? "ring-neutral-300 focus:outline-none focus:ring-2" : "ring-neutral-200/70"}`} />
           </div>
           <div className="mt-4">
             <div className="text-xs opacity-70 mb-1">Deneyim</div>
-            <textarea ref={expRef} disabled={!editing}
+            <textarea ref={expRef} disabled={!editing} defaultValue={defaults.exp}
               className={`w-full rounded-lg px-3 py-2 ring-1 bg-white min-h-[80px] ${editing ? "ring-neutral-300 focus:outline-none focus:ring-2" : "ring-neutral-200/70"}`} />
           </div>
         </div>

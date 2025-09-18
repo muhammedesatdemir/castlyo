@@ -1,7 +1,7 @@
 // apps/web/src/app/profile/page.tsx
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import ProfileClient from "./ProfileClient";
 
 type Profile = {
@@ -18,6 +18,12 @@ const THEME = { light: "#F6E6C3", dark: "#962901", black: "#000000" };
 export default function ProfilePage() {
   const [data, setData] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
+
+  const refetch = useCallback(async () => {
+    const res = await fetch("/api/profile/me", { cache: "no-store" });
+    const p: Profile = await res.json();
+    setData(p);
+  }, []);
 
   useEffect(() => {
     let alive = true;
@@ -49,7 +55,15 @@ export default function ProfilePage() {
 
       <div className="mx-auto max-w-6xl px-4 py-8">
         {loading && <div className="opacity-70">Yükleniyor…</div>}
-        {data && <ProfileClient initialProfile={data} theme={THEME} />}
+        {data && (
+          <ProfileClient
+            initialProfile={data}
+            theme={THEME}
+            // Çocuk bileşen başarılı kayıttan sonra taze profili buraya gönderecek
+            onSaved={(fresh) => setData(fresh)}
+            onDemandRefetch={refetch}
+          />
+        )}
       </div>
     </main>
   );
