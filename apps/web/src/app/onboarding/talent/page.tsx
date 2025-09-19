@@ -94,7 +94,6 @@ const normalizeGender = (g: any): "" | "MALE" | "FEMALE" => {
   const v = (g ?? "").toString().trim().toLowerCase();
   if (["erkek", "e", "m", "male", "man", "bay"].includes(v)) return "MALE";
   if (["kadın", "kadin", "k", "f", "female", "woman", "bayan"].includes(v)) return "FEMALE";
-  // bazı backend sabitleri zaten ingilizce olabilir
   if (v === "male") return "MALE";
   if (v === "female") return "FEMALE";
   return "";
@@ -133,45 +132,73 @@ function TalentOnboardingContent() {
     specialties: [],
   });
 
-  // ---------- Prefill ----------
+  // ---------- Prefill fonksiyonu (geri dönüşte/odak değişiminde yeniden çağrılır) ----------
+  const loadProfile = async () => {
+    try {
+      const res = await fetch("/api/profile/me", { cache: "no-store" });
+      const p = await res.json();
+
+      // Telefonu son 10 hane üzerinden yeniden formatla (905 hatasını önler)
+      const ten = onlyLocal10(p.phone ?? "").slice(0, 10);
+      const phoneFmt = ten ? `+90 ${formatTRPhoneBlocks(ten)}` : "";
+
+      // gender farklı path'lerden gelebilir → tek yerden normalize et
+      const rawGender = p?.personal?.gender ?? p?.gender ?? "";
+
+      setFormData((prev) => ({
+        ...prev,
+        firstName: p.firstName ?? "",
+        lastName: p.lastName ?? "",
+        phone: phoneFmt,
+        profilePhotoUrl: p.profilePhotoUrl ?? null,
+        dateOfBirth: p.personal?.birthDate ?? "",
+        gender: normalizeGender(rawGender),
+        city: p.personal?.city ?? "",
+        height: p.personal?.heightCm ? String(p.personal.heightCm) : "",
+        weight: p.personal?.weightKg ? String(p.personal.weightKg) : "",
+        bio: p.professional?.bio ?? "",
+        experience: stripCvLines(p.professional?.experience ?? ""),
+        specialties: Array.isArray(p.professional?.specialties) ? p.professional.specialties : [],
+      }));
+
+      // deneyim metninden PDF linkini yakalamayı dene
+      const m = (p.professional?.experience ?? "").match(/(https?:\/\/\S+\.pdf)/i);
+      setCvUrl(m?.[1] ?? p.professional?.cvUrl ?? null);
+    } catch {
+      // sessiz
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // ---------- Prefill + görünürlük/odak geri geldiğinde tazele ----------
   useEffect(() => {
-    (async () => {
-      try {
-        const res = await fetch("/api/profile/me", { cache: "no-store" });
-        const p = await res.json();
+    let mounted = true;
 
-        // Telefonu son 10 hane üzerinden yeniden formatla (905 hatasını önler)
-        const ten = onlyLocal10(p.phone ?? "").slice(0, 10);
-        const phoneFmt = ten ? `+90 ${formatTRPhoneBlocks(ten)}` : "";
+    loadProfile();
 
-        setFormData((prev) => ({
-          ...prev,
-          firstName: p.firstName ?? "",
-          lastName: p.lastName ?? "",
-          phone: phoneFmt,
-          profilePhotoUrl: p.profilePhotoUrl ?? null,
-          dateOfBirth: p.personal?.birthDate ?? "",
-          gender: normalizeGender(p.personal?.gender), // <--- normalize
-          city: p.personal?.city ?? "",
-          height: p.personal?.heightCm ? String(p.personal.heightCm) : "",
-          weight: p.personal?.weightKg ? String(p.personal.weightKg) : "",
-          bio: p.professional?.bio ?? "",
-          experience: stripCvLines(p.professional?.experience ?? ""),
-          specialties: Array.isArray(p.professional?.specialties) ? p.professional.specialties : [],
-        }));
+    const onFocus = () => mounted && loadProfile();
+    const onVisible = () => {
+      if (document.visibilityState === "visible" && mounted) loadProfile();
+    };
+    const onPageShow = (e: PageTransitionEvent) => {
+      // bfcache'den dönüldüyse
+      if ((e as any).persisted && mounted) loadProfile();
+    };
 
-        // deneyim metninden PDF linkini yakalamayı dene
-        const m = (p.professional?.experience ?? "").match(/(https?:\/\/\S+\.pdf)/i);
-        setCvUrl(m?.[1] ?? p.professional?.cvUrl ?? null);
-      } catch {
-        // sessiz
-      } finally {
-        setLoading(false);
-      }
-    })();
+    window.addEventListener("focus", onFocus);
+    document.addEventListener("visibilitychange", onVisible);
+    window.addEventListener("pageshow", onPageShow as any);
+
+    return () => {
+      mounted = false;
+      window.removeEventListener("focus", onFocus);
+      document.removeEventListener("visibilitychange", onVisible);
+      window.removeEventListener("pageshow", onPageShow as any);
+    };
   }, []);
 
-  // ---------- Kaydet ----------
+  // ---------- tek noktadan save (PUT /api/profile/me) ----------
   async function saveToServer() {
     setSaving(true);
     setMsg(null);
@@ -187,7 +214,7 @@ function TalentOnboardingContent() {
       const personal: Record<string, any> = {};
       if (formData.city.trim()) personal.city = formData.city.trim();
       if (formData.dateOfBirth) personal.birthDate = formData.dateOfBirth;
-      if (formData.gender) personal.gender = normalizeGender(formData.gender); // <--- normalize ederek gönder
+      if (formData.gender) personal.gender = normalizeGender(formData.gender);
       if (formData.height) personal.heightCm = Number(formData.height);
       if (formData.weight) personal.weightKg = Number(formData.weight);
 

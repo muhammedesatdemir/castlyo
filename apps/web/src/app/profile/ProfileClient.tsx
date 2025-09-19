@@ -2,6 +2,7 @@
 
 import * as React from "react";
 import { useSession } from "next-auth/react";
+import { GENDER_OPTIONS } from "@/lib/constants";
 
 type Profile = {
   firstName?: string;
@@ -61,12 +62,16 @@ const formatTRPhone = (raw10: string) => {
   return p.join(" ");
 };
 
-const normGender = (g?: string) => {
-  const t = (g ?? "").toLocaleLowerCase("tr-TR");
-  if (t.startsWith("k")) return "Kadın";
-  if (t.startsWith("e")) return "Erkek";
+// Tek normalize: UI ve API'de enum ("MALE" | "FEMALE" | "") kullan
+const normalizeGender = (g?: string): "MALE" | "FEMALE" | "" => {
+  const v = (g ?? "").toString().trim().toLowerCase();
+
+  if (["erkek", "e", "m", "male", "man", "bay"].includes(v)) return "MALE";
+  if (["kadın", "kadin", "k", "f", "female", "woman", "bayan"].includes(v)) return "FEMALE";
+
   return "";
 };
+
 
 const toAbsoluteUrl = (u?: string | null) => {
   if (!u) return null;
@@ -165,7 +170,7 @@ export default function ProfileClient(props: {
       lastName: toTitleTR(initialProfile.lastName ?? ""),
       email: initialProfile.email ?? "",
       city: toTitleTR(initialProfile.personal?.city ?? ""),
-      gender: normGender(initialProfile.personal?.gender),
+      gender: normalizeGender(initialProfile.personal?.gender),
       birth: initialProfile.personal?.birthDate ?? "",
       height: initialProfile.personal?.heightCm ?? "",
       weight: initialProfile.personal?.weightKg ?? "",
@@ -319,7 +324,7 @@ export default function ProfileClient(props: {
       if (lastNameRef.current) lastNameRef.current.value = toTitleTR(fresh.lastName ?? "");
       if (emailRef.current) emailRef.current.value = session?.user?.email ?? fresh.email ?? defaults.email;
       if (cityRef.current) cityRef.current.value = toTitleTR(fresh.personal?.city ?? "");
-      if (genderRef.current) genderRef.current.value = normGender(fresh.personal?.gender);
+      if (genderRef.current) genderRef.current.value = normalizeGender(fresh.personal?.gender);
       if (birthRef.current) birthRef.current.value = fresh.personal?.birthDate ?? "";
       if (heightRef.current) heightRef.current.value = (fresh.personal?.heightCm ?? "") as any;
       if (weightRef.current) weightRef.current.value = (fresh.personal?.weightKg ?? "") as any;
@@ -591,8 +596,9 @@ export default function ProfileClient(props: {
                 className={`w-full rounded-lg px-3 py-2 ring-1 bg-white ${editing ? "ring-neutral-300 focus:outline-none focus:ring-2" : "ring-neutral-200/70"}`}
               >
                 <option value=""></option>
-                <option value="Kadın">Kadın</option>
-                <option value="Erkek">Erkek</option>
+                {GENDER_OPTIONS.map((opt) => (
+                  <option key={opt.value} value={opt.value}>{opt.label}</option>
+                ))}
               </select>
             </div>
 
