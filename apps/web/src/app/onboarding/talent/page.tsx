@@ -8,9 +8,15 @@ import { ArrowLeft, ArrowRight, Check } from "lucide-react";
 import { AuthGuard } from "@/components/auth/AuthGuard";
 import AvatarInput from "@/components/AvatarInput";
 
-// ---- Tema renkleri ----
-const BRAND_PRIMARY = "#962901"; // ana koyu
-const BRAND_CREAM = "#F6E6C3";   // açık (metin rengi)
+/* ------------------------------------------------------------------ */
+/* Tema / sabitler                                                     */
+/* ------------------------------------------------------------------ */
+
+const BRAND_PRIMARY = "#962901";
+const BRAND_CREAM = "#F6E6C3";
+
+/* Adres: anasayfa içindeki Discover bölümü */
+const DISCOVER_HASH = "/#discover";
 
 const STEPS = [
   { id: 1, title: "Gizlilik Güvencesi", description: "Verileriniz nasıl korunuyor?" },
@@ -18,23 +24,34 @@ const STEPS = [
   { id: 3, title: "Kişisel Bilgiler", description: "Profil bilgilerinizi girin" },
   { id: 4, title: "Profesyonel Bilgiler", description: "Yetenek bilgilerinizi ekleyin" },
   { id: 5, title: "Tamamlandı", description: "Profiliniz hazır!" },
-];
+] as const;
+
+/* ------------------------------------------------------------------ */
+/* Tipler                                                              */
+/* ------------------------------------------------------------------ */
 
 type FormData = {
   // Step 2 - Account
   firstName: string;
   lastName: string;
-  phone: string; // "+90 535 535 35 35"
+  phone: string; // UI: "+90 5xx xxx xx xx"
   profilePhotoUrl: string | null;
 
   // Step 3 - Personal
-  dateOfBirth: string;
-  gender: string; // "MALE" | "FEMALE"
+  dateOfBirth: string; // YYYY-MM-DD
+  gender: "" | "MALE" | "FEMALE";
   city: string;
   height: string;
   weight: string;
   eyeColor: string;
   hairColor: string;
+
+  // Minor / Guardian
+  parentName: string;
+  parentPhone: string; // UI: "+90 5xx xxx xx xx"
+  guardianRelation: "" | "Anne" | "Baba" | "Vasi" | "Diğer";
+  guardianEmail: string;
+  guardianConsent: boolean;
 
   // Step 4 - Professional
   bio: string;
@@ -44,7 +61,10 @@ type FormData = {
   specialties: string[];
 };
 
-// ---- Yardımcılar ----
+/* ------------------------------------------------------------------ */
+/* Yardımcılar                                                         */
+/* ------------------------------------------------------------------ */
+
 const toTitleTR = (s: string) =>
   (s ?? "")
     .toLocaleLowerCase("tr-TR")
@@ -55,7 +75,7 @@ const toTitleTR = (s: string) =>
 
 const digits = (s: string) => (s ?? "").replace(/\D+/g, "");
 
-/** Kullanıcı state’inde +90 bulunsa bile UI tarafında sadece yerel 10 haneyi işler */
+/** UI içinde +90 yazsa da 10 haneli yerel kısmı döndürür */
 const onlyLocal10 = (s: string) => {
   const d = digits(s);
   return d.startsWith("90") ? d.slice(2) : d;
@@ -69,6 +89,12 @@ const formatTRPhoneBlocks = (raw10: string) => {
   if (d.length > 6) p.push(d.slice(6, 8));
   if (d.length > 8) p.push(d.slice(8, 10));
   return p.join(" ");
+};
+
+/** Sunucuya gönderilecek E.164 (+90XXXXXXXXXX) */
+const toE164TR = (raw10: string) => {
+  const d = digits(raw10).slice(0, 10);
+  return d ? `+90${d}` : "";
 };
 
 const stripCvLines = (text: string) =>
@@ -89,24 +115,66 @@ const filenameFromUrl = (u?: string | null) => {
   }
 };
 
-// Türkçe/İngilizce/birden çok varyantı normalize et
 const normalizeGender = (g: any): "" | "MALE" | "FEMALE" => {
   const v = (g ?? "").toString().trim().toLowerCase();
   if (["erkek", "e", "m", "male", "man", "bay"].includes(v)) return "MALE";
   if (["kadın", "kadin", "k", "f", "female", "woman", "bayan"].includes(v)) return "FEMALE";
-  if (v === "male") return "MALE";
-  if (v === "female") return "FEMALE";
   return "";
 };
 
+const getAge = (isoDate: string) => {
+  if (!isoDate) return NaN;
+  const dob = new Date(isoDate + "T00:00:00");
+  if (isNaN(dob.getTime())) return NaN;
+  const today = new Date();
+  let age = today.getFullYear() - dob.getFullYear();
+  const m = today.getMonth() - dob.getMonth();
+  if (m < 0 || (m === 0 && today.getDate() < dob.getDate())) age--;
+  return age;
+};
+
+/* Derin birleştirme: update içerisindeki değerler baz alınır, undefined göndermez. */
+function deepMerge<T extends Record<string, any>>(base: T, update: Partial<T>): T {
+  const out: any = Array.isArray(base) ? [...(base as any)] : { ...base };
+  for (const key of Object.keys(update)) {
+    const u = (update as any)[key];
+    const b = (base as any)?.[key];
+    if (u === undefined) continue;
+    if (u && typeof u === "object" && !Array.isArray(u) && b && typeof b === "object" && !Array.isArray(b)) {
+      out[key] = deepMerge(b, u);
+    } else {
+      out[key] = u;
+    }
+  }
+  return out;
+}
+
+/* Sadece API’nin kabul etmesi muhtemel alanları bırak */
+function pickProfileShape(src: any) {
+  const clean: any = {};
+  if ("firstName" in src) clean.firstName = src.firstName;
+  if ("lastName" in src) clean.lastName = src.lastName;
+  if ("phone" in src) clean.phone = src.phone;
+  if ("profilePhotoUrl" in src) clean.profilePhotoUrl = src.profilePhotoUrl;
+  if ("personal" in src) clean.personal = src.personal;
+  if ("professional" in src) clean.professional = src.professional;
+  if ("isPublic" in src) clean.isPublic = src.isPublic;
+  if ("is_public" in src) clean.is_public = src.is_public;
+  return clean;
+}
+
+/* ------------------------------------------------------------------ */
+/* Ana içerik                                                          */
+/* ------------------------------------------------------------------ */
+
 function TalentOnboardingContent() {
   const router = useRouter();
+
   const [currentStep, setCurrentStep] = useState(1);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
 
-  // CV (opsiyonel)
   const [cvUrl, setCvUrl] = useState<string | null>(null);
   const [cvUploading, setCvUploading] = useState(false);
 
@@ -114,7 +182,7 @@ function TalentOnboardingContent() {
     // Step 2
     firstName: "",
     lastName: "",
-    phone: "", // "+90 5xx xxx xx xx"
+    phone: "",
     profilePhotoUrl: null,
     // Step 3
     dateOfBirth: "",
@@ -124,6 +192,12 @@ function TalentOnboardingContent() {
     weight: "",
     eyeColor: "",
     hairColor: "",
+    // Minor / Guardian
+    parentName: "",
+    parentPhone: "",
+    guardianRelation: "",
+    guardianEmail: "",
+    guardianConsent: false,
     // Step 4
     bio: "",
     experience: "",
@@ -132,17 +206,24 @@ function TalentOnboardingContent() {
     specialties: [],
   });
 
-  // ---------- Prefill fonksiyonu (geri dönüşte/odak değişiminde yeniden çağrılır) ----------
+  /* -------------------------------------------------------------- */
+  /* Prefill                                                        */
+  /* -------------------------------------------------------------- */
+
   const loadProfile = async () => {
     try {
       const res = await fetch("/api/profile/me", { cache: "no-store" });
+      if (!res.ok) throw new Error("profile_fetch_failed");
       const p = await res.json();
 
-      // Telefonu son 10 hane üzerinden yeniden formatla (905 hatasını önler)
-      const ten = onlyLocal10(p.phone ?? "").slice(0, 10);
-      const phoneFmt = ten ? `+90 ${formatTRPhoneBlocks(ten)}` : "";
+      const userTen = onlyLocal10(p.phone ?? "").slice(0, 10);
+      const phoneFmt = userTen ? `+90 ${formatTRPhoneBlocks(userTen)}` : "";
 
-      // gender farklı path'lerden gelebilir → tek yerden normalize et
+      const gObj = p?.personal?.guardian ?? null;
+      const gPhoneTen = onlyLocal10(gObj?.phone ?? "").slice(0, 10);
+      const gPhoneFmt = gPhoneTen ? `+90 ${formatTRPhoneBlocks(gPhoneTen)}` : "";
+      const gConsent = !!(gObj?.consent ?? gObj?.consentAccepted);
+
       const rawGender = p?.personal?.gender ?? p?.gender ?? "";
 
       setFormData((prev) => ({
@@ -156,12 +237,16 @@ function TalentOnboardingContent() {
         city: p.personal?.city ?? "",
         height: p.personal?.heightCm ? String(p.personal.heightCm) : "",
         weight: p.personal?.weightKg ? String(p.personal.weightKg) : "",
+        parentName: gObj?.fullName ?? "",
+        parentPhone: gPhoneFmt,
+        guardianRelation: (gObj?.relation as any) ?? "",
+        guardianEmail: gObj?.email ?? "",
+        guardianConsent: gConsent,
         bio: p.professional?.bio ?? "",
         experience: stripCvLines(p.professional?.experience ?? ""),
         specialties: Array.isArray(p.professional?.specialties) ? p.professional.specialties : [],
       }));
 
-      // deneyim metninden PDF linkini yakalamayı dene
       const m = (p.professional?.experience ?? "").match(/(https?:\/\/\S+\.pdf)/i);
       setCvUrl(m?.[1] ?? p.professional?.cvUrl ?? null);
     } catch {
@@ -171,86 +256,187 @@ function TalentOnboardingContent() {
     }
   };
 
-  // ---------- Prefill + görünürlük/odak geri geldiğinde tazele ----------
   useEffect(() => {
     let mounted = true;
-
     loadProfile();
-
-    const onFocus = () => mounted && loadProfile();
-    const onVisible = () => {
-      if (document.visibilityState === "visible" && mounted) loadProfile();
-    };
     const onPageShow = (e: PageTransitionEvent) => {
-      // bfcache'den dönüldüyse
       if ((e as any).persisted && mounted) loadProfile();
     };
-
-    window.addEventListener("focus", onFocus);
-    document.addEventListener("visibilitychange", onVisible);
     window.addEventListener("pageshow", onPageShow as any);
-
     return () => {
       mounted = false;
-      window.removeEventListener("focus", onFocus);
-      document.removeEventListener("visibilitychange", onVisible);
       window.removeEventListener("pageshow", onPageShow as any);
     };
   }, []);
 
-  // ---------- tek noktadan save (PUT /api/profile/me) ----------
-  async function saveToServer() {
+  /* -------------------------------------------------------------- */
+  /* Minor kontrolü                                                 */
+  /* -------------------------------------------------------------- */
+
+  const age = useMemo(() => getAge(formData.dateOfBirth), [formData.dateOfBirth]);
+  const isMinor = useMemo(() => Number.isFinite(age) && age < 18, [age]);
+
+  /* -------------------------------------------------------------- */
+  /* Input yardımcıları                                              */
+  /* -------------------------------------------------------------- */
+
+  const onBlurTitleCase = (key: "firstName" | "lastName" | "city") => {
+    setFormData((d) => ({ ...d, [key]: toTitleTR(d[key] as string) }));
+  };
+
+  // User phone (UI)
+  const phoneDigits = useMemo(() => onlyLocal10(formData.phone).slice(0, 10), [formData.phone]);
+  const phoneBlocks = useMemo(() => formatTRPhoneBlocks(phoneDigits), [phoneDigits]);
+
+  const onPhoneInput = (val: string) => {
+    const d = digits(val).slice(0, 10);
+    const fmt = formatTRPhoneBlocks(d);
+    setFormData((f) => ({ ...f, phone: d ? `+90 ${fmt}` : "" }));
+  };
+
+  // Guardian phone (UI)
+  const parentPhoneDigits = useMemo(
+    () => onlyLocal10(formData.parentPhone).slice(0, 10),
+    [formData.parentPhone]
+  );
+  const parentPhoneBlocks = useMemo(
+    () => formatTRPhoneBlocks(parentPhoneDigits),
+    [parentPhoneDigits]
+  );
+
+  const onParentPhoneInput = (val: string) => {
+    const d = digits(val).slice(0, 10);
+    const fmt = formatTRPhoneBlocks(d);
+    setFormData((f) => ({ ...f, parentPhone: d ? `+90 ${fmt}` : "" }));
+  };
+
+  /* -------------------------------------------------------------- */
+  /* KISMİ (STEP-BAZLI) KAYDETME                                    */
+  /* -------------------------------------------------------------- */
+
+  type Scope = "account" | "personal" | "professional";
+  const addIf = (obj: Record<string, any>, key: string, value: any) => {
+    if (
+      value !== undefined &&
+      value !== null &&
+      !(typeof value === "string" && value.trim() === "") &&
+      !(Array.isArray(value) && value.length === 0)
+    ) {
+      obj[key] = value;
+    }
+  };
+
+  async function upsertProfile(payload: any) {
+    const headers = { "Content-Type": "application/json" };
+    const body = JSON.stringify(payload);
+
+    // 1) PATCH dene (ideal senaryo)
+    try {
+      const r = await fetch("/api/profile/me", { method: "PATCH", headers, body });
+      if (r.ok) return true;
+    } catch {
+      /* geç */
+    }
+
+    // 2) PUT tam-replace ise: önce mevcut profili al, derin birleştir, sonra PUT
+    try {
+      const g = await fetch("/api/profile/me", { cache: "no-store" });
+      const current = g.ok ? await g.json() : {};
+      const merged = deepMerge(current || {}, payload || {});
+      const cleaned = pickProfileShape(merged);
+      const r2 = await fetch("/api/profile/me", {
+        method: "PUT",
+        headers,
+        body: JSON.stringify(cleaned),
+      });
+      return r2.ok;
+    } catch {
+      return false;
+    }
+  }
+
+  async function saveToServer(scope?: Scope): Promise<boolean> {
     setSaving(true);
     setMsg(null);
 
-    // CV varsa Deneyim metnine "CV: ..." satırı olarak ekle (çiftlemeyi önle)
+    // CV varsa Deneyim'e tek satır ekle
     let experienceToSave = stripCvLines(formData.experience);
     if (cvUrl && !experienceToSave.includes(cvUrl)) {
       experienceToSave = `${experienceToSave ? experienceToSave + "\n\n" : ""}CV: ${cvUrl}`;
     }
 
     try {
-      // Kişisel alanları DOLU olanlarla sınırlı gönder → boşlarla ezme!
-      const personal: Record<string, any> = {};
-      if (formData.city.trim()) personal.city = formData.city.trim();
-      if (formData.dateOfBirth) personal.birthDate = formData.dateOfBirth;
-      if (formData.gender) personal.gender = normalizeGender(formData.gender);
-      if (formData.height) personal.heightCm = Number(formData.height);
-      if (formData.weight) personal.weightKg = Number(formData.weight);
+      const payload: Record<string, any> = {};
 
-      const professional: Record<string, any> = {
-        bio: formData.bio || "",
-        experience: experienceToSave || "",
-        specialties: formData.specialties || [],
-      };
+      if (!scope || scope === "account") {
+        addIf(payload, "firstName", formData.firstName.trim());
+        addIf(payload, "lastName", formData.lastName.trim());
+        const e164 = toE164TR(phoneDigits);
+        if (e164) addIf(payload, "phone", e164);
+        addIf(payload, "profilePhotoUrl", formData.profilePhotoUrl);
+      }
 
-      const payload: Record<string, any> = {
-        firstName: formData.firstName || null,
-        lastName: formData.lastName || null,
-        phone: formData.phone || null,
-        profilePhotoUrl: formData.profilePhotoUrl || null,
-        professional,
-      };
+      if (!scope || scope === "personal") {
+        const personal: Record<string, any> = {};
+        addIf(personal, "city", formData.city.trim());
+        addIf(personal, "birthDate", formData.dateOfBirth);
+        addIf(personal, "gender", normalizeGender(formData.gender));
+        if (formData.height) addIf(personal, "heightCm", Number(formData.height));
+        if (formData.weight) addIf(personal, "weightKg", Number(formData.weight));
 
-      if (Object.keys(personal).length > 0) payload.personal = personal;
+        const parentTen = parentPhoneDigits;
+        if (
+          isMinor ||
+          formData.parentName.trim() ||
+          parentTen ||
+          formData.guardianRelation ||
+          formData.guardianEmail ||
+          formData.guardianConsent
+        ) {
+          const guardian: Record<string, any> = {};
+          addIf(guardian, "fullName", formData.parentName.trim());
+          addIf(guardian, "relation", formData.guardianRelation);
+          if (parentTen) addIf(guardian, "phone", toE164TR(parentTen));
+          addIf(guardian, "email", formData.guardianEmail.trim());
+          if (formData.guardianConsent) {
+            guardian.consent = true;
+            guardian.consentAccepted = true;
+          }
+          addIf(personal, "guardian", guardian);
+        }
 
-      const res = await fetch("/api/profile/me", {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
+        if (Object.keys(personal).length) payload.personal = personal;
+      }
 
-      if (!res.ok) throw new Error("save_failed");
+      if (!scope || scope === "professional") {
+        const professional: Record<string, any> = {};
+        addIf(professional, "bio", formData.bio.trim());
+        addIf(professional, "experience", experienceToSave.trim());
+        addIf(professional, "specialties", formData.specialties);
+        if (Object.keys(professional).length) payload.professional = professional;
+      }
+
+      if (Object.keys(payload).length === 0) return true;
+
+      const ok = await upsertProfile(payload);
+      if (!ok) {
+        setMsg("Kaydetme hatası");
+        return false;
+      }
       setMsg("Kaydedildi");
-      router.refresh();
+      return true;
     } catch {
       setMsg("Kaydetme hatası");
+      return false;
     } finally {
       setSaving(false);
     }
   }
 
-  // ---------- Validasyon (UI bloklama) ----------
+  /* -------------------------------------------------------------- */
+  /* Validasyon                                                     */
+  /* -------------------------------------------------------------- */
+
   const validateCurrentStep = (): string | null => {
     if (currentStep === 2) {
       if (!formData.firstName.trim()) return "Lütfen adınızı girin.";
@@ -258,31 +444,61 @@ function TalentOnboardingContent() {
       const d = onlyLocal10(formData.phone);
       if (d.length !== 10) return "Telefon numarası +90 dışında 10 haneli olmalıdır.";
     }
+
     if (currentStep === 3) {
       if (!formData.dateOfBirth) return "Doğum tarihi zorunludur.";
       if (!["MALE", "FEMALE"].includes(formData.gender)) return "Cinsiyet seçiniz.";
       if (!formData.city.trim()) return "Şehir zorunludur.";
-      if (!/^\d+$/.test(formData.height) || Number(formData.height) <= 0) return "Boy (cm) sadece sayı olmalıdır.";
-      if (!/^\d+$/.test(formData.weight) || Number(formData.weight) <= 0) return "Kilo (kg) sadece sayı olmalıdır.";
+      if (!/^\d+$/.test(formData.height) || Number(formData.height) <= 0)
+        return "Boy (cm) sadece sayı olmalıdır.";
+      if (!/^\d+$/.test(formData.weight) || Number(formData.weight) <= 0)
+        return "Kilo (kg) sadece sayı olmalıdır.";
+
+      if (isMinor) {
+        if (!formData.parentName.trim())
+          return "18 yaş altı için ebeveyn/vasi adı soyadı zorunludur.";
+        const pd = onlyLocal10(formData.parentPhone);
+        if (pd.length !== 10)
+          return "Ebeveyn/vasi telefon numarası +90 dışında 10 haneli olmalıdır.";
+        if (!formData.guardianRelation) return "Yakınlık seçiniz.";
+        if (
+          formData.guardianEmail &&
+          !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.guardianEmail)
+        )
+          return "Geçerli bir e-posta giriniz.";
+        if (!formData.guardianConsent)
+          return "Yasal veli/vasi onayı olmadan devam edemezsiniz.";
+      }
     }
+
     if (currentStep === 4) {
       if (!formData.bio.trim()) return "Biyografi zorunludur.";
-      if (!formData.experience.trim() && !cvUrl) return "Deneyim metni boşsa bir CV yükleyin veya metin girin.";
-      if (formData.specialties.length === 0) return "En az bir uzmanlık alanı seçin.";
+      if (!formData.experience.trim() && !cvUrl)
+        return "Deneyim metni boşsa bir CV yükleyin veya metin girin.";
+      if (formData.specialties.length === 0)
+        return "En az bir uzmanlık alanı seçin.";
     }
     return null;
   };
 
-  // ---------- Adım geçişleri ----------
+  /* -------------------------------------------------------------- */
+  /* Adım geçişleri / bitir                                          */
+  /* -------------------------------------------------------------- */
+
   const handleNext = async () => {
     const err = validateCurrentStep();
     if (err) {
       setMsg(err);
       return;
     }
-    if ([2, 3, 4].includes(currentStep)) {
-      await saveToServer();
-    }
+
+    let ok = true;
+    if (currentStep === 2) ok = await saveToServer("account");
+    if (currentStep === 3) ok = await saveToServer("personal");
+    if (currentStep === 4) ok = await saveToServer("professional");
+
+    if (!ok) return;
+
     if (currentStep < STEPS.length) {
       setCurrentStep((s) => s + 1);
       setMsg(null);
@@ -294,453 +510,426 @@ function TalentOnboardingContent() {
       router.push("/");
       return;
     }
-    if ([2, 3, 4].includes(currentStep)) {
-      await saveToServer();
-    }
+    let ok = true;
+    if (currentStep === 2) ok = await saveToServer("account");
+    if (currentStep === 3) ok = await saveToServer("personal");
+    if (currentStep === 4) ok = await saveToServer("professional");
+    if (!ok) return;
+
     setCurrentStep((s) => Math.max(1, s - 1));
   };
 
-  const handleSubmit = async () => {
-    await saveToServer();
-    try {
-      await fetch("/api/onboarding/talent/complete", { method: "POST" });
-    } finally {
-      router.push("/profile");
+  const publishProfile = async (): Promise<boolean> => {
+    // Discover için asıl kritik bayrak
+    const ok = await upsertProfile({ isPublic: true, is_public: true });
+    if (!ok) {
+      setMsg("Profil yayınlama hatası");
+      return false;
     }
+    // Onboarding complete başarısızsa uyarı ver ama akışı durdurma
+    try {
+      const c = await fetch("/api/onboarding/talent/complete", { method: "POST" });
+      if (!c.ok) setMsg("Onboarding servisi yanıtsız (devam ediliyor).");
+    } catch {
+      setMsg("Onboarding servisine erişilemedi (devam ediliyor).");
+    }
+    return true;
   };
 
-  // ---------- Fotoğraf değişimi ----------
+  const handleSubmit = async () => {
+    const okSave = await saveToServer("professional");
+    if (!okSave) return;
+
+    const okPub = await publishProfile();
+    if (!okPub) return;
+
+    router.push(DISCOVER_HASH);
+  };
+
+  /* -------------------------------------------------------------- */
+  /* Fotoğraf değişimi                                               */
+  /* -------------------------------------------------------------- */
+
   function handleAvatarChange(url?: string | null) {
     setFormData((d) => ({ ...d, profilePhotoUrl: url || null }));
   }
 
-  // ---------- İsim/soyisim/şehir normalize ----------
-  const onBlurTitleCase = (key: "firstName" | "lastName" | "city") => {
-    setFormData((d) => ({ ...d, [key]: toTitleTR(d[key] as string) }));
-  };
+  /* -------------------------------------------------------------- */
+  /* Step içerikleri                                                 */
+  /* -------------------------------------------------------------- */
 
-  // ---------- Telefon: +90 sabit + sağ taraf 10 hane ----------
-  const phoneDigits = useMemo(() => onlyLocal10(formData.phone).slice(0, 10), [formData.phone]);
-  const phoneBlocks = useMemo(() => formatTRPhoneBlocks(phoneDigits), [phoneDigits]);
+  const SPECIALTY_OPTIONS = ["Oyunculuk", "Tiyatro", "Modellik", "Müzik", "Dans", "Dublaj"];
 
-  const onPhoneInput = (val: string) => {
-    const d = digits(val).slice(0, 10);
-    const fmt = formatTRPhoneBlocks(d);
-    setFormData((f) => ({ ...f, phone: d ? `+90 ${fmt}` : "" }));
-  };
+  const toggleSpecialty = (name: string) =>
+    setFormData((f) => {
+      const has = f.specialties.includes(name);
+      return { ...f, specialties: has ? f.specialties.filter((x) => x !== name) : [...f.specialties, name] };
+    });
 
-  const blockNonDigitKeys = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    const allowed = ["Backspace", "Delete", "ArrowLeft", "ArrowRight", "Tab", "Home", "End"];
-    if (allowed.includes(e.key)) return;
-    if (!/^\d$/.test(e.key)) e.preventDefault();
-  };
-
-  // ---------- CV yükleme (opsiyonel) ----------
-  async function handleCvSelect(file?: File) {
-    if (!file) return;
-    if (file.type !== "application/pdf") {
-      setMsg("Sadece PDF dosyası yüklenebilir.");
-      return;
-    }
-    if (file.size > 5 * 1024 * 1024) {
-      setMsg("CV yüklenemedi: Dosya boyutu 5 MB'ı aşamaz.");
-      return;
-    }
-    setCvUploading(true);
-    try {
-      const fd = new FormData();
-      fd.append("file", file);
-      const up = await fetch("/api/upload", { method: "POST", body: fd });
-      if (!up.ok) throw new Error("upload failed");
-      const data = await up.json(); // { url }
-      const url = data.url as string;
-      setCvUrl(url);
-      // Deneyim metnine ekle (varsa önceki CV satırlarını temizle)
-      setFormData((f) => {
-        const clean = stripCvLines(f.experience);
-        const withCv = `${clean ? clean + "\n\n" : ""}CV: ${url}`;
-        return { ...f, experience: withCv };
-      });
-      setMsg("CV yüklendi.");
-    } catch {
-      setMsg("CV yüklenemedi.");
-    } finally {
-      setCvUploading(false);
-    }
-  }
-
-  function removeCv() {
-    setCvUrl(null);
-    setFormData((f) => ({ ...f, experience: stripCvLines(f.experience) }));
-  }
-
-  // ---------- UI ----------
-  if (loading) {
+  function renderStep1() {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-black via-neutral-900 to-black grid place-items-center">
-        <div className="text-white/70">Yükleniyor…</div>
+      <div className="space-y-4">
+        <h2 className="text-xl font-semibold">Gizlilik ve Güvenlik</h2>
+        <p className="opacity-80">
+          Castlyo olarak kişisel verilerinizi yalnızca başvurularınızı değerlendirmek ve size uygun
+          fırsatları sunabilmek için işleriz. Dilediğiniz an profilinizdeki verileri silebilir veya
+          düzenleyebilirsiniz.
+        </p>
       </div>
     );
   }
 
-  const renderStepContent = () => {
+  function renderStep2() {
+    return (
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div>
+          <label className="text-xs opacity-80">Ad</label>
+          <Input
+            value={formData.firstName}
+            onChange={(e) => setFormData({ ...formData, firstName: e.target.value })}
+            onBlur={() => onBlurTitleCase("firstName")}
+            placeholder="Ad"
+          />
+        </div>
+        <div>
+          <label className="text-xs opacity-80">Soyad</label>
+          <Input
+            value={formData.lastName}
+            onChange={(e) => setFormData({ ...formData, lastName: e.target.value })}
+            onBlur={() => onBlurTitleCase("lastName")}
+            placeholder="Soyad"
+          />
+        </div>
+
+        <div className="md:col-span-2">
+          <label className="text-xs opacity-80">Telefon</label>
+          <div className="flex gap-2 items-center">
+            <span className="px-3 py-2 rounded-md bg-white/90 text-black ring-1 ring-neutral-300 select-none">
+              +90
+            </span>
+            <Input
+              value={phoneBlocks}
+              onChange={(e) => onPhoneInput(e.target.value)}
+              placeholder="5xx xxx xx xx"
+            />
+          </div>
+          <div className="text-[11px] opacity-70 mt-1">
+            Sunucuya şu formatta kaydedilir: {phoneDigits ? `+90${phoneDigits}` : "-"}
+          </div>
+        </div>
+
+        <div className="md:col-span-2">
+          <label className="text-xs opacity-80 block mb-2">Profil Fotoğrafı</label>
+          <AvatarInput value={formData.profilePhotoUrl} onChange={handleAvatarChange} />
+        </div>
+      </div>
+    );
+  }
+
+  function renderStep3() {
+    return (
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div>
+          <label className="text-xs opacity-80">Doğum Tarihi</label>
+          <Input
+            type="date"
+            value={formData.dateOfBirth}
+            onChange={(e) => setFormData({ ...formData, dateOfBirth: e.target.value })}
+          />
+          <div className="text-[11px] opacity-70 mt-1">{Number.isFinite(age) ? `Yaş: ${age}` : ""}</div>
+        </div>
+
+        <div>
+          <label className="text-xs opacity-80">Cinsiyet</label>
+          <select
+            className="w-full rounded-md px-3 py-2 bg-white/90 text-black ring-1 ring-neutral-300"
+            value={formData.gender}
+            onChange={(e) => setFormData({ ...formData, gender: e.target.value as FormData["gender"] })}
+          >
+            <option value="">Seçiniz</option>
+            <option value="MALE">Erkek</option>
+            <option value="FEMALE">Kadın</option>
+          </select>
+        </div>
+
+        <div>
+          <label className="text-xs opacity-80">Şehir</label>
+          <Input
+            value={formData.city}
+            onChange={(e) => setFormData({ ...formData, city: e.target.value })}
+            onBlur={() => onBlurTitleCase("city")}
+          />
+        </div>
+
+        <div>
+          <label className="text-xs opacity-80">Boy (cm)</label>
+          <Input
+            inputMode="numeric"
+            pattern="[0-9]*"
+            value={formData.height}
+            onChange={(e) => setFormData({ ...formData, height: e.target.value.replace(/\D+/g, "") })}
+          />
+        </div>
+
+        <div>
+          <label className="text-xs opacity-80">Kilo (kg)</label>
+          <Input
+            inputMode="numeric"
+            pattern="[0-9]*"
+            value={formData.weight}
+            onChange={(e) => setFormData({ ...formData, weight: e.target.value.replace(/\D+/g, "") })}
+          />
+        </div>
+
+        {isMinor && (
+          <div className="md:col-span-2">
+            <div className="rounded-xl p-4 ring-1 ring-orange-400/30 bg-orange-500/5">
+              <div className="font-medium mb-3">
+                Bu profil <span className="font-semibold">18 yaş altı</span>. Lütfen aşağıdaki veli/vasi
+                bilgilerini doldurun.
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="text-xs opacity-80">Veli/Vasi Adı Soyadı</label>
+                  <Input
+                    value={formData.parentName}
+                    onChange={(e) => setFormData({ ...formData, parentName: e.target.value })}
+                    placeholder="Ad Soyad"
+                  />
+                </div>
+
+                <div>
+                  <label className="text-xs opacity-80">Veli/Vasi Telefonu</label>
+                  <div className="flex gap-2 items-center">
+                    <span className="px-3 py-2 rounded-md bg-white/90 text-black ring-1 ring-neutral-300 select-none">
+                      +90
+                    </span>
+                    <Input
+                      value={parentPhoneBlocks}
+                      onChange={(e) => onParentPhoneInput(e.target.value)}
+                      placeholder="5xx xxx xx xx"
+                    />
+                  </div>
+                  <div className="text-[11px] opacity-70 mt-1">
+                    Sunucuya şu formatta kaydedilir: {parentPhoneDigits ? `+90${parentPhoneDigits}` : "-"}
+                  </div>
+                </div>
+
+                <div>
+                  <label className="text-xs opacity-80">Yakınlık</label>
+                  <select
+                    className="w-full rounded-md px-3 py-2 bg-white/90 text-black ring-1 ring-neutral-300"
+                    value={formData.guardianRelation}
+                    onChange={(e) =>
+                      setFormData({ ...formData, guardianRelation: e.target.value as FormData["guardianRelation"] })
+                    }
+                  >
+                    <option value="">Seçiniz</option>
+                    <option value="Anne">Anne</option>
+                    <option value="Baba">Baba</option>
+                    <option value="Vasi">Vasi</option>
+                    <option value="Diğer">Diğer</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="text-xs opacity-80">Veli/Vasi E-posta (opsiyonel)</label>
+                  <Input
+                    type="email"
+                    value={formData.guardianEmail}
+                    onChange={(e) => setFormData({ ...formData, guardianEmail: e.target.value })}
+                    placeholder="ornek@eposta.com"
+                  />
+                </div>
+
+                <label className="md:col-span-2 flex items-center gap-3 text-sm">
+                  <input
+                    type="checkbox"
+                    checked={formData.guardianConsent}
+                    onChange={(e) => setFormData({ ...formData, guardianConsent: e.target.checked })}
+                  />
+                  <span>Yasal veli/vasi olarak onay veriyorum.</span>
+                </label>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  function renderStep4() {
+    return (
+      <div className="space-y-6">
+        <div>
+          <label className="text-xs opacity-80">Biyografi</label>
+          <textarea
+            className="w-full rounded-md bg-white/90 text-black ring-1 ring-neutral-300 px-3 py-2 min-h-[120px]"
+            value={formData.bio}
+            onChange={(e) => setFormData({ ...formData, bio: e.target.value })}
+            placeholder="Kendini kısaca tanıt…"
+          />
+        </div>
+
+        <div>
+          <label className="text-xs opacity-80">Deneyim</label>
+          <textarea
+            className="w-full rounded-md bg-white/90 text-black ring-1 ring-neutral-300 px-3 py-2 min-h-[140px]"
+            value={formData.experience}
+            onChange={(e) => setFormData({ ...formData, experience: e.target.value })}
+            placeholder="Sahne/ekran deneyimleri, eğitim vb."
+          />
+        </div>
+
+        <div>
+          <label className="text-xs opacity-80 block mb-2">Uzmanlıklar</label>
+          <div className="flex flex-wrap gap-2">
+            {["Oyunculuk", "Tiyatro", "Modellik", "Müzik", "Dans", "Dublaj"].map((s) => {
+              const active = formData.specialties.includes(s);
+              return (
+                <button
+                  type="button"
+                  key={s}
+                  onClick={() => toggleSpecialty(s)}
+                  className={`px-3 py-1.5 rounded-full ring-1 text-sm ${
+                    active
+                      ? "bg-green-500/10 text-green-700 ring-green-500/30"
+                      : "bg-white/70 text-neutral-700 ring-neutral-300"
+                  }`}
+                >
+                  {s}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        <div className="rounded-xl p-4 ring-1 ring-neutral-300 bg-white/70 text-neutral-800">
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <div className="text-sm font-medium">CV</div>
+              <div className="text-xs opacity-70">
+                {cvUrl ? (
+                  <>
+                    Yüklü: <span className="font-medium">{filenameFromUrl(cvUrl)}</span>
+                  </>
+                ) : (
+                  "Yüklenmiş CV yok"
+                )}
+              </div>
+            </div>
+            <label className="inline-flex items-center gap-2 px-3 py-2 rounded-lg ring-1 ring-neutral-300 cursor-pointer hover:bg-neutral-50">
+              <input
+                type="file"
+                accept="application/pdf"
+                className="hidden"
+                onChange={async (e) => {
+                  const f = e.target.files?.[0];
+                  if (!f) return;
+                  if (f.size > 5 * 1024 * 1024) {
+                    setMsg("CV yüklenemedi: Dosya boyutu 5 MB'ı aşamaz.");
+                    return;
+                  }
+                  setCvUploading(true);
+                  try {
+                    const fd = new FormData();
+                    fd.append("file", f);
+                    const up = await fetch("/api/upload", { method: "POST", body: fd });
+                    if (!up.ok) throw new Error("upload failed");
+                    const data = await up.json();
+                    setCvUrl(data.url ?? null);
+                    setMsg("CV yüklendi.");
+                  } catch {
+                    setMsg("CV yüklenemedi.");
+                  } finally {
+                    setCvUploading(false);
+                  }
+                }}
+              />
+              <span>{cvUploading ? "Yükleniyor…" : "CV Yükle"}</span>
+            </label>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  function renderStep5() {
+    return (
+      <div className="text-center space-y-4">
+        <div className="mx-auto w-16 h-16 grid place-items-center rounded-full bg-green-500/10 ring-1 ring-green-500/30 text-green-700">
+          <Check className="w-8 h-8" />
+        </div>
+        <h3 className="text-xl font-semibold">Harika! Başvurun hazır.</h3>
+        <p className="opacity-80">
+          “Yetenekleri ve Fırsatları Keşfet” bölümüne giderek size uygun projelere göz atabilirsiniz.
+        </p>
+        <div className="pt-2">
+          <Button className="text-white" style={{ backgroundColor: BRAND_PRIMARY }} onClick={handleSubmit}>
+            Keşfet’e Git
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
+  function renderStepContent() {
+    if (loading) return <div>Yükleniyor…</div>;
     switch (currentStep) {
       case 1:
-        return (
-          <div className="space-y-6 text-center" style={{ color: BRAND_CREAM }}>
-            <div className="w-20 h-20 rounded-full flex items-center justify-center mx-auto"
-                 style={{ backgroundColor: `${BRAND_PRIMARY}22` }}>
-              <div className="text-4xl">🔒</div>
-            </div>
-
-            <h2 className="text-2xl font-bold">Verileriniz Güvende</h2>
-
-            <p className="text-lg opacity-80">
-              Castlyo'da gizliliğiniz bizim önceliğimizdir. İşte size verdiğimiz güvenceler:
-            </p>
-
-            <div className="grid gap-6 text-left">
-              <div className="rounded-xl p-6 ring-1" style={{ backgroundColor: "#16a34a22", borderColor: "#16a34a33" }}>
-                <div className="flex items-start gap-4">
-                  <div className="w-12 h-12 rounded-lg grid place-items-center" style={{ backgroundColor: "#16a34a22" }}>
-                    <span className="text-2xl">✋</span>
-                  </div>
-                  <div className="text-green-200">
-                    <h3 className="text-lg font-semibold mb-2">Bilgilerin Sadece Onayınla Paylaşılır</h3>
-                    <p className="opacity-80">E-posta ve telefon numaranız hiçbir zaman otomatik olarak paylaşılmaz. Her ajansla iletişim için ayrı onayınız alınır.</p>
-                  </div>
-                </div>
-              </div>
-
-              <div className="rounded-xl p-6 ring-1" style={{ backgroundColor: "#3b82f622", borderColor: "#3b82f633" }}>
-                <div className="flex items-start gap-4">
-                  <div className="w-12 h-12 rounded-lg grid place-items-center" style={{ backgroundColor: "#3b82f622" }}>
-                    <span className="text-2xl">👁️</span>
-                  </div>
-                  <div className="text-blue-200">
-                    <h3 className="text-lg font-semibold mb-2">Ajanslar Seni Platform İçinden Görür</h3>
-                    <p className="opacity-80">Profilin herkese açık ama iletişim bilgilerin gizli. Ajanslar sadece yeteneklerini, deneyimini ve portföyünü görür.</p>
-                  </div>
-                </div>
-              </div>
-
-              <div className="rounded-xl p-6 ring-1" style={{ backgroundColor: "#8b5cf622", borderColor: "#8b5cf633" }}>
-                <div className="flex items-start gap-4">
-                  <div className="w-12 h-12 rounded-lg grid place-items-center" style={{ backgroundColor: "#8b5cf622" }}>
-                    <span className="text-2xl">⚙️</span>
-                  </div>
-                  <div className="text-purple-200">
-                    <h3 className="text-lg font-semibold mb-2">İstediğin Zaman Onayını Geri Çekebilirsin</h3>
-                    <p className="opacity-80">Ayarlar menüsünden izinleri yönetebilir, istediğin zaman ajanslarla paylaşımı durdurabilirsin.</p>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <div className="rounded-lg p-4 mt-6 ring-1" style={{ backgroundColor: "#eab30822", borderColor: "#eab30833" }}>
-              <p className="text-sm text-yellow-200">
-                <strong>📋 KVKK Uyumu:</strong> Tüm işlemlerimiz 6698 sayılı Kişisel Verilerin Korunması Kanunu'na uygun olarak gerçekleştirilir.
-              </p>
-            </div>
-          </div>
-        );
-
+        return renderStep1();
       case 2:
-        return (
-          <div className="space-y-4" style={{ color: BRAND_CREAM }}>
-            <h2 className="text-2xl font-bold">Hesap Bilgileri</h2>
-
-            {/* AvatarInput içeriğini krem renge çekiyoruz */}
-            <div className="[&_*]:!text-[color:var(--cream)] mb-6" style={{ ["--cream" as any]: BRAND_CREAM }}>
-              <AvatarInput
-                label="Profil Fotoğrafı"
-                value={formData.profilePhotoUrl ?? ""}
-                onChange={(url) => handleAvatarChange(url)}
-              />
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium mb-2">Ad</label>
-                <Input
-                  value={formData.firstName}
-                  onChange={(e) => setFormData({ ...formData, firstName: e.target.value })}
-                  onBlur={() => onBlurTitleCase("firstName")}
-                  className="bg-white/10 border-white/20 placeholder:text-[color:var(--cream)]/60"
-                  style={{ color: BRAND_CREAM }}
-                  placeholder="Adınız"
-                  required
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium mb-2">Soyad</label>
-                <Input
-                  value={formData.lastName}
-                  onChange={(e) => setFormData({ ...formData, lastName: e.target.value })}
-                  onBlur={() => onBlurTitleCase("lastName")}
-                  className="bg-white/10 border-white/20 placeholder:text-[color:var(--cream)]/60"
-                  style={{ color: BRAND_CREAM }}
-                  placeholder="Soyadınız"
-                  required
-                />
-              </div>
-            </div>
-
-            {/* Telefon: +90 sabit + 10 hane (905 bug fix) */}
-            <div>
-              <label className="block text-sm font-medium mb-2">Telefon Numarası</label>
-              <div className="flex rounded-lg overflow-hidden ring-1 ring-white/20">
-                <span className="select-none px-3 py-2 bg-white/10" style={{ color: BRAND_CREAM }}>+90</span>
-                <input
-                  value={phoneBlocks}
-                  onChange={(e) => onPhoneInput(e.target.value)}
-                  onKeyDown={blockNonDigitKeys}
-                  inputMode="numeric"
-                  pattern="[0-9]*"
-                  placeholder="5xx xxx xx xx"
-                  className="flex-1 bg-white/10 px-3 py-2 outline-none"
-                  style={{ color: BRAND_CREAM }}
-                />
-              </div>
-              {/* form state tam numarayı şu biçimde tutuyor: "+90 535 535 35 35" */}
-              <input type="hidden" value={formData.phone} readOnly />
-            </div>
-
-            <div className="rounded-lg p-4 mt-6 ring-1" style={{ backgroundColor: `${BRAND_CREAM}14`, borderColor: `${BRAND_CREAM}33`, color: BRAND_CREAM }}>
-              <p className="text-sm">
-                <strong>🔒 Gizlilik:</strong> Bu bilgiler sadece profilinizin tamamlanması için gereklidir. İletişim bilgileriniz sadece onayınızla paylaşılır.
-              </p>
-            </div>
-          </div>
-        );
-
+        return renderStep2();
       case 3:
-        return (
-          <div className="space-y-4" style={{ color: BRAND_CREAM }}>
-            <h2 className="text-2xl font-bold">Kişisel Bilgiler</h2>
-
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium mb-2">Doğum Tarihi</label>
-                <Input
-                  type="date"
-                  value={formData.dateOfBirth}
-                  onChange={(e) => setFormData({ ...formData, dateOfBirth: e.target.value })}
-                  className="bg-white/10 border-white/20"
-                  style={{ color: BRAND_CREAM }}
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium mb-2">Cinsiyet</label>
-                <select
-                  value={formData.gender}
-                  onChange={(e) => setFormData({ ...formData, gender: e.target.value })}
-                  className="w-full rounded-lg bg-black/40 border border-[color:var(--cream)]/20 px-3 py-2"
-                  style={{ color: BRAND_CREAM }}
-                >
-                  <option value="" className="bg-black" style={{ color: BRAND_CREAM }}>Seçin</option>
-                  <option value="MALE" className="bg-black" style={{ color: BRAND_CREAM }}>Erkek</option>
-                  <option value="FEMALE" className="bg-black" style={{ color: BRAND_CREAM }}>Kadın</option>
-                </select>
-              </div>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium mb-2">Şehir</label>
-              <Input
-                value={formData.city}
-                onChange={(e) => setFormData({ ...formData, city: e.target.value })}
-                onBlur={() => onBlurTitleCase("city")}
-                className="bg-white/10 border-white/20 placeholder:text-[color:var(--cream)]/60"
-                style={{ color: BRAND_CREAM }}
-                placeholder="İstanbul"
-              />
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium mb-2">Boy (cm)</label>
-                <Input
-                  type="number"
-                  inputMode="numeric"
-                  value={formData.height}
-                  onChange={(e) => setFormData({ ...formData, height: e.target.value.replace(/\D+/g, "") })}
-                  onKeyDown={blockNonDigitKeys}
-                  className="bg-white/10 border-white/20 placeholder:text-[color:var(--cream)]/60"
-                  style={{ color: BRAND_CREAM }}
-                  placeholder="175"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium mb-2">Kilo (kg)</label>
-                <Input
-                  type="number"
-                  inputMode="numeric"
-                  value={formData.weight}
-                  onChange={(e) => setFormData({ ...formData, weight: e.target.value.replace(/\D+/g, "") })}
-                  onKeyDown={blockNonDigitKeys}
-                  className="bg-white/10 border-white/20 placeholder:text-[color:var(--cream)]/60"
-                  style={{ color: BRAND_CREAM }}
-                  placeholder="70"
-                />
-              </div>
-            </div>
-          </div>
-        );
-
+        return renderStep3();
       case 4:
-        return (
-          <div className="space-y-4" style={{ color: BRAND_CREAM }}>
-            <h2 className="text-2xl font-bold">Profesyonel Bilgiler</h2>
-
-            <div>
-              <label className="block text-sm font-medium mb-2">Biyografi</label>
-              <textarea
-                value={formData.bio}
-                onChange={(e) => setFormData({ ...formData, bio: e.target.value })}
-                className="w-full rounded-lg bg-white/10 border border-white/20 px-3 py-2 min-h-[100px] placeholder:text-[color:var(--cream)]/60"
-                style={{ color: BRAND_CREAM }}
-                placeholder="Kendinizden bahsedin..."
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium mb-2">Deneyim</label>
-              <textarea
-                value={formData.experience}
-                onChange={(e) => setFormData({ ...formData, experience: e.target.value })}
-                className="w-full rounded-lg bg-white/10 border border-white/20 px-3 py-2 min-h-[100px] placeholder:text-[color:var(--cream)]/60"
-                style={{ color: BRAND_CREAM }}
-                placeholder="Profesyonel deneyimlerinizi yazın..."
-              />
-              {/* CV (opsiyonel) */}
-              <div className="mt-3 flex flex-wrap items-center gap-3">
-                <label
-                  className={`cursor-pointer rounded-lg px-3 py-2 text-sm ring-1 ring-white/20 bg-white/10 ${cvUploading ? "opacity-60 pointer-events-none" : ""}`}
-                  style={{ color: BRAND_CREAM }}
-                  title="PDF yükle"
-                >
-                  PDF Ekle (≤ 5 MB)
-                  <input
-                    type="file"
-                    accept="application/pdf"
-                    className="hidden"
-                    onChange={(e) => handleCvSelect(e.target.files?.[0] ?? undefined)}
-                  />
-                </label>
-
-                {cvUrl && (
-                  <>
-                    <a href={cvUrl} target="_blank" rel="noreferrer" className="text-sm underline"
-                       style={{ color: BRAND_CREAM }}>
-                      {filenameFromUrl(cvUrl) || "CV.pdf"}
-                    </a>
-                    <button type="button" className="text-sm underline opacity-80" onClick={removeCv}
-                            style={{ color: BRAND_CREAM }}>
-                      Kaldır
-                    </button>
-                  </>
-                )}
-              </div>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium mb-2">Uzmanlık Alanları</label>
-              <div className="grid grid-cols-2 gap-2">
-                {["Oyunculuk", "Modellik", "Müzik", "Dans", "Dublaj", "Tiyatro"].map((specialty) => (
-                  <label key={specialty} className="flex items-center gap-2">
-                    <input
-                      type="checkbox"
-                      checked={formData.specialties.includes(specialty)}
-                      onChange={(e) => {
-                        if (e.target.checked) {
-                          setFormData({ ...formData, specialties: [...formData.specialties, specialty] });
-                        } else {
-                          setFormData({ ...formData, specialties: formData.specialties.filter((s) => s !== specialty) });
-                        }
-                      }}
-                      className="rounded border-white/20 bg-white/10"
-                    />
-                    <span className="text-sm" style={{ color: BRAND_CREAM }}>{specialty}</span>
-                  </label>
-                ))}
-              </div>
-            </div>
-          </div>
-        );
-
-      case 5:
-        return (
-          <div className="text-center space-y-6">
-            <div className="w-20 h-20 rounded-full flex items-center justify-center mx-auto" style={{ backgroundColor: BRAND_PRIMARY }}>
-              <Check className="w-10 h-10 text-white" />
-            </div>
-
-            <h2 className="text-3xl font-bold" style={{ color: BRAND_CREAM }}>Tebrikler! 🎉</h2>
-
-            <p className="text-lg opacity-80" style={{ color: BRAND_CREAM }}>
-              Profiliniz başarıyla oluşturuldu. Artık casting fırsatlarını keşfetmeye başlayabilirsiniz!
-            </p>
-
-            <div className="rounded-lg p-4" style={{ backgroundColor: "#22c55e22", border: "1px solid #22c55e55" }}>
-              <p className="text-sm text-green-200">
-                <strong>🔒 Gizlilik Güvencesi:</strong> Profiliniz oluşturuldu ancak iletişim bilgileriniz sadece onayınızla ajanslarla
-                paylaşılacak. Platform dışında hiçbir şekilde paylaşılmaz.
-              </p>
-            </div>
-
-            <Button
-              onClick={handleSubmit}
-              className="w-full text-white font-semibold py-3"
-              style={{ backgroundColor: BRAND_PRIMARY }}
-            >
-              Profilime Git
-            </Button>
-          </div>
-        );
-
+        return renderStep4();
       default:
-        return null;
+        return renderStep5();
     }
-  };
+  }
+
+  /* -------------------------------------------------------------- */
+  /* Render                                                          */
+  /* -------------------------------------------------------------- */
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-black via-neutral-900 to-black">
-      <div className="container mx-auto px-4 py-8">
-        {/* Progress Bar */}
-        <div className="mb-8">
-          <div className="flex items-center justify-between mb-4">
-            {STEPS.map((step) => (
-              <div key={step.id} className={`flex items-center ${step.id < STEPS.length ? "flex-1" : ""}`}>
-                <div
-                  className="w-10 h-10 rounded-full flex items-center justify-center text-sm font-semibold"
-                  style={{
-                    backgroundColor:
-                      step.id === currentStep
-                        ? BRAND_PRIMARY
-                        : step.id < currentStep
-                        ? "#22c55e"
-                        : "rgba(255,255,255,0.08)",
-                    color: "#fff",
-                  }}
-                >
-                  {step.id < currentStep ? <Check className="w-5 h-5" /> : step.id}
-                </div>
-
-                {step.id < STEPS.length && (
+    <div
+      className="min-h-screen"
+      style={{
+        background: "radial-gradient(1200px 600px at 50% 0%, rgba(150,41,1,0.55) 0%, rgba(0,0,0,1) 60%)",
+        color: BRAND_CREAM,
+      }}
+    >
+      <div className="max-w-5xl mx-auto px-4 py-10">
+        {/* Stepper */}
+        <div className="mb-10">
+          <div className="flex items-center justify-between max-w-xl mx-auto mb-4">
+            {STEPS.map((s, i) => {
+              const active = currentStep === s.id;
+              const passed = currentStep > s.id;
+              return (
+                <div key={s.id} className="flex-1 flex items-center">
                   <div
-                    className="flex-1 h-1 mx-4"
-                    style={{ backgroundColor: step.id < currentStep ? "#22c55e" : "rgba(255,255,255,0.1)" }}
-                  />
-                )}
-              </div>
-            ))}
+                    className={`w-8 h-8 rounded-full grid place-items-center text-sm font-semibold ring-1`}
+                    style={{
+                      backgroundColor: active ? BRAND_PRIMARY : passed ? "#22c55e" : "transparent",
+                      color: active || passed ? "#fff" : BRAND_CREAM,
+                      borderColor: "rgba(255,255,255,0.2)",
+                    }}
+                  >
+                    {passed ? <Check className="w-4 h-4" /> : s.id}
+                  </div>
+                  {i < STEPS.length - 1 && (
+                    <div className="flex-1 h-px mx-2" style={{ background: "rgba(255,255,255,0.2)" }} />
+                  )}
+                </div>
+              );
+            })}
           </div>
 
-          <div className="text-center" style={{ color: BRAND_CREAM }}>
+          <div className="text-center">
             <h3 className="text-lg font-semibold">{STEPS[currentStep - 1]?.title}</h3>
             <p className="text-sm opacity-80">{STEPS[currentStep - 1]?.description}</p>
           </div>
@@ -750,13 +939,20 @@ function TalentOnboardingContent() {
         <div className="max-w-2xl mx-auto">
           <div
             className="backdrop-blur-lg rounded-2xl border p-8 shadow-2xl"
-            style={{ borderColor: "rgba(255,255,255,0.1)", background: "rgba(255,255,255,0.05)", color: BRAND_CREAM }}
+            style={{
+              borderColor: "rgba(255,255,255,0.1)",
+              background: "rgba(255,255,255,0.05)",
+              color: BRAND_CREAM,
+            }}
           >
             {renderStepContent()}
 
             {/* Navigation Buttons */}
             {currentStep < 5 && (
-              <div className="flex justify-between mt-8 pt-6" style={{ borderTop: "1px solid rgba(255,255,255,0.1)" }}>
+              <div
+                className="flex justify-between mt-8 pt-6"
+                style={{ borderTop: "1px solid rgba(255,255,255,0.1)" }}
+              >
                 <Button
                   variant="outline"
                   onClick={handlePrevious}
@@ -774,20 +970,41 @@ function TalentOnboardingContent() {
                   onClick={handleNext}
                   className="text-white"
                   style={{ backgroundColor: BRAND_PRIMARY }}
+                  disabled={saving}
                 >
-                  Sonraki
+                  {saving ? "Kaydediliyor..." : "Sonraki"}
                   <ArrowRight className="w-4 h-4 ml-2" />
                 </Button>
               </div>
             )}
 
-            {msg && <div className="mt-3 text-sm" style={{ color: BRAND_CREAM }}>{msg}</div>}
+            {currentStep === 5 && (
+              <div className="mt-8">
+                <Button
+                  onClick={handleSubmit}
+                  className="text-white"
+                  style={{ backgroundColor: BRAND_PRIMARY }}
+                >
+                  Bitir
+                </Button>
+              </div>
+            )}
+
+            {msg && (
+              <div className="mt-3 text-sm" style={{ color: BRAND_CREAM }}>
+                {msg}
+              </div>
+            )}
           </div>
         </div>
       </div>
     </div>
   );
 }
+
+/* ------------------------------------------------------------------ */
+/* Default export – AuthGuard                                         */
+/* ------------------------------------------------------------------ */
 
 export default function TalentOnboarding() {
   return (
