@@ -1,25 +1,31 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
-import { APP_GUARD } from '@nestjs/core';
+import { APP_GUARD, Reflector } from '@nestjs/core';
 import { DatabaseModule } from './config/database.module';
+// import { DbModule } from '../../packages/database/db.module'; // Artık kullanmıyoruz
 import { AuthModule } from './modules/auth/auth.module';
 import { UsersModule } from './modules/users/users.module';
 import { ProfilesModule } from './modules/profiles/profiles.module';
 import { UploadModule } from './modules/upload/upload.module';
 import { JobsModule } from './modules/jobs/jobs.module';
-import { SearchModule } from './modules/search/search.module';
-import { PaymentsModule } from './modules/payments/payments.module';
 import { MessagesModule } from './modules/messages/messages.module';
-import { PermissionsModule } from './modules/permissions/permissions.module';
-import { ConsentModule } from './modules/consent/consent.module';
 import { HealthModule } from './common/health/health.module';
+import { PaymentsModule } from './modules/payments/payments.module';
+import { PermissionsModule } from './modules/permissions/permissions.module';
+// import { ConsentModule } from './modules/consent/consent.module'; // Temporarily disabled
+import { SearchModule } from './modules/search/search.module';
+import { DebugModule } from './modules/debug/debug.module';
+import { GlobalJwtAuthGuard } from './modules/auth/guards/global-jwt-auth.guard';
+import { FEATURES } from './config/features';
 
 @Module({
   imports: [
     ConfigModule.forRoot({
-      envFilePath: '../../dev.env',
       isGlobal: true,
+      // En çok kullanılan dosyaları sırayla dene:
+      envFilePath: ['.env', 'apps/api/.env', 'dev.env'],
+      // Varsayılanlar (PORT, JWT vs.) için ignoreEnvFile:false kalsın
     }),
     ThrottlerModule.forRootAsync({
       imports: [ConfigModule],
@@ -28,29 +34,31 @@ import { HealthModule } from './common/health/health.module';
         throttlers: [
           {
             name: 'default',
-            ttl: configService.get('RATE_LIMIT_TTL', 60) * 1000, // Convert to milliseconds
-            limit: configService.get('RATE_LIMIT_MAX', 100),
+            ttl: 60 * 1000, // 60 seconds
+            limit: 200, // Much higher for dev
           },
           {
             name: 'auth',
-            ttl: 15 * 60 * 1000, // 15 minutes
-            limit: 5, // 5 attempts per 15 minutes for auth endpoints
+            ttl: 60 * 1000, // 1 minute instead of 15
+            limit: 100, // Much higher for dev
           }
         ],
       }),
     }),
     DatabaseModule,
+    DebugModule,
+    HealthModule,
     AuthModule,
     UsersModule,
     ProfilesModule,
     UploadModule,
     JobsModule,
-    SearchModule,
-    PaymentsModule,
     MessagesModule,
-    PermissionsModule,
-    ConsentModule,
-    HealthModule,
+    // Conditional modules based on feature flags
+    ...(FEATURES.SEARCH ? [SearchModule] : []),
+    ...(FEATURES.PAYMENTS ? [PaymentsModule] : []),
+    ...(FEATURES.ADV_PERMISSIONS ? [PermissionsModule] : []),
+    // ...(FEATURES.ADV_PERMISSIONS ? [ConsentModule] : []), // Temporarily disabled for auth fix
   ],
   providers: [
     {

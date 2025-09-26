@@ -1,15 +1,18 @@
+import 'dotenv/config';
 import { defineConfig } from 'drizzle-kit';
-import * as dotenv from 'dotenv';
+import * as path from 'path';
 
-dotenv.config({ path: '../../dev.env' });
+// Load env from root directory
+const envPath = path.resolve(__dirname, '../../dev.env');
+require('dotenv').config({ path: envPath });
 
 export default defineConfig({
-  schema: './schema/*',
+  schema: './schema/**/*.ts',
   out: './migrations',
   dialect: 'postgresql',
   dbCredentials: {
-    url: process.env.DATABASE_URL || 'postgresql://castlyo:castlyo_password@localhost:5432/castlyo',
+    url: process.env.DATABASE_URL!,
   },
-  verbose: true,
-  strict: true,
+  // opsiyonel:
+  // casing: 'snake_case',
 });

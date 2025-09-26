@@ -9,7 +9,7 @@ import {
   HttpCode,
   HttpStatus
 } from '@nestjs/common';
-import { Throttle } from '@nestjs/throttler';
+import { Throttle, SkipThrottle } from '@nestjs/throttler';
 import { AuthService } from './auth.service';
 import { 
   LoginDto, 
@@ -23,11 +23,13 @@ import { LocalAuthGuard } from './guards/local-auth.guard';
 import { Public } from './decorators/public.decorator';
 
 @Controller('auth')
+@SkipThrottle()
 export class AuthController {
   constructor(private authService: AuthService) {}
 
+
   @Public()
-  @Throttle({ auth: { limit: 3, ttl: 15 * 60 * 1000 } }) // 3 attempts per 15 minutes
+  @SkipThrottle()
   @Post('register')
   @HttpCode(HttpStatus.CREATED)
   async register(
@@ -49,14 +51,21 @@ export class AuthController {
   }
 
   @Public()
-  @Throttle({ default: { limit: 5, ttl: 15 * 60 * 1000 } }) // 5 attempts per 15 minutes
-  @UseGuards(LocalAuthGuard)
+  @SkipThrottle()
   @Post('login')
   @HttpCode(HttpStatus.OK)
-  async login(@Request() req, @Body() loginDto: LoginDto, @Ip() ipAddress: string) {
+  async login(@Body() loginDto: LoginDto, @Ip() ipAddress: string) {
     // Rate limiting için IP ve email kombinasyonu logla
     console.log(`[LOGIN_ATTEMPT] IP: ${ipAddress} | Email: ${loginDto.email} | Timestamp: ${new Date().toISOString()}`);
-    return this.authService.login(loginDto);
+    console.log(`[LOGIN_ATTEMPT] LoginDto:`, loginDto);
+    try {
+      const result = await this.authService.login(loginDto);
+      console.log(`[LOGIN_ATTEMPT] Login successful for: ${loginDto.email}`);
+      return result;
+    } catch (error) {
+      console.error(`[LOGIN_ATTEMPT] Login failed for: ${loginDto.email}`, error.message);
+      throw error;
+    }
   }
 
   @Public()

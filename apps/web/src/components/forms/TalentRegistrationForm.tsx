@@ -29,6 +29,7 @@ import {
   talentRegistrationSchema, 
   type TalentRegistrationFormData 
 } from '@/lib/validations/auth'
+import { registerUser } from '@/lib/auth/register'
 import {
   GENDER_OPTIONS,
   EXPERIENCE_LEVELS,
@@ -65,6 +66,7 @@ export default function TalentRegistrationForm({ onClose }: TalentRegistrationFo
       skills: [],
       languages: ['TR'],
       kvkkConsent: false,
+      termsConsent: false,
       marketingConsent: false
     }
   })
@@ -77,26 +79,24 @@ export default function TalentRegistrationForm({ onClose }: TalentRegistrationFo
     try {
       setIsSubmitting(true)
       
-      const res = await fetch('/api/v1/auth/register', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
+      // Development için payload'ı logla
+      if (process.env.NODE_ENV === 'development') {
+        console.log('REGISTER PAYLOAD', {
           ...data,
-          role: 'TALENT'
-        }),
-      })
-
-      const json = await res.json()
-
-      if (!json.success) {
-        // Yeni API format: { success: false, message, errors?, code? }
-        if (json.errors && Array.isArray(json.errors)) {
-          throw new Error(json.errors.join(', '))
-        }
-        throw new Error(json.message || 'Kayıt işlemi başarısız')
+          role: 'TALENT',
+          kvkkConsent: true,
+          termsConsent: true,
+          marketingConsent: !!data.marketingConsent,
+        });
       }
+      
+      const result = await registerUser({
+        ...data,
+        role: 'TALENT',
+        kvkkConsent: true,
+        termsConsent: true,
+        marketingConsent: !!data.marketingConsent,
+      })
       
       toast.success('Kayıt Başarılı! 🎉', 'Yetenek kaydınız başarıyla oluşturuldu! E-posta adresinizi kontrol ederek hesabınızı doğrulayın.')
       
@@ -106,7 +106,13 @@ export default function TalentRegistrationForm({ onClose }: TalentRegistrationFo
       
     } catch (error: any) {
       console.error('Registration error:', error)
-      toast.error('Kayıt Hatası', error.message || 'Kayıt sırasında bir hata oluştu. Lütfen tekrar deneyin.')
+      
+      // Duplicate e-posta durumu için özel mesaj
+      const errorMessage = error.message.includes('zaten kayıtlı') 
+        ? error.message 
+        : 'Form bilgilerini kontrol edin.';
+        
+      toast.error('Kayıt Hatası', errorMessage)
     } finally {
       setIsSubmitting(false)
     }
@@ -134,7 +140,7 @@ export default function TalentRegistrationForm({ onClose }: TalentRegistrationFo
       case 3:
         return ['experience', 'specialties', 'languages']
       case 4:
-        return ['kvkkConsent']
+        return ['kvkkConsent', 'termsConsent']
       default:
         return []
     }
@@ -265,15 +271,9 @@ export default function TalentRegistrationForm({ onClose }: TalentRegistrationFo
                       mask="+90 (599) 999 99 99"
                       value={field.value || ''}
                       onChange={field.onChange}
-                    >
-                      {(inputProps: any) => (
-                        <input
-                          {...inputProps}
-                          className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-primary focus:border-transparent"
-                          placeholder="+90 (5XX) XXX XX XX"
-                        />
-                      )}
-                    </InputMask>
+                      className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-primary focus:border-transparent"
+                      placeholder="+90 (5XX) XXX XX XX"
+                    />
                   )}
                 />
                 {errors.phone && (
@@ -556,6 +556,30 @@ export default function TalentRegistrationForm({ onClose }: TalentRegistrationFo
               </div>
               {errors.kvkkConsent && (
                 <p className="text-sm text-red-600">{errors.kvkkConsent.message}</p>
+              )}
+
+              <div className="flex items-start space-x-3">
+                <Controller
+                  name="termsConsent"
+                  control={control}
+                  render={({ field }) => (
+                    <Checkbox
+                      checked={field.value}
+                      onCheckedChange={field.onChange}
+                      className="mt-1"
+                    />
+                  )}
+                />
+                <div className="text-sm text-gray-600">
+                  <span className="text-red-600">*</span> 
+                  <a href="/terms" target="_blank" className="text-brand-primary hover:underline">
+                    Kullanım Şartları
+                  </a>
+                  'nı okudum ve kabul ediyorum.
+                </div>
+              </div>
+              {errors.termsConsent && (
+                <p className="text-sm text-red-600">{errors.termsConsent.message}</p>
               )}
 
               <div className="flex items-start space-x-3">

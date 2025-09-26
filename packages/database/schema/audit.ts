@@ -1,14 +1,11 @@
 import { pgTable, uuid, varchar, text, timestamp, jsonb, pgEnum, boolean, decimal } from 'drizzle-orm/pg-core';
 import { relations } from 'drizzle-orm';
 import { users } from './users';
+import { auditActionEnum } from './enums';
 
 // Enums
-export const auditActionEnum = pgEnum('audit_action', [
-  'CREATE', 'UPDATE', 'DELETE', 'LOGIN', 'LOGOUT', 'VIEW', 'DOWNLOAD', 'EXPORT',
-  'DATA_SHARED', 'CONTACT_GRANTED', 'CONTACT_REQUESTED'
-]);
 export const auditEntityTypeEnum = pgEnum('audit_entity_type', [
-  'USER', 'TALENT_PROFILE', 'AGENCY_PROFILE', 'JOB_POST', 'APPLICATION', 'MESSAGE', 'PAYMENT', 'SUBSCRIPTION'
+  'USER', 'TALENT_PROFILE', 'AGENCY_PROFILE', 'JOB_POST', 'APPLICATION', 'MESSAGE', 'PAYMENT', 'SUBSCRIPTION', 'TALENT_CONTACT', 'USER_CONSENT'
 ]);
 
 // Audit logs - for compliance and security tracking
@@ -29,6 +26,12 @@ export const auditLogs = pgTable('audit_logs', {
   description: text('description'),
   oldValues: jsonb('old_values'),
   newValues: jsonb('new_values'),
+  
+  // API compatibility fields
+  resource: varchar('resource', { length: 100 }), // Alternative to entityType
+  resourceId: uuid('resource_id'), // Alternative to entityId
+  targetUserId: uuid('target_user_id').references(() => users.id), // Target of the action
+  details: jsonb('details'), // JSON details for the action
   
   // Request context
   ipAddress: varchar('ip_address', { length: 45 }),

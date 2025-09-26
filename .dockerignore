@@ -1,0 +1,68 @@
+# Git
+.git
+.gitignore
+
+# Dependencies - exclude all node_modules
+**/node_modules
+**/.next
+**/.turbo
+**/dist
+**/.cache
+npm-debug.log*
+yarn.lock
+pnpm-lock.yaml
+
+# Build outputs
+out
+coverage
+tmp
+
+# Environment files
+.env
+.env.*
+dev.env
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+logs
+
+# Documentation
+*.md
+README.md
+ARCHITECTURE.md
+DEVELOPMENT.md
+
+# Scripts and tools
+scripts/
+test-*.js
+test-*.md
+
+# Docker files
+docker-compose*.yml
+Dockerfile*
+
+# IDE files
+.vscode
+.idea
+*.swp
+*.swo
+
+# Large directories that aren't needed in containers
+apps/web/public/mock
+apps/web/public/uploads
+apps/web/public/avatars
+apps/web/public/logos
+apps/web/public/placeholders
+
+# Database files
+*.db
+*.sqlite
+*.sqlite3
+
+# Cache directories
+.cache
+.parcel-cache

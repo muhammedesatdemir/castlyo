@@ -1,0 +1,15 @@
+export declare const userRoleEnum: import("drizzle-orm/pg-core").PgEnum<["TALENT", "AGENCY", "ADMIN"]>;
+export declare const userStatusEnum: import("drizzle-orm/pg-core").PgEnum<["PENDING", "ACTIVE", "SUSPENDED", "DELETED"]>;
+export declare const genderEnum: import("drizzle-orm/pg-core").PgEnum<["MALE", "FEMALE", "OTHER"]>;
+export declare const genderRequirementEnum: import("drizzle-orm/pg-core").PgEnum<["ANY", "MALE", "FEMALE", "OTHER"]>;
+export declare const locationTypeEnum: import("drizzle-orm/pg-core").PgEnum<["ONSITE", "REMOTE", "HYBRID"]>;
+export declare const jobTypeEnum: import("drizzle-orm/pg-core").PgEnum<["FULL_TIME", "PART_TIME", "CONTRACT", "INTERN"]>;
+export declare const experienceLevelEnum: import("drizzle-orm/pg-core").PgEnum<["JUNIOR", "MID", "SENIOR", "LEAD"]>;
+export declare const jobStatusEnum: import("drizzle-orm/pg-core").PgEnum<["DRAFT", "PUBLISHED", "CLOSED"]>;
+export declare const messageTypeEnum: import("drizzle-orm/pg-core").PgEnum<["TEXT", "IMAGE", "FILE", "SYSTEM"]>;
+export declare const permissionStatusEnum: import("drizzle-orm/pg-core").PgEnum<["REQUESTED", "GRANTED", "DENIED", "REVOKED"]>;
+export declare const subscriptionPlanTypeEnum: import("drizzle-orm/pg-core").PgEnum<["FREE", "PRO", "TEAM"]>;
+export declare const subscriptionAudienceEnum: import("drizzle-orm/pg-core").PgEnum<["TALENT", "AGENCY", "BOTH"]>;
+export declare const paymentProviderEnum: import("drizzle-orm/pg-core").PgEnum<["STRIPE", "IYZICO", "MOCK"]>;
+export declare const paymentStatusEnum: import("drizzle-orm/pg-core").PgEnum<["PENDING", "SUCCEEDED", "FAILED", "REFUNDED"]>;
+export declare const auditActionEnum: import("drizzle-orm/pg-core").PgEnum<["CREATE", "UPDATE", "DELETE", "LOGIN", "LOGOUT", "VIEW", "DOWNLOAD", "EXPORT", "DATA_SHARED", "CONTACT_GRANTED", "CONTACT_REQUESTED", "CONTACT_REVOKED", "CONSENT_GRANTED", "CONSENT_REVOKED", "DATA_SHARING_RESTRICTED", "MARKETING_STOPPED", "COMMUNICATION_RESTRICTED"]>;

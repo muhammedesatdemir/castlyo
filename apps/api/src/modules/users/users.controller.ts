@@ -24,8 +24,7 @@ export class UsersController {
       this.logger.log(`[GET /users/me] Success for user: ${user.id}`);
       
       return {
-        ...userWithoutPassword,
-        onboardingCompleted: user.onboardingCompleted || false
+        ...userWithoutPassword
       };
     } catch (error) {
       this.logger.error(`[GET /users/me] Error for user ${req.user.userId}:`, error.stack);

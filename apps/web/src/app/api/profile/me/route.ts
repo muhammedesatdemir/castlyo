@@ -1,111 +1,94 @@
-// apps/web/src/app/api/profile/me/route.ts
-import { NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma";
+import { NextResponse } from 'next/server';
+import { getServerSession } from 'next-auth';
+import { authOptions } from '@/lib/auth';
 
-// DEV için pratik: prod'da gerçek session'dan email al
-function getEmailFromHeaders(req: Request) {
-  return req.headers.get("x-user-email") ?? "merve@example.com";
+export const dynamic = 'force-dynamic';
+export const runtime = 'nodejs';
+
+function isJson(res: Response) {
+  const ct = res.headers.get('content-type') || '';
+  return ct.includes('application/json');
 }
 
-export async function GET(req: Request) {
-  const email = getEmailFromHeaders(req);
-  if (!email) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
-
-  const user = await prisma.user.upsert({
-    where: { email },
-    update: {},
-    create: { email },
-    include: { talentProfile: true },
-  });
-
-  const p = user.talentProfile;
-
-  return NextResponse.json({
-    firstName: p?.firstName ?? null,
-    lastName:  p?.lastName  ?? null,
-    email:     user.email,
-    phone:     p?.phone ?? null,
-    role:      user.role ?? "TALENT",
-    status:    p?.status ?? "Aktif",
-    lastLogin: p?.lastLogin ?? null,
-    company:   p?.company ?? null,
-    position:  p?.position ?? null,
-    profilePhotoUrl: p?.profilePhotoUrl ?? null,
-    professional: {
-      bio:         p?.bio ?? "",
-      experience:  p?.experience ?? "",
-      specialties: (p?.specialties as string[]) ?? [],
-    },
-    personal: {
-      city:      p?.city ?? "",
-      birthDate: p?.birthDate ?? "",
-      gender:    p?.gender ?? "",
-      heightCm:  p?.heightCm ?? null,
-      weightKg:  p?.weightKg ?? null,
-    },
-    activities: (p?.activities as any[]) ?? [],
-  });
+async function smartParse(res: Response) {
+  if (res.status === 204 || res.status === 205) return { json: true, body: null };
+  if (isJson(res)) return { json: true, body: await res.json() };
+  return { json: false, body: await res.text().catch(() => '') };
 }
 
-export async function PUT(req: Request) {
-  const email = getEmailFromHeaders(req);
-  if (!email) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+export async function GET() {
+  // STEP 1: Session
+  let session: any;
+  try {
+    session = await getServerSession(authOptions);
+  } catch (e: any) {
+    console.error('[profile/me] SESSION_CRASH', e);
+    return NextResponse.json(
+      { error: 'SESSION_CRASH', detail: String(e?.message || e) },
+      { status: 500 },
+    );
+  }
+  if (!session?.access_token) {
+    return NextResponse.json({ error: 'NO_ACCESS_TOKEN' }, { status: 401 });
+  }
 
-  const body = await req.json();
-  const user = await prisma.user.upsert({ where: { email }, update: {}, create: { email } });
+  // STEP 2: ENV
+  const API = process.env.NEXT_PUBLIC_API_URL;
+  if (!API) {
+    return NextResponse.json({ error: 'MISSING_API_URL' }, { status: 500 });
+  }
+  const headers = { Authorization: `Bearer ${session.access_token}`, Accept: 'application/json' };
 
-  const prof = body || {};
-  const professional = prof.professional || {};
-  const personal = prof.personal || {};
+  // STEP 3: users/me
+  let user;
+  try {
+    const uRes = await fetch(`${API}/users/me`, { headers, cache: 'no-store', next: { revalidate: 0 } });
+    const uParsed = await smartParse(uRes);
+    if (!uRes.ok) {
+      return NextResponse.json(
+        {
+          error: uParsed.json ? (uParsed.body?.error ?? 'USERS_ME_ERROR') : 'USERS_ME_NON_JSON',
+          where: 'users/me',
+          status: uRes.status,
+          detail: uParsed.json ? uParsed.body : String(uParsed.body).slice(0, 2000),
+        },
+        { status: uRes.status },
+      );
+    }
+    user = uParsed.body;
+  } catch (e: any) {
+    console.error('[profile/me] USERS_ME_FETCH_CRASH', e);
+    return NextResponse.json(
+      { error: 'USERS_ME_FETCH_CRASH', detail: String(e?.message || e) },
+      { status: 502 },
+    );
+  }
 
-  await prisma.talentProfile.upsert({
-    where: { userId: user.id },
-    create: {
-      userId: user.id,
-      firstName: prof.firstName ?? null,
-      lastName:  prof.lastName  ?? null,
-      phone:     prof.phone ?? null,
-      company:   prof.company ?? null,
-      position:  prof.position ?? null,
-      status:    prof.status ?? "Aktif",
-      lastLogin: prof.lastLogin ?? null,
-      profilePhotoUrl: prof.profilePhotoUrl ?? null,
+  // STEP 4: profiles/me (opsiyonel)
+  let profile: any = null;
+  try {
+    const pRes = await fetch(`${API}/profiles/me`, { headers, cache: 'no-store', next: { revalidate: 0 } });
+    const pParsed = await smartParse(pRes);
+    if (pRes.ok && pParsed.json) {
+      profile = pParsed.body;
+    } else if (pRes.status === 404) {
+      profile = null;
+    } else if (!pParsed.json) {
+      return NextResponse.json(
+        { error: 'PROFILES_ME_NON_JSON', where: 'profiles/me', status: pRes.status, detail: String(pParsed.body).slice(0, 2000) },
+        { status: 502 },
+      );
+    } else {
+      return NextResponse.json(
+        { error: 'PROFILES_ME_ERROR', where: 'profiles/me', status: pRes.status, detail: pParsed.body },
+        { status: pRes.status },
+      );
+    }
+  } catch (e: any) {
+    // Profil çağrısı çökerse bile kullanıcıyı döndürelim
+    console.warn('[profile/me] PROFILES_ME_FETCH_CRASH', e);
+    profile = null;
+  }
 
-      bio:         professional.bio ?? null,
-      experience:  professional.experience ?? null,
-      specialties: professional.specialties ?? [],
-
-      city:      personal.city ?? null,
-      birthDate: personal.birthDate ?? null,
-      gender:    personal.gender ?? null,
-      heightCm:  personal.heightCm ?? null,
-      weightKg:  personal.weightKg ?? null,
-
-      activities: prof.activities ?? [],
-    },
-    update: {
-      firstName: prof.firstName ?? null,
-      lastName:  prof.lastName  ?? null,
-      phone:     prof.phone ?? null,
-      company:   prof.company ?? null,
-      position:  prof.position ?? null,
-      status:    prof.status ?? "Aktif",
-      lastLogin: prof.lastLogin ?? null,
-      profilePhotoUrl: prof.profilePhotoUrl ?? null,
-
-      bio:         professional.bio ?? null,
-      experience:  professional.experience ?? null,
-      specialties: professional.specialties ?? [],
-
-      city:      personal.city ?? null,
-      birthDate: personal.birthDate ?? null,
-      gender:    personal.gender ?? null,
-      heightCm:  personal.heightCm ?? null,
-      weightKg:  personal.weightKg ?? null,
-
-      activities: prof.activities ?? [],
-    },
-  });
-
-  return NextResponse.json({ ok: true });
+  return NextResponse.json({ user, profile });
 }

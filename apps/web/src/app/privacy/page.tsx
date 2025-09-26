@@ -113,7 +113,7 @@ export default function PrivacyPage() {
                   </p>
                   <ul className="list-disc list-inside mt-2 space-y-1">
                     <li><strong>E-posta:</strong> privacy@castlyo.com</li>
-                    <li><strong>Platform:</strong> Ayarlar > Gizlilik menüsü</li>
+                    <li><strong>Platform:</strong> Ayarlar &gt; Gizlilik menüsü</li>
                     <li><strong>Posta:</strong> Castlyo Teknoloji A.Ş., İstanbul</li>
                   </ul>
                 </section>

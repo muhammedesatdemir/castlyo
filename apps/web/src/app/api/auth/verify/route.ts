@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import * as crypto from 'crypto'
-import { mockStore } from '@/lib/mock-store'
+import mockStore from '@/lib/mock-store'
 
 export const runtime = 'nodejs'
 
@@ -10,7 +10,9 @@ export async function GET(request: NextRequest) {
     const token = searchParams.get('token')
     
     console.log(`[VERIFY ROUTE] Starting verification process`)
-    console.log(`[VERIFY ROUTE] Mock Store Stats:`, mockStore.dev.stats())
+    if ((mockStore as any)?.dev?.stats) {
+      console.log(`[VERIFY ROUTE] Mock Store Stats:`, (mockStore as any).dev.stats());
+    }
     
     if (!token) {
       console.log(`[VERIFY ROUTE] No token provided`)
@@ -71,7 +73,9 @@ export async function GET(request: NextRequest) {
       mockStore.tokens.markAsUsed(tokenHash)
       
       console.log(`[VERIFY ROUTE] ✅ User verified successfully: ${user.email}`)
-      console.log(`[VERIFY ROUTE] 📊 Mock Store Stats:`, mockStore.dev.stats())
+      if ((mockStore as any)?.dev?.stats) {
+        console.log(`[VERIFY ROUTE] 📊 Mock Store Stats:`, (mockStore as any).dev.stats());
+      }
       
       // Redirect to login page with success message
       const loginUrl = new URL('/auth', request.url)
@@ -108,7 +112,9 @@ export async function POST(request: NextRequest) {
     }
     
     console.log(`[VERIFY API] Processing token: ${token.substring(0, 8)}...`)
-    console.log(`[VERIFY API] Mock Store Stats:`, mockStore.dev.stats())
+    if ((mockStore as any)?.dev?.stats) {
+      console.log(`[VERIFY API] Mock Store Stats:`, (mockStore as any).dev.stats());
+    }
     
     const tokenHash = crypto.createHash('sha256').update(token).digest('hex')
     
@@ -146,7 +152,9 @@ export async function POST(request: NextRequest) {
       mockStore.tokens.markAsUsed(tokenHash)
       
       console.log(`[VERIFY API] ✅ User verified successfully: ${user.email}`)
-      console.log(`[VERIFY API] 📊 Mock Store Stats:`, mockStore.dev.stats())
+      if ((mockStore as any)?.dev?.stats) {
+        console.log(`[VERIFY API] 📊 Mock Store Stats:`, (mockStore as any).dev.stats());
+      }
       
       return NextResponse.json({ ok: true, message: 'E-posta başarıyla doğrulandı' })
     } else {

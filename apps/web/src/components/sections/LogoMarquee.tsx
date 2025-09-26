@@ -1,12 +1,10 @@
 import { montserratDisplay } from '@/lib/fonts'
 
 const logos = [
-  { name: 'Maya Casting', src: '/logos/maya.svg' },
-  { name: 'DMR Agency', src: '/logos/dmr.svg' },
-  { name: 'Renda Casting', src: '/logos/renda.svg' },
-  { name: 'TalentCo', src: '/logos/talentco.svg' },
-  { name: 'ProCast', src: '/logos/procast.svg' },
-  { name: 'StarLight', src: '/logos/starlight.svg' }
+  { name: 'Media Insomnia', src: '/logos/media-insomnia.svg' },
+  { name: 'Gurme Yapım', src: '/logos/gurme-yapim.svg' },
+  { name: 'Renda Funexagon', src: '/logos/renda-funexagon.svg' },
+  { name: 'Pixel-İst', src: '/logos/pixel-ist.svg' }
 ]
 
 export default function LogoMarquee() {
@@ -40,7 +38,7 @@ export default function LogoMarquee() {
         </div>
         
         <p className="text-center text-white/40 text-xs mt-6">
-          * Örnek ajans isimleri - demo amaçlıdır
+          * Örnek ajans isimleri *
         </p>
       </div>
     </section>

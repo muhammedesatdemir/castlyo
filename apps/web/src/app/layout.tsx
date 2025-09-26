@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from 'next'
 import { Inter, Cinzel } from 'next/font/google'
 import { AuthProvider } from '@/providers/auth-provider'
 import { ToastContainer } from '@/components/ui/toast'
+import { ApiHealthCheck } from '@/components/dev/ApiHealthCheck'
 import './globals.css'
 
 const inter = Inter({
@@ -9,7 +10,7 @@ const inter = Inter({
   variable: '--font-inter',
 })
 
-export const cinzel = Cinzel({
+const cinzel = Cinzel({
   subsets: ['latin'],
   weight: ['400', '700', '900'], // 800 yok; 900 kullan
   variable: '--font-cinzel',
@@ -31,6 +32,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             {children}
           </div>
           <ToastContainer />
+          {process.env.NODE_ENV === 'development' && <ApiHealthCheck />}
         </AuthProvider>
       </body>
     </html>

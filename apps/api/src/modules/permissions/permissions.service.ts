@@ -1,12 +1,13 @@
 import { Injectable, ForbiddenException, NotFoundException } from '@nestjs/common';
 import { eq, and } from 'drizzle-orm';
 import { db } from '@castlyo/database';
-import { contactPermissions, users, talentProfiles, agencyProfiles } from '@castlyo/database/schema';
+import { contactPermissions, users, talentProfiles, agencyProfiles } from '@castlyo/database';
 import { AuditService } from './audit.service';
 
 export interface ContactPermissionRequest {
   talentId: string;
   agencyId: string;
+  applicationId: string;
   requestContext?: string;
   requestMessage?: string;
   ipAddress?: string;
@@ -111,6 +112,7 @@ export class PermissionsService {
     const newPermission = await db
       .insert(contactPermissions)
       .values({
+        applicationId: request.applicationId,
         talentId: request.talentId,
         agencyId: request.agencyId,
         granted: false,

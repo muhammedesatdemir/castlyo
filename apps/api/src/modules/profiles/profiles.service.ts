@@ -6,25 +6,25 @@ import {
   BadRequestException 
 } from '@nestjs/common';
 import { eq, and } from 'drizzle-orm';
-import { DATABASE_CONNECTION } from '../../config/database.module';
+// DATABASE_CONNECTION import removed - using 'DRIZZLE' directly
 import { 
   users, 
   talentProfiles, 
-  agencyProfiles 
-} from '@castlyo/database/schema';
-import { contactPermissions } from '@castlyo/database/schema';
+  agencyProfiles,
+  contactPermissions,
+  db
+} from '@castlyo/database';
 import { 
   CreateTalentProfileDto, 
   UpdateTalentProfileDto,
   CreateAgencyProfileDto,
   UpdateAgencyProfileDto 
 } from './dto/profile.dto';
-import { db } from '@castlyo/database';
 
 @Injectable()
 export class ProfilesService {
   constructor(
-    @Inject(DATABASE_CONNECTION) private readonly database: any,
+    @Inject('DRIZZLE') private readonly database: any,
   ) {}
 
   async createTalentProfile(userId: string, profileData: CreateTalentProfileDto) {
@@ -348,27 +348,21 @@ export class ProfilesService {
       throw new NotFoundException('User not found');
     }
 
-    if (user[0].role === 'TALENT') {
-      try {
-        return await this.getTalentProfile(userId, userId);
-      } catch (error) {
-        if (error instanceof NotFoundException) {
-          return null; // Profile not created yet
-        }
-        throw error;
-      }
-    } else if (user[0].role === 'AGENCY') {
-      try {
-        return await this.getAgencyProfile(userId, userId);
-      } catch (error) {
-        if (error instanceof NotFoundException) {
-          return null; // Profile not created yet
-        }
-        throw error;
-      }
-    }
-
-    throw new BadRequestException('Invalid user role');
+    // For now, just return user info with a message that profile needs to be created
+    return {
+      message: 'Profile not created yet',
+      user: {
+        id: user[0].id,
+        email: user[0].email,
+        role: user[0].role,
+        status: user[0].status,
+        emailVerified: user[0].emailVerified,
+        phoneVerified: user[0].phoneVerified,
+        createdAt: user[0].createdAt,
+        updatedAt: user[0].updatedAt
+      },
+      profile: null
+    };
   }
 
   async deleteProfile(userId: string, requestingUserId: string) {

@@ -2,31 +2,26 @@
   "name": "@castlyo/database",
   "version": "0.1.0",
   "private": true,
-  "main": "./index.ts",
-  "types": "./index.ts",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "files": ["dist"],
   "scripts": {
+    "clean": "rimraf dist",
+    "build": "npm run clean && tsc -p ./tsconfig.json",
+    "dev": "tsc -w -p ./tsconfig.json",
     "db:generate": "drizzle-kit generate",
+    "db:migrate": "drizzle-kit migrate",
     "db:push": "drizzle-kit push",
-    "db:migrate": "tsx migrate.ts",
-    "db:seed": "tsx seed.ts",
-    "db:studio": "drizzle-kit studio",
-    "db:drop": "drizzle-kit drop",
-    "lint": "eslint . --max-warnings 0",
-    "type-check": "tsc --noEmit"
+    "db:seed": "ts-node seed.ts"
   },
   "dependencies": {
-    "dotenv": "^16.3.1",
     "drizzle-orm": "^0.44.5",
-    "postgres": "^3.4.3"
+    "postgres": "^3.4.7"
   },
   "devDependencies": {
-    "@types/node": "^20",
-    "@types/pg": "^8.10.9",
-    "@typescript-eslint/eslint-plugin": "^6.0.0",
-    "@typescript-eslint/parser": "^6.0.0",
     "drizzle-kit": "^0.31.4",
-    "eslint": "^8",
-    "tsx": "^4.6.2",
-    "typescript": "^5"
+    "ts-node": "^10.9.2",
+    "@types/node": "^22.5.4",
+    "typescript": "^5.3.3"
   }
 }

@@ -6,13 +6,13 @@ import {
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { eq } from 'drizzle-orm';
-import { DATABASE_CONNECTION } from '../../config/database.module';
+// DATABASE_CONNECTION import removed - using 'DRIZZLE' directly
 import { 
   users,
   subscriptionPlans,
   userSubscriptions,
   paymentTransactions
-} from '@castlyo/database/schema';
+} from '@castlyo/database';
 import { CreateCheckoutSessionDto, PaymentWebhookDto } from './dto/payment.dto';
 import { SubscriptionsService } from './subscriptions.service';
 import type { Database } from '@castlyo/database';
@@ -58,7 +58,7 @@ export class PaymentsService {
   private paymentProvider: PaymentProvider;
 
   constructor(
-    @Inject(DATABASE_CONNECTION) private readonly db: Database,
+    @Inject('DRIZZLE') private readonly db: Database,
     private configService: ConfigService,
     private subscriptionsService: SubscriptionsService,
   ) {
@@ -110,10 +110,10 @@ export class PaymentsService {
     const transaction = await this.db.insert(paymentTransactions)
       .values({
         userId,
-        amount: plan[0].price as unknown as any,
+        amountCents: plan[0].priceCents,
         currency: plan[0].currency,
         status: 'PENDING',
-        provider: this.configService.get('PAYMENT_PROVIDER', 'mock'),
+        provider: 'MOCK',
         providerResponse: { planId: checkoutData.planId },
       })
       .returning();
@@ -167,7 +167,7 @@ export class PaymentsService {
     // Update transaction status
     await this.db.update(paymentTransactions)
       .set({
-        status: webhookData.status,
+        status: this.mapWebhookStatus(webhookData.status),
         providerResponse: webhookData,
         completedAt: webhookData.status === 'COMPLETED' ? new Date() : null,
         failureReason: webhookData.failureReason,
@@ -263,5 +263,18 @@ export class PaymentsService {
     };
 
     return this.handlePaymentWebhook(webhookData);
+  }
+
+  private mapWebhookStatus(webhookStatus: string): 'PENDING'|'SUCCEEDED'|'FAILED'|'REFUNDED' {
+    switch (webhookStatus) {
+      case 'COMPLETED':
+        return 'SUCCEEDED';
+      case 'FAILED':
+        return 'FAILED';
+      case 'REFUNDED':
+        return 'REFUNDED';
+      default:
+        return 'PENDING';
+    }
   }
 }

@@ -26,6 +26,7 @@ import {
   agencyRegistrationSchema, 
   type AgencyRegistrationFormData 
 } from '@/lib/validations/auth'
+import { registerUser } from '@/lib/auth/register'
 import {
   AGENCY_SPECIALTIES,
   TURKISH_CITIES
@@ -54,6 +55,7 @@ export default function AgencyRegistrationForm({ onClose }: AgencyRegistrationFo
     defaultValues: {
       specialties: [],
       kvkkConsent: false,
+      termsConsent: false,
       marketingConsent: false
     }
   })
@@ -64,26 +66,24 @@ export default function AgencyRegistrationForm({ onClose }: AgencyRegistrationFo
     try {
       setIsSubmitting(true)
       
-      const res = await fetch('/api/v1/auth/register', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
+      // Development için payload'ı logla
+      if (process.env.NODE_ENV === 'development') {
+        console.log('REGISTER PAYLOAD', {
           ...data,
-          role: 'AGENCY'
-        }),
-      })
-
-      const json = await res.json()
-
-      if (!json.success) {
-        // Yeni API format: { success: false, message, errors?, code? }
-        if (json.errors && Array.isArray(json.errors)) {
-          throw new Error(json.errors.join(', '))
-        }
-        throw new Error(json.message || 'Kayıt işlemi başarısız')
+          role: 'AGENCY',
+          kvkkConsent: true,
+          termsConsent: true,
+          marketingConsent: !!data.marketingConsent,
+        });
       }
+      
+      const result = await registerUser({
+        ...data,
+        role: 'AGENCY',
+        kvkkConsent: true,
+        termsConsent: true,
+        marketingConsent: !!data.marketingConsent,
+      })
       
       toast.success('Kayıt Başarılı! 🎉', 'Ajans kaydınız başarıyla oluşturuldu! E-posta adresinizi kontrol ederek hesabınızı doğrulayın.')
       
@@ -93,7 +93,13 @@ export default function AgencyRegistrationForm({ onClose }: AgencyRegistrationFo
       
     } catch (error: any) {
       console.error('Registration error:', error)
-      toast.error('Kayıt Hatası', error.message || 'Kayıt sırasında bir hata oluştu. Lütfen tekrar deneyin.')
+      
+      // Duplicate e-posta durumu için özel mesaj
+      const errorMessage = error.message.includes('zaten kayıtlı') 
+        ? error.message 
+        : 'Form bilgilerini kontrol edin.';
+        
+      toast.error('Kayıt Hatası', errorMessage)
     } finally {
       setIsSubmitting(false)
     }
@@ -119,7 +125,7 @@ export default function AgencyRegistrationForm({ onClose }: AgencyRegistrationFo
       case 2:
         return ['phone', 'city', 'specialties']
       case 3:
-        return ['kvkkConsent']
+        return ['kvkkConsent', 'termsConsent']
       default:
         return []
     }
@@ -393,6 +399,30 @@ export default function AgencyRegistrationForm({ onClose }: AgencyRegistrationFo
               </div>
               {errors.kvkkConsent && (
                 <p className="text-sm text-red-600">{errors.kvkkConsent.message}</p>
+              )}
+
+              <div className="flex items-start space-x-3">
+                <Controller
+                  name="termsConsent"
+                  control={control}
+                  render={({ field }) => (
+                    <Checkbox
+                      checked={field.value}
+                      onCheckedChange={field.onChange}
+                      className="mt-1"
+                    />
+                  )}
+                />
+                <div className="text-sm text-gray-600">
+                  <span className="text-red-600">*</span> 
+                  <a href="/terms" target="_blank" className="text-blue-600 hover:underline">
+                    Kullanım Şartları
+                  </a>
+                  'nı okudum ve kabul ediyorum.
+                </div>
+              </div>
+              {errors.termsConsent && (
+                <p className="text-sm text-red-600">{errors.termsConsent.message}</p>
               )}
 
               <div className="flex items-start space-x-3">

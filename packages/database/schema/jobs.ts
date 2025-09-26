@@ -1,175 +1,60 @@
-import { pgTable, uuid, varchar, text, timestamp, integer, jsonb, pgEnum, boolean } from 'drizzle-orm/pg-core';
-import { relations } from 'drizzle-orm';
+import { pgTable, uuid, text, timestamp, boolean, integer, foreignKey } from 'drizzle-orm/pg-core';
 import { users, agencyProfiles, talentProfiles } from './users';
+import { locationTypeEnum, jobTypeEnum, experienceLevelEnum, genderRequirementEnum, jobStatusEnum } from './enums';
 
-// Enums
-export const jobStatusEnum = pgEnum('job_status', ['DRAFT', 'ACTIVE', 'CLOSED', 'CANCELLED']);
-export const jobTypeEnum = pgEnum('job_type', ['FILM', 'TV_SERIES', 'COMMERCIAL', 'THEATER', 'FASHION', 'MUSIC_VIDEO', 'PHOTO_SHOOT', 'OTHER']);
-export const applicationStatusEnum = pgEnum('application_status', ['PENDING', 'REVIEWED', 'SHORTLISTED', 'ACCEPTED', 'REJECTED']);
-export const contactPermissionStatusEnum = pgEnum('contact_permission_status', ['PENDING', 'GRANTED', 'DENIED', 'EXPIRED']);
-
-// Job posts - casting calls and opportunities
 export const jobPosts = pgTable('job_posts', {
   id: uuid('id').defaultRandom().primaryKey(),
-  agencyId: uuid('agency_id').references(() => agencyProfiles.id).notNull(),
-  
-  // Basic info
-  title: varchar('title', { length: 300 }).notNull(),
+  agencyId: uuid('agency_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  title: text('title').notNull(),
   description: text('description').notNull(),
+  city: text('city'),
+  locationType: locationTypeEnum('location_type').default('ONSITE'),
   jobType: jobTypeEnum('job_type').notNull(),
-  projectName: varchar('project_name', { length: 200 }),
-  
-  // Requirements
-  requirements: text('requirements'),
-  ageMin: integer('age_min'),
-  ageMax: integer('age_max'),
-  genderRequirement: varchar('gender_requirement', { length: 20 }), // 'MALE', 'FEMALE', 'ANY'
-  heightMin: integer('height_min'),
-  heightMax: integer('height_max'),
-  skills: jsonb('skills').$type<string[]>().default([]),
-  languages: jsonb('languages').$type<string[]>().default([]),
-  
-  // Location and timing
-  city: varchar('city', { length: 100 }),
-  country: varchar('country', { length: 100 }).default('TR'),
-  shootingStartDate: timestamp('shooting_start_date'),
-  shootingEndDate: timestamp('shooting_end_date'),
+  experienceLevel: experienceLevelEnum('experience_level'),
+  genderRequirement: genderRequirementEnum('gender_requirement').default('ANY'),
+  isUrgent: boolean('is_urgent').default(false),
+  isFeatured: boolean('is_featured').default(false),
   applicationDeadline: timestamp('application_deadline'),
-  
-  // Budget and compensation
-  budgetRange: varchar('budget_range', { length: 100 }), // e.g., "1000-5000 TL"
-  paymentType: varchar('payment_type', { length: 50 }), // 'HOURLY', 'DAILY', 'PROJECT', 'ROYALTY'
-  additionalBenefits: text('additional_benefits'),
-  
-  // Status and visibility
-  status: jobStatusEnum('status').default('DRAFT').notNull(),
-  isUrgent: boolean('is_urgent').default(false).notNull(),
-  isFeatured: boolean('is_featured').default(false).notNull(),
-  
-  // Quotas and limits (based on agency package)
-  maxApplications: integer('max_applications').default(50).notNull(),
-  currentApplications: integer('current_applications').default(0).notNull(),
-  
-  // SEO and tags
-  slug: varchar('slug', { length: 400 }).unique(),
-  tags: jsonb('tags').$type<string[]>().default([]),
-  
-  // Dates
   publishedAt: timestamp('published_at'),
-  expiresAt: timestamp('expires_at'),
-  createdAt: timestamp('created_at').defaultNow().notNull(),
-  updatedAt: timestamp('updated_at').defaultNow().notNull(),
-});
-
-// Job applications - when talents apply to jobs
-export const jobApplications = pgTable('job_applications', {
-  id: uuid('id').defaultRandom().primaryKey(),
-  jobId: uuid('job_id').references(() => jobPosts.id).notNull(),
-  talentId: uuid('talent_id').references(() => talentProfiles.id).notNull(),
+  salaryMin: integer('salary_min'),
+  salaryMax: integer('salary_max'),
+  currency: text('currency').default('TRY'),
+  specialties: text('specialties').array().default([]),
+  status: jobStatusEnum('status').default('DRAFT'),
   
-  // Application content
-  coverLetter: text('cover_letter'),
-  selectedMedia: jsonb('selected_media').$type<string[]>().default([]), // specific photos/videos for this application
-  additionalNotes: text('additional_notes'),
-  
-  // Status tracking
-  status: applicationStatusEnum('status').default('PENDING').notNull(),
-  reviewedAt: timestamp('reviewed_at'),
-  reviewedBy: uuid('reviewed_by').references(() => users.id),
+  // API compatibility fields
+  currentApplications: integer('current_applications').default(0),
   reviewNotes: text('review_notes'),
   
-  // Analytics
-  profileViewedByAgency: boolean('profile_viewed_by_agency').default(false).notNull(),
-  profileViewedAt: timestamp('profile_viewed_at'),
-  
-  createdAt: timestamp('created_at').defaultNow().notNull(),
-  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+  updatedAt: timestamp('updated_at').notNull().defaultNow(),
 });
 
-// Application-specific contact permissions - for secure communication during job applications
-export const applicationContactPermissions = pgTable('application_contact_permissions', {
+export const jobApplications = pgTable('job_applications', {
   id: uuid('id').defaultRandom().primaryKey(),
-  applicationId: uuid('application_id').references(() => jobApplications.id).notNull(),
-  agencyId: uuid('agency_id').references(() => agencyProfiles.id).notNull(),
-  talentId: uuid('talent_id').references(() => talentProfiles.id).notNull(),
+  jobId: uuid('job_id').notNull().references(() => jobPosts.id, { onDelete: 'cascade' }),
+  talentProfileId: uuid('talent_profile_id').notNull().references(() => talentProfiles.id, { onDelete: 'cascade' }),
+  applicantUserId: uuid('applicant_user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
   
-  // Permission details
-  requestMessage: text('request_message'),
-  status: contactPermissionStatusEnum('status').default('PENDING').notNull(),
-  responseMessage: text('response_message'),
+  // API compatibility: talentId alias for talentProfileId
+  talentId: uuid('talent_id').references(() => talentProfiles.id, { onDelete: 'cascade' }),
   
-  // Timing
-  requestedAt: timestamp('requested_at').defaultNow().notNull(),
-  respondedAt: timestamp('responded_at'),
-  expiresAt: timestamp('expires_at'),
-  
-  // What information can be shared
-  allowEmail: boolean('allow_email').default(false).notNull(),
-  allowPhone: boolean('allow_phone').default(false).notNull(),
-  allowMessaging: boolean('allow_messaging').default(true).notNull(),
-  
-  createdAt: timestamp('created_at').defaultNow().notNull(),
-  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+  status: text('status').$type<'SUBMITTED'|'REVIEWING'|'REJECTED'|'OFFERED'|'HIRED'>().default('SUBMITTED'),
+  coverLetter: text('cover_letter'),
+  reviewNotes: text('review_notes'), // API'nin beklediği alan
+  reviewedAt: timestamp('reviewed_at'),
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+  updatedAt: timestamp('updated_at').notNull().defaultNow(),
 });
 
-// Job views tracking (for analytics)
 export const jobViews = pgTable('job_views', {
   id: uuid('id').defaultRandom().primaryKey(),
-  jobId: uuid('job_id').references(() => jobPosts.id).notNull(),
-  viewerId: uuid('viewer_id').references(() => users.id),
-  ipAddress: varchar('ip_address', { length: 45 }),
-  userAgent: text('user_agent'),
-  viewedAt: timestamp('viewed_at').defaultNow().notNull(),
+  jobId: uuid('job_id').notNull().references(() => jobPosts.id, { onDelete: 'cascade' }),
+  viewerUserId: uuid('viewer_user_id').references(() => users.id),
+  createdAt: timestamp('created_at').notNull().defaultNow(),
 });
 
-// Relations
-export const jobPostsRelations = relations(jobPosts, ({ one, many }) => ({
-  agency: one(agencyProfiles, {
-    fields: [jobPosts.agencyId],
-    references: [agencyProfiles.id],
-  }),
-  applications: many(jobApplications),
-  views: many(jobViews),
-}));
-
-export const jobApplicationsRelations = relations(jobApplications, ({ one, many }) => ({
-  job: one(jobPosts, {
-    fields: [jobApplications.jobId],
-    references: [jobPosts.id],
-  }),
-  talent: one(talentProfiles, {
-    fields: [jobApplications.talentId],
-    references: [talentProfiles.id],
-  }),
-  reviewer: one(users, {
-    fields: [jobApplications.reviewedBy],
-    references: [users.id],
-  }),
-  applicationContactPermissions: many(applicationContactPermissions),
-}));
-
-export const applicationContactPermissionsRelations = relations(applicationContactPermissions, ({ one }) => ({
-  application: one(jobApplications, {
-    fields: [applicationContactPermissions.applicationId],
-    references: [jobApplications.id],
-  }),
-  agency: one(agencyProfiles, {
-    fields: [applicationContactPermissions.agencyId],
-    references: [agencyProfiles.id],
-  }),
-  talent: one(talentProfiles, {
-    fields: [applicationContactPermissions.talentId],
-    references: [talentProfiles.id],
-  }),
-}));
-
-export const jobViewsRelations = relations(jobViews, ({ one }) => ({
-  job: one(jobPosts, {
-    fields: [jobViews.jobId],
-    references: [jobPosts.id],
-  }),
-  viewer: one(users, {
-    fields: [jobViews.viewerId],
-    references: [users.id],
-  }),
-}));
+export type JobPost = typeof jobPosts.$inferSelect;
+export type NewJobPost = typeof jobPosts.$inferInsert;
+export type JobApplication = typeof jobApplications.$inferSelect;
+export type NewJobApplication = typeof jobApplications.$inferInsert;

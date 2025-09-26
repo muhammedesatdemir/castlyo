@@ -6,17 +6,15 @@ import {
   BadRequestException 
 } from '@nestjs/common';
 import { eq, and } from 'drizzle-orm';
-import { DATABASE_CONNECTION } from '../../config/database.module';
+// DATABASE_CONNECTION import removed - using 'DRIZZLE' directly
 import { 
   users,
   agencyProfiles,
-  talentProfiles
-} from '@castlyo/database/schema/users';
-import { 
+  talentProfiles,
   jobPosts,
   jobApplications,
-  applicationContactPermissions
-} from '@castlyo/database/schema/jobs';
+  contactPermissions
+} from '@castlyo/database';
 import { 
   CreateContactPermissionRequestDto,
   RespondToContactRequestDto
@@ -26,7 +24,7 @@ import type { Database } from '@castlyo/database';
 @Injectable()
 export class ContactPermissionsService {
   constructor(
-    @Inject(DATABASE_CONNECTION) private readonly db: Database,
+    @Inject('DRIZZLE') private readonly db: Database,
   ) {}
 
   async requestContactPermission(
@@ -58,8 +56,8 @@ export class ContactPermissionsService {
 
     // Check if permission request already exists
     const existingRequest = await this.db.select()
-      .from(applicationContactPermissions)
-      .where(eq(applicationContactPermissions.applicationId, requestData.jobApplicationId))
+      .from(contactPermissions)
+      .where(eq(contactPermissions.applicationId, requestData.jobApplicationId))
       .limit(1);
 
     if (existingRequest.length > 0) {
@@ -67,14 +65,14 @@ export class ContactPermissionsService {
     }
 
     // Create permission request
-    const permissionRequest = await this.db.insert(applicationContactPermissions)
+    const permissionRequest = await this.db.insert(contactPermissions)
       .values({
         applicationId: requestData.jobApplicationId,
         agencyId: job.agencyId,
         talentId: talent.id,
         requestMessage: requestData.requestMessage,
-        status: 'PENDING',
-        expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 days
+        status: 'REQUESTED',
+        // expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 days - field doesn't exist in schema
       })
       .returning();
 
@@ -90,8 +88,8 @@ export class ContactPermissionsService {
   ) {
     // Get permission request
     const permissionRequest = await this.db.select()
-      .from(applicationContactPermissions)
-      .where(eq(applicationContactPermissions.id, requestId))
+      .from(contactPermissions)
+      .where(eq(contactPermissions.id, requestId))
       .limit(1);
 
     if (!permissionRequest.length) {
@@ -106,27 +104,27 @@ export class ContactPermissionsService {
     }
 
     // Check if request is still pending
-    if (request.status !== 'PENDING') {
+    if (request.status !== 'REQUESTED') {
       throw new BadRequestException('This request has already been responded to');
     }
 
-    // Check if request has expired
-    if (request.expiresAt && new Date() > request.expiresAt) {
-      throw new BadRequestException('This request has expired');
-    }
+    // Check if request has expired - field doesn't exist in schema
+    // if (request.expiresAt && new Date() > request.expiresAt) {
+    //   throw new BadRequestException('This request has expired');
+    // }
 
     // Update permission request
-    const updatedRequest = await this.db.update(applicationContactPermissions)
+    const updatedRequest = await this.db.update(contactPermissions)
       .set({
         status: responseData.status,
-        responseMessage: responseData.responseMessage,
-        respondedAt: new Date(),
-        allowEmail: responseData.status === 'GRANTED',
-        allowPhone: responseData.status === 'GRANTED',
-        allowMessaging: responseData.status === 'GRANTED',
+        // responseMessage: responseData.responseMessage, // field doesn't exist in schema
+        // respondedAt: new Date(), // field doesn't exist in schema
+        // allowEmail: responseData.status === 'GRANTED', // field doesn't exist in schema
+        // allowPhone: responseData.status === 'GRANTED', // field doesn't exist in schema
+        // allowMessaging: responseData.status === 'GRANTED', // field doesn't exist in schema
         updatedAt: new Date()
       })
-      .where(eq(applicationContactPermissions.id, requestId))
+      .where(eq(contactPermissions.id, requestId))
       .returning();
 
     // TODO: Send notification to agency about response
@@ -216,12 +214,12 @@ export class ContactPermissionsService {
     expiresAt?: Date;
   }> {
     const permission = await this.db.select()
-      .from(applicationContactPermissions)
+      .from(contactPermissions)
       .where(
         and(
-          eq(applicationContactPermissions.agencyId, agencyId),
-          eq(applicationContactPermissions.talentId, talentId),
-          eq(applicationContactPermissions.status, 'GRANTED')
+          eq(contactPermissions.agencyId, agencyId),
+          eq(contactPermissions.talentId, talentId),
+          eq(contactPermissions.status, 'GRANTED')
         )
       )
       .limit(1);
@@ -233,19 +231,20 @@ export class ContactPermissionsService {
     const perm = permission[0];
 
     // Check if permission has expired
-    if (perm.expiresAt && new Date() > perm.expiresAt) {
-      return { hasPermission: false, permissionType: [] };
-    }
+    // if (perm.expiresAt && new Date() > perm.expiresAt) {
+    //   return { hasPermission: false, permissionType: [] };
+    // }
 
     const permissionTypes = [];
-    if (perm.allowEmail) permissionTypes.push('email');
-    if (perm.allowPhone) permissionTypes.push('phone');
-    if (perm.allowMessaging) permissionTypes.push('messaging');
+    // if (perm.allowEmail) permissionTypes.push('email');
+    // if (perm.allowPhone) permissionTypes.push('phone');
+    // if (perm.allowMessaging) permissionTypes.push('messaging');
+    if (perm.granted) permissionTypes.push('contact'); // Use granted field instead
 
     return {
       hasPermission: true,
       permissionType: permissionTypes,
-      expiresAt: perm.expiresAt,
+      // expiresAt: perm.expiresAt, // field doesn't exist in schema
     };
   }
 }

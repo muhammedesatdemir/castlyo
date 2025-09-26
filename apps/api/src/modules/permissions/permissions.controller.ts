@@ -19,6 +19,7 @@ import { PermissionsService } from './permissions.service';
 
 export class RequestContactPermissionDto {
   talentId: string;
+  applicationId: string;
   requestContext?: string;
   requestMessage?: string;
 }
@@ -48,6 +49,7 @@ export class PermissionsController {
     return this.permissionsService.requestContactPermission({
       talentId: dto.talentId,
       agencyId: req.user.id,
+      applicationId: dto.applicationId,
       requestContext: dto.requestContext,
       requestMessage: dto.requestMessage,
       ipAddress,

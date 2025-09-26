@@ -1,0 +1,13 @@
+node_modules
+.next
+out
+coverage
+dist
+*.log
+.env
+.env.*
+.DS_Store
+*.md
+.git
+.gitignore
+README.md

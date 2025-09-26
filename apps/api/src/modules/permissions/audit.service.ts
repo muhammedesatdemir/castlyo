@@ -1,14 +1,14 @@
 import { Injectable } from '@nestjs/common';
 import { eq, desc, or } from 'drizzle-orm';
 import { db } from '@castlyo/database';
-import { auditLogs, auditActionEnum, auditEntityTypeEnum } from '@castlyo/database/schema/audit';
+import { auditLogs, auditActionEnum, auditEntityTypeEnum } from '@castlyo/database';
 
 export interface AuditLogEntry {
   userId?: string;
   userEmail?: string;
   userRole?: string;
   action: typeof auditActionEnum.enumValues[number];
-  entityType: typeof auditEntityTypeEnum.enumValues[number];
+  entityType?: typeof auditEntityTypeEnum.enumValues[number];
   entityId?: string;
   description?: string;
   oldValues?: any;
@@ -16,6 +16,11 @@ export interface AuditLogEntry {
   ipAddress?: string;
   userAgent?: string;
   metadata?: any;
+  // API compatibility fields
+  resource?: string;
+  resourceId?: string;
+  targetUserId?: string;
+  details?: any;
 }
 
 @Injectable()
@@ -30,7 +35,7 @@ export class AuditService {
         userEmail: entry.userEmail,
         userRole: entry.userRole,
         action: entry.action,
-        entityType: entry.entityType,
+        entityType: entry.entityType || 'USER',
         entityId: entry.entityId,
         description: entry.description,
         oldValues: entry.oldValues,
@@ -38,6 +43,11 @@ export class AuditService {
         ipAddress: entry.ipAddress,
         userAgent: entry.userAgent,
         metadata: entry.metadata,
+        // API compatibility fields
+        resource: entry.resource,
+        resourceId: entry.resourceId,
+        targetUserId: entry.targetUserId,
+        details: entry.details,
       });
     } catch (error) {
       // Audit logging should not break the main application flow

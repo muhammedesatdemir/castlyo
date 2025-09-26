@@ -1,12 +1,12 @@
 import { Injectable, ForbiddenException, NotFoundException } from '@nestjs/common';
 import { eq, and } from 'drizzle-orm';
 import { db } from '@castlyo/database';
-import { consentLogs, contactPermissions, users } from '@castlyo/database/schema';
+import { consentLogs, userConsents, contactPermissions, users } from '@castlyo/database';
 import { AuditService } from '../permissions/audit.service';
 
 export interface UpdateConsentRequest {
   userId: string;
-  consentType: string;
+  consentType: 'marketing' | 'dataSharing' | 'communication';
   granted: boolean;
   ipAddress?: string;
   userAgent?: string;
@@ -34,17 +34,36 @@ export class ConsentService {
       throw new ForbiddenException(policy.reason || 'This consent cannot be withdrawn');
     }
 
+    // Get or create user consents record
+    let userConsent = await db.select()
+      .from(userConsents)
+      .where(eq(userConsents.userId, request.userId))
+      .limit(1);
+
+    if (userConsent.length === 0) {
+      // Create new consent record
+      await db.insert(userConsents).values({
+        userId: request.userId,
+        [request.consentType]: request.granted,
+      });
+    } else {
+      // Update existing consent record
+      await db.update(userConsents)
+        .set({
+          [request.consentType]: request.granted,
+          updatedAt: new Date(),
+        })
+        .where(eq(userConsents.userId, request.userId));
+    }
+
     // Log the consent change
     const consentLog = await db.insert(consentLogs).values({
       userId: request.userId,
-      consentType: request.consentType,
-      consentVersion: '1.0', // TODO: Get from config
-      granted: request.granted,
-      consentText: this.getConsentText(request.consentType),
-      ipAddress: request.ipAddress,
-      userAgent: request.userAgent,
-      consentedAt: new Date(),
-      revokedAt: request.granted ? null : new Date(),
+      userRole: 'USER', // TODO: Get actual user role
+      action: request.granted ? 'CONSENT_GRANTED' : 'CONSENT_REVOKED',
+      resource: 'USER_CONSENT',
+      resourceId: request.userId,
+      details: `${request.consentType} consent ${request.granted ? 'granted' : 'revoked'}`,
     }).returning();
 
     // Log audit event
@@ -173,43 +192,32 @@ export class ConsentService {
   async getUserConsents(userId: string) {
     const consents = await db
       .select()
-      .from(consentLogs)
-      .where(eq(consentLogs.userId, userId))
-      .orderBy(consentLogs.consentedAt);
+      .from(userConsents)
+      .where(eq(userConsents.userId, userId))
+      .limit(1);
 
-    // Group by consent type and get latest for each
-    const latestConsents: Record<string, any> = {};
-    
-    for (const consent of consents) {
-      if (!latestConsents[consent.consentType] || 
-          consent.consentedAt > latestConsents[consent.consentType].consentedAt) {
-        latestConsents[consent.consentType] = consent;
-      }
+    if (consents.length === 0) {
+      // Return default consents
+      return {
+        marketing: true,
+        dataSharing: true,
+        communication: true,
+      };
     }
 
     return {
-      current: latestConsents,
-      history: consents,
+      marketing: consents[0].marketing,
+      dataSharing: consents[0].dataSharing,
+      communication: consents[0].communication,
     };
   }
 
   /**
    * Check if user has given specific consent
    */
-  async hasConsent(userId: string, consentType: string): Promise<boolean> {
-    const latestConsent = await db
-      .select()
-      .from(consentLogs)
-      .where(
-        and(
-          eq(consentLogs.userId, userId),
-          eq(consentLogs.consentType, consentType)
-        )
-      )
-      .orderBy(consentLogs.consentedAt)
-      .limit(1);
-
-    return latestConsent.length > 0 && latestConsent[0].granted;
+  async hasConsent(userId: string, consentType: 'marketing' | 'dataSharing' | 'communication'): Promise<boolean> {
+    const consents = await this.getUserConsents(userId);
+    return consents[consentType] ?? true; // Default to true if not set
   }
 
   /**
@@ -240,10 +248,10 @@ export class ConsentService {
     return {
       userId,
       exportDate: new Date().toISOString(),
-      consents: consents.current,
-      consentHistory: consents.history,
+      consents: consents,
+      consentHistory: [], // TODO: Get from consentLogs if needed
       contactPermissions: contactPerms,
-      policies: Object.keys(consents.current).map(type => 
+      policies: Object.keys(consents).map(type => 
         this.getConsentWithdrawalPolicy(type)
       ),
     };

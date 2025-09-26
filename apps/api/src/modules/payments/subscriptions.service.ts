@@ -4,32 +4,36 @@ import {
   BadRequestException,
   NotFoundException 
 } from '@nestjs/common';
-import { eq, and, gte } from 'drizzle-orm';
-import { DATABASE_CONNECTION } from '../../config/database.module';
+import { eq, and, gte, or } from 'drizzle-orm';
+// DATABASE_CONNECTION import removed - using 'DRIZZLE' directly
 import { 
   users,
   subscriptionPlans,
   userSubscriptions,
   userEntitlements
-} from '@castlyo/database/schema';
+} from '@castlyo/database';
 import type { Database } from '@castlyo/database';
 
 @Injectable()
 export class SubscriptionsService {
   constructor(
-    @Inject(DATABASE_CONNECTION) private readonly db: Database,
+    @Inject('DRIZZLE') private readonly db: Database,
   ) {}
 
   async getAvailablePlans(userType?: 'TALENT' | 'AGENCY') {
-    let query = this.db.select()
-      .from(subscriptionPlans)
-      .where(eq(subscriptionPlans.isActive, true));
+    let whereConditions = [eq(subscriptionPlans.isActive, true)];
 
     if (userType) {
-      query = query.where(eq(subscriptionPlans.planType, userType));
+      whereConditions.push(or(
+        eq(subscriptionPlans.audience, userType as any),
+        eq(subscriptionPlans.audience, 'BOTH')
+      ));
     }
 
-    const plans = await query.orderBy(subscriptionPlans.price);
+    const plans = await this.db.select()
+      .from(subscriptionPlans)
+      .where(and(...whereConditions))
+      .orderBy(subscriptionPlans.priceCents);
 
     return plans;
   }
@@ -45,7 +49,7 @@ export class SubscriptionsService {
         and(
           eq(userSubscriptions.userId, userId),
           eq(userSubscriptions.status, 'ACTIVE'),
-          gte(userSubscriptions.endDate, new Date())
+          gte(userSubscriptions.periodEnd, new Date())
         )
       )
       .limit(1);
@@ -106,8 +110,8 @@ export class SubscriptionsService {
         userId,
         planId,
         status: 'ACTIVE',
-        startDate: startDate,
-        endDate: endDate,
+        periodStart: startDate,
+        periodEnd: endDate,
         autoRenew: true,
       })
       .returning();
@@ -141,7 +145,7 @@ export class SubscriptionsService {
     // Cancel subscription (it will remain active until end date)
     await this.db.update(userSubscriptions)
       .set({
-        status: 'CANCELLED',
+        status: 'CANCELED',
         autoRenew: false,
         cancelledAt: new Date(),
         updatedAt: new Date()
@@ -175,7 +179,7 @@ export class SubscriptionsService {
     // Update subscription
     await this.db.update(userSubscriptions)
       .set({
-        endDate: newEndDate,
+        periodEnd: newEndDate,
         updatedAt: new Date()
       })
       .where(eq(userSubscriptions.id, subscriptionId));
@@ -208,7 +212,7 @@ export class SubscriptionsService {
         entitlements.map(e => ({
           userId,
           subscriptionId: undefined,
-          type: e.type as any,
+          entitlementType: e.type as any,
           balance: e.balance,
           totalAllocated: e.totalAllocated,
           source: 'SUBSCRIPTION',
@@ -265,7 +269,7 @@ export class SubscriptionsService {
       .where(
         and(
           eq(userEntitlements.userId, userId),
-          eq(userEntitlements.type as any, entitlementType as any)
+          eq(userEntitlements.entitlementType, entitlementType as any)
         )
       )
       .limit(1);
@@ -300,7 +304,7 @@ export class SubscriptionsService {
       .where(
         and(
           eq(userEntitlements.userId, userId),
-          eq(userEntitlements.type as any, entitlementType as any)
+          eq(userEntitlements.entitlementType, entitlementType as any)
         )
       );
 

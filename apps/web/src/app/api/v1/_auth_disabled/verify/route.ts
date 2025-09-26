@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
-import store from "@/lib/mock-store";
 import type { ApiResult } from "@/lib/api-types";
+import { API_BASE_URL } from "@/lib/config";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -49,48 +49,36 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const useMock = (process.env.USE_MOCK_VERIFICATION ?? "true").toLowerCase() === "true";
-
-    if (useMock) {
-      // Doğrudan mock-store üzerinden doğrulama yap
-      const consumed = store.consumeVerificationToken(parsed.data.token);
-      if (!consumed.ok) {
-        const reasonMap: Record<string, string> = {
-          not_found: "Geçersiz veya bulunamadı",
-          used: "Bu doğrulama bağlantısı zaten kullanılmış",
-          expired: "Doğrulama bağlantısının süresi dolmuş",
-        };
-        const status = consumed.reason === 'used' ? 409 : 400
-        return NextResponse.json<ApiResult>(
-          { success: false, ok: false, message: reasonMap[consumed.reason] ?? "Doğrulama başarısız" },
-          { status }
-        );
-      }
-
-      // Kullanıcıyı ID ile bul ve emailVerified=true yap
-      const user = Array.from(store.users.values()).find((u) => u.id === consumed.userId);
-      if (user) {
-        user.emailVerified = true;
-        store.users.set(user.email, user);
-      }
-
+    // Call API to verify email
+    let res: Response
+    try {
+      res = await fetch(`${API_BASE_URL}/auth/verify-email`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(parsed.data),
+        cache: "no-store",
+      });
+    } catch (e: any) {
+      console.error('[verify] fetch error ->', e?.message)
       return NextResponse.json<ApiResult>(
-        { success: true, ok: true, message: "E-posta doğrulandı", data: { userId: consumed.userId, emailVerified: true } },
-        { status: 200 }
+        { success: false, ok: false, message: 'Sunucuya bağlanılamadı. API çalışıyor mu?' },
+        { status: 502 }
       );
     }
 
-    // Gerçek API'ye proxy
-    const apiBase = process.env.API_URL ?? process.env.NEXT_PUBLIC_API_URL ?? "";
-    const res = await fetch(`${apiBase}/v1/auth/verify`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(parsed.data),
-      cache: "no-store",
-    });
-
     const data = await res.json().catch(() => ({}));
-    return NextResponse.json<ApiResult>(data, { status: res.status });
+    
+    if (!res.ok) {
+      return NextResponse.json<ApiResult>(
+        { success: false, ok: false, message: data.message || "Doğrulama başarısız" },
+        { status: res.status }
+      );
+    }
+    
+    return NextResponse.json<ApiResult>(
+      { success: true, ok: true, message: data.message || "E-posta doğrulandı", data },
+      { status: 200 }
+    );
   } catch (e) {
     return NextResponse.json<ApiResult>({ success: false, message: "Sunucu hatası" }, { status: 500 });
   }

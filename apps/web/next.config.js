@@ -4,7 +4,9 @@ const nextConfig = {
     domains: ['localhost', 'castlyo.com'],
   },
   env: {
-    NEXT_PUBLIC_API_URL: process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api/v1',
+    NEXT_PUBLIC_API_URL: process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001',
+    WEB_API_BASE_URL: process.env.WEB_API_BASE_URL || 'http://localhost:3001',
+    WEB_API_PREFIX: process.env.WEB_API_PREFIX || '/api/v1',
     NEXTAUTH_URL: process.env.NEXTAUTH_URL || 'http://localhost:3000',
     NEXTAUTH_SECRET: process.env.NEXTAUTH_SECRET || 'dev-nextauth-secret-change-in-production',
   },

@@ -129,34 +129,49 @@ export default function AuthPage() {
           languages: ['TR'],
         }
         
-        const response = await fetch('/api/v1/auth/register', {
+        // Development için payload'ı logla
+        if (process.env.NODE_ENV === 'development') {
+          console.log('REGISTER PAYLOAD', payload);
+        }
+
+        const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/auth/register`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
           },
+          credentials: 'include',
           body: JSON.stringify(payload),
         })
 
-        const result = await response.json()
-        
         // Log API call details
-        logger.logApiCall('POST', '/api/v1/auth/register', payload, result, response.status)
+        logger.logApiCall('POST', '/api/v1/auth/register', payload, null, response.status)
 
-        if (!result.success) {
-          logger.error('AUTH', 'Registration failed', { status: response.status, error: result })
+        if (!response.ok) {
+          const errorResult = await response.json().catch(() => ({}))
+          logger.error('AUTH', 'Registration failed', { status: response.status, error: errorResult })
           
-          // Yeni API format: { success: false, message, errors?, code? }
-          if (result.errors && Array.isArray(result.errors)) {
-            throw new Error(result.errors.join(', '))
-          }
+          // Duplicate email için düzgün mesaj
+          const errorMessage = response.status === 409
+            ? 'Bu e-posta zaten kayıtlı.'
+            : errorResult.message || `Kayıt başarısız (HTTP ${response.status}).`;
           
-          throw new Error(result.message || 'Kayıt işlemi başarısız')
+          throw new Error(errorMessage)
         }
 
-        logger.info('AUTH', 'Registration successful', { userId: result.data?.userId, email: formData.email })
+        const result = await response.json()
+
+        logger.info('AUTH', 'Registration successful', { userId: result.user?.id, email: formData.email })
+        
+        // Store tokens if available (for immediate login)
+        if (result.accessToken && result.refreshToken) {
+          // Store tokens in localStorage for immediate use
+          localStorage.setItem('accessToken', result.accessToken)
+          localStorage.setItem('refreshToken', result.refreshToken)
+          logger.info('AUTH', 'Tokens stored for immediate use')
+        }
         
         // Check if email verification is required
-        if (result.data?.emailVerificationRequired) {
+        if (result.user?.status === 'PENDING') {
           setEmailVerificationRequired(true)
           setRegisteredEmail(formData.email)
           setDialogTitle('E-posta Doğrulaması Gerekli 📧')
@@ -190,7 +205,7 @@ export default function AuthPage() {
           email: formData.email,
           password: formData.password,
           redirect: false,
-          callbackUrl: nextUrl || '/',
+          callbackUrl: nextUrl || '/onboarding/talent',
         })
 
         logger.logAuthAction('login', !!result?.ok, { email: formData.email, error: result?.error })
@@ -230,18 +245,29 @@ export default function AuthPage() {
           }
         }
 
-        if (result?.ok) {
+        if (result?.ok && result.url) {
           logger.info('AUTH', 'Login successful', { email: formData.email })
-          logger.info('NAVIGATION', 'Redirecting after login', { destination: nextUrl || '/' })
-          // Login başarılı, ana sayfaya yönlendir (onboarding değil)
-          router.replace(nextUrl || '/')
+          logger.info('NAVIGATION', 'Redirecting after login', { destination: result.url })
+          // Login başarılı, NextAuth'ın önerdiği URL'e yönlendir
+          router.replace(result.url)
+        } else if (result?.ok) {
+          logger.info('AUTH', 'Login successful', { email: formData.email })
+          logger.info('NAVIGATION', 'Redirecting after login', { destination: nextUrl || '/onboarding/talent' })
+          // Fallback: callbackUrl'e yönlendir
+          router.replace(nextUrl || '/onboarding/talent')
         }
       }
     } catch (error) {
       logger.error('AUTH', 'Auth process failed', { mode, email: formData.email, error: error.message })
       console.error('Auth error:', error)
+      
+      // Duplicate e-posta durumu için özel mesaj
+      const errorMessage = error.message?.includes('zaten kayıtlı') 
+        ? error.message 
+        : error instanceof Error ? error.message : 'Bir hata oluştu. Lütfen tekrar deneyin.';
+        
       setDialogTitle('Hata Oluştu')
-      setDialogMessage(error instanceof Error ? error.message : 'Bir hata oluştu. Lütfen tekrar deneyin.')
+      setDialogMessage(errorMessage)
       setShowKvkkDialog(true)
     } finally {
       setIsLoading(false)

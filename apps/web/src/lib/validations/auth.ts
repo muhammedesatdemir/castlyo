@@ -120,10 +120,14 @@ export const talentRegistrationSchema = z.object({
   eyeColor: z.string().optional(),
   hairColor: z.string().optional(),
   
-  // KVKK
+  // KVKK & Terms
   kvkkConsent: z
     .boolean()
     .refine((val) => val === true, 'KVKK metnini onaylamanız gerekli'),
+  
+  termsConsent: z
+    .boolean()
+    .refine((val) => val === true, 'Kullanım şartlarını kabul etmeniz gerekli'),
   
   marketingConsent: z.boolean().optional(),
   
@@ -205,10 +209,14 @@ export const agencyRegistrationSchema = z.object({
     .min(1, 'En az bir uzmanlık alanı seçiniz')
     .max(5, 'En fazla 5 uzmanlık alanı seçebilirsiniz'),
   
-  // KVKK
+  // KVKK & Terms
   kvkkConsent: z
     .boolean()
     .refine((val) => val === true, 'KVKK metnini onaylamanız gerekli'),
+  
+  termsConsent: z
+    .boolean()
+    .refine((val) => val === true, 'Kullanım şartlarını kabul etmeniz gerekli'),
   
   marketingConsent: z.boolean().optional(),
   

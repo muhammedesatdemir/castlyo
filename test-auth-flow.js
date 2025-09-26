@@ -1,116 +1,105 @@
-#!/usr/bin/env node
+const https = require('https');
+const http = require('http');
 
-/**
- * E2E Auth Flow Test Script
- * Tests: Register → Verify → Login
- */
+// HTTP isteği yapmak için yardımcı fonksiyon
+function makeRequest(url, options = {}) {
+  return new Promise((resolve, reject) => {
+    const urlObj = new URL(url);
+    const isHttps = urlObj.protocol === 'https:';
+    const client = isHttps ? https : http;
+    
+    const requestOptions = {
+      hostname: urlObj.hostname,
+      port: urlObj.port || (isHttps ? 443 : 80),
+      path: urlObj.pathname + urlObj.search,
+      method: options.method || 'GET',
+      headers: options.headers || {}
+    };
 
-const baseUrl = 'http://localhost:3000';
+    const req = client.request(requestOptions, (res) => {
+      let data = '';
+      res.on('data', chunk => data += chunk);
+      res.on('end', () => {
+        try {
+          const jsonData = data ? JSON.parse(data) : {};
+          resolve({ status: res.statusCode, data: jsonData, headers: res.headers });
+        } catch (e) {
+          resolve({ status: res.statusCode, data: data, headers: res.headers });
+        }
+      });
+    });
+
+    req.on('error', reject);
+    
+    if (options.body) {
+      req.write(options.body);
+    }
+    
+    req.end();
+  });
+}
 
 async function testAuthFlow() {
-  console.log('🚀 Auth Flow Test Başlıyor...\n');
-
-  // Test data
-  const testUser = {
-    email: 'test@example.com',
-    password: 'TestPass123!',
-    passwordConfirm: 'TestPass123!',
-    role: 'TALENT',
-    kvkkConsent: true,
-    termsConsent: true,
-    firstName: 'Test',
-    lastName: 'User'
-  };
+  console.log('🧪 Testing Auth Flow...\n');
 
   try {
-    // 1. REGISTER TEST
-    console.log('📝 1. KAYIT TESTI');
-    console.log(`Email: ${testUser.email}`);
-    
-    const registerResponse = await fetch(`${baseUrl}/api/auth/register`, {
+    // 1. CSRF token al
+    console.log('1️⃣ Getting CSRF token...');
+    const csrfRes = await makeRequest('http://localhost:3000/api/auth/csrf');
+    console.log('CSRF Status:', csrfRes.status);
+    console.log('CSRF Token:', csrfRes.data.csrfToken ? '✅ Received' : '❌ Missing');
+    console.log('');
+
+    // 2. Providers kontrol et
+    console.log('2️⃣ Checking providers...');
+    const providersRes = await makeRequest('http://localhost:3000/api/auth/providers');
+    console.log('Providers Status:', providersRes.status);
+    console.log('Credentials Provider:', providersRes.data.credentials ? '✅ Available' : '❌ Missing');
+    console.log('');
+
+    // 3. Session kontrol et (giriş yapmadan)
+    console.log('3️⃣ Checking session (before login)...');
+    const sessionRes = await makeRequest('http://localhost:3000/api/auth/session');
+    console.log('Session Status:', sessionRes.status);
+    console.log('Session Data:', JSON.stringify(sessionRes.data, null, 2));
+    console.log('');
+
+    // 4. NextAuth ile giriş yap
+    console.log('4️⃣ Attempting login via NextAuth...');
+    const loginData = `email=test@example.com&password=Password123!&csrfToken=${csrfRes.data.csrfToken}&callbackUrl=http://localhost:3000&redirect=false`;
+
+    const loginRes = await makeRequest('http://localhost:3000/api/auth/signin/credentials', {
       method: 'POST',
       headers: {
-        'Content-Type': 'application/json',
+        'Content-Type': 'application/x-www-form-urlencoded',
+        'Cookie': `next-auth.csrf-token=${csrfRes.data.csrfToken}`
       },
-      body: JSON.stringify(testUser),
+      body: loginData
     });
 
-    const registerData = await registerResponse.json();
-    console.log(`Register Response Status: ${registerResponse.status}`);
-    console.log(`Register Response:`, registerData);
+    console.log('Login Status:', loginRes.status);
+    console.log('Login Response:', JSON.stringify(loginRes.data, null, 2));
+    console.log('');
 
-    if (!registerResponse.ok) {
-      throw new Error(`Register failed: ${registerData.message || registerData.error}`);
+    // 5. Session kontrol et (giriş yaptıktan sonra)
+    console.log('5️⃣ Checking session (after login)...');
+    const sessionRes2 = await makeRequest('http://localhost:3000/api/auth/session');
+    console.log('Session Status:', sessionRes2.status);
+    console.log('Session Data:', JSON.stringify(sessionRes2.data, null, 2));
+    
+    if (sessionRes2.data.__probe === 'v7.2-probe') {
+      console.log('✅ Auth probe detected - NextAuth working!');
     }
-
-    console.log('✅ Kayıt başarılı!\n');
-
-    // 2. MOCK VERIFICATION (simulating clicking email link)
-    console.log('📧 2. E-POSTA DOĞRULAMA TESTI');
-    console.log('Terminal loglarından verification token\'ı bulup test edeceğiz...');
     
-    // For now, let's create a mock token to test the verification endpoint
-    // In real scenario, this would come from the email link
-    const mockToken = '1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef';
-    
-    console.log(`Mock token ile test: ${mockToken.substring(0, 16)}...`);
-    
-    const verifyResponse = await fetch(`${baseUrl}/api/auth/verify`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ token: mockToken }),
-    });
-
-    const verifyData = await verifyResponse.json();
-    console.log(`Verify Response Status: ${verifyResponse.status}`);
-    console.log(`Verify Response:`, verifyData);
-
-    // Don't fail the test if verification fails with mock token
-    // This is expected since we're using a fake token
-    if (verifyResponse.status === 400) {
-      console.log('⚠️  Mock token ile beklenen hata (gerçek token gerekli)');
-    }
-
-    console.log('ℹ️  Gerçek test için terminal loglarından verification linkini kullanın\n');
-
-    // 3. LOGIN TEST (will fail if not verified, but let's test the flow)
-    console.log('🔐 3. GİRİŞ TESTI');
-    
-    const loginResponse = await fetch(`${baseUrl}/api/auth/signin`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        email: testUser.email,
-        password: testUser.password,
-        csrfToken: 'test', // This might be needed for NextAuth
-      }),
-    });
-
-    console.log(`Login Response Status: ${loginResponse.status}`);
-    
-    if (loginResponse.ok) {
-      const loginData = await loginResponse.json();
-      console.log(`Login Response:`, loginData);
-      console.log('✅ Giriş başarılı!');
+    if (sessionRes2.data.access_token) {
+      console.log('✅ Access token found in session!');
     } else {
-      console.log('❌ Giriş başarısız (beklenen - e-posta doğrulanmamış olabilir)');
-      console.log('Response:', await loginResponse.text());
+      console.log('❌ No access token in session');
     }
 
-    console.log('\n📊 TEST TAMAMLANDI');
-    console.log('Terminal loglarını kontrol ederek Mock Store istatistiklerini görebilirsiniz.');
-    
   } catch (error) {
-    console.error('❌ Test Hatası:', error.message);
-    console.error(error);
+    console.error('❌ Test failed:', error.message);
   }
 }
 
-// Wait a bit for the server to start, then run test
-setTimeout(() => {
-  testAuthFlow();
-}, 3000);
+testAuthFlow();

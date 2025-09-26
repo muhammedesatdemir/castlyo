@@ -1,20 +1,20 @@
 import axios from 'axios'
 import { getSession } from 'next-auth/react'
+import { createApiBaseUrl } from './url-utils'
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'
-
-// Create axios instance
+// Create axios instance with proper API base URL including prefix
 export const api = axios.create({
-  baseURL: API_BASE_URL,
+  baseURL: createApiBaseUrl(),
   timeout: 10000,
+  withCredentials: true, // Include credentials for CORS
 })
 
 // Request interceptor to add auth token
 api.interceptors.request.use(
   async (config) => {
     const session = await getSession()
-    if (session?.accessToken) {
-      config.headers.Authorization = `Bearer ${session.accessToken}`
+    if (session?.access_token) {
+      config.headers.Authorization = `Bearer ${session.access_token}`
     }
     return config
   },

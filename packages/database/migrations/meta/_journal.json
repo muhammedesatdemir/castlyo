@@ -8,6 +8,13 @@
       "when": 1756721910282,
       "tag": "0000_tan_starfox",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1758741472628,
+      "tag": "0001_parched_nightmare",
+      "breakpoints": true
     }
   ]
 }

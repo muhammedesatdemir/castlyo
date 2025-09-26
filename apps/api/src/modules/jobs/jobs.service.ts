@@ -6,17 +6,17 @@ import {
   BadRequestException 
 } from '@nestjs/common';
 import { eq, and, desc, sql, ilike, or } from 'drizzle-orm';
-import { DATABASE_CONNECTION } from '../../config/database.module';
+// DATABASE_CONNECTION import removed - using 'DRIZZLE' directly
 import { 
   users,
   agencyProfiles,
   talentProfiles
-} from '@castlyo/database/schema/users';
+} from '@castlyo/database';
 import { 
   jobPosts,
   jobApplications,
   jobViews
-} from '@castlyo/database/schema/jobs';
+} from '@castlyo/database';
 import { 
   CreateJobPostDto, 
   UpdateJobPostDto,
@@ -41,7 +41,7 @@ interface JobSearchFilters {
 @Injectable()
 export class JobsService {
   constructor(
-    @Inject(DATABASE_CONNECTION) private readonly db: Database,
+    @Inject('DRIZZLE') private readonly db: Database,
   ) {}
 
   async createJobPost(userId: string, jobData: CreateJobPostDto) {
@@ -74,22 +74,22 @@ export class JobsService {
         title: jobData.title,
         description: jobData.description,
         jobType: jobData.category as any,
-        requirements: jobData.requirements,
-        ageMin: jobData.ageMin,
-        ageMax: jobData.ageMax,
-        genderRequirement: jobData.genderPreference?.[0] || 'ANY',
-        heightMin: jobData.heightMin,
-        heightMax: jobData.heightMax,
-        skills: jobData.skills || [],
-        languages: jobData.languages || [],
+        // requirements: jobData.requirements, // Field doesn't exist in schema
+        // ageMin: jobData.ageMin, // field doesn't exist in schema
+        // ageMax: jobData.ageMax, // field doesn't exist in schema
+        genderRequirement: (jobData.genderPreference?.[0] ?? 'ANY') as 'ANY'|'MALE'|'FEMALE',
+        // heightMin: jobData.heightMin, // field doesn't exist in schema
+        // heightMax: jobData.heightMax, // field doesn't exist in schema
+        // skills: jobData.skills || [], // field doesn't exist in schema
+        // languages: jobData.languages || [], // field doesn't exist in schema
         city: jobData.location,
-        shootingStartDate: jobData.shootingStartDate ? new Date(jobData.shootingStartDate) : null,
-        shootingEndDate: jobData.shootingEndDate ? new Date(jobData.shootingEndDate) : null,
+        // shootingStartDate: jobData.shootingStartDate ? new Date(jobData.shootingStartDate) : null, // field doesn't exist in schema
+        // shootingEndDate: jobData.shootingEndDate ? new Date(jobData.shootingEndDate) : null, // field doesn't exist in schema
         applicationDeadline: new Date(jobData.applicationDeadline),
         status: 'DRAFT',
         isUrgent: jobData.isUrgent || false,
         isFeatured: jobData.isFeatured || false,
-        tags: jobData.tags || [],
+        // tags: jobData.tags || [], // field doesn't exist in schema
         currentApplications: 0,
       })
       .returning();
@@ -111,13 +111,13 @@ export class JobsService {
       throw new NotFoundException('Job post not found');
     }
 
-    if (jobPost[0].post.status === 'ACTIVE') {
-      throw new BadRequestException('Job post is already active');
+    if (jobPost[0].post.status === 'PUBLISHED') {
+      throw new BadRequestException('Job post is already published');
     }
 
     const updatedJobPost = await this.db.update(jobPosts)
       .set({
-        status: 'ACTIVE',
+        status: 'PUBLISHED',
         publishedAt: new Date(),
         updatedAt: new Date()
       })
@@ -144,7 +144,7 @@ export class JobsService {
       agencyIsVerified: agencyProfiles.isVerified,
     } as const;
 
-    const conditions = [eq(jobPosts.status, 'ACTIVE')];
+    const conditions = [eq(jobPosts.status, 'PUBLISHED')];
     if (filters.category) conditions.push(eq(jobPosts.jobType, filters.category as any));
     if (filters.location) conditions.push(ilike(jobPosts.city, `%${filters.location}%`));
     if (filters.isUrgent) conditions.push(eq(jobPosts.isUrgent, true));
@@ -198,7 +198,7 @@ export class JobsService {
     const post = jobPost[0];
 
     // Check if job is active or if viewer is the owner
-    if (post.status !== 'ACTIVE' && post.agencyUserId !== viewerId) {
+    if (post.status !== 'PUBLISHED' && post.agencyUserId !== viewerId) {
       throw new ForbiddenException('Job post is not available');
     }
 
@@ -208,7 +208,7 @@ export class JobsService {
       await this.db.insert(jobViews)
         .values({
           jobId: jobId,
-          viewerId,
+          viewerUserId: viewerId,
         })
         .onConflictDoNothing();
     }
@@ -235,19 +235,19 @@ export class JobsService {
         title: jobData.title,
         description: jobData.description,
         jobType: jobData.category as any,
-        requirements: jobData.requirements,
-        ageMin: jobData.ageMin,
-        ageMax: jobData.ageMax,
-        genderRequirement: jobData.genderPreference?.[0],
-        heightMin: jobData.heightMin,
-        heightMax: jobData.heightMax,
-        skills: jobData.skills,
-        languages: jobData.languages,
+        // requirements: jobData.requirements, // Field doesn't exist in schema
+        // ageMin: jobData.ageMin, // field doesn't exist in schema
+        // ageMax: jobData.ageMax, // field doesn't exist in schema
+        genderRequirement: (jobData.genderPreference?.[0] ?? 'ANY') as 'ANY'|'MALE'|'FEMALE',
+        // heightMin: jobData.heightMin, // field doesn't exist in schema
+        // heightMax: jobData.heightMax, // field doesn't exist in schema
+        // skills: jobData.skills, // field doesn't exist in schema
+        // languages: jobData.languages, // field doesn't exist in schema
         city: jobData.location,
         applicationDeadline: jobData.applicationDeadline ? new Date(jobData.applicationDeadline) : undefined,
         isUrgent: jobData.isUrgent,
         isFeatured: jobData.isFeatured,
-        tags: jobData.tags,
+        // tags: jobData.tags, // field doesn't exist in schema
         updatedAt: new Date()
       })
       .where(eq(jobPosts.id, jobId))
@@ -270,10 +270,10 @@ export class JobsService {
       throw new NotFoundException('Job post not found');
     }
 
-    // Soft delete by updating status to CANCELLED
+    // Soft delete by updating status to CLOSED
     await this.db.update(jobPosts)
       .set({
-        status: 'CANCELLED',
+        status: 'CLOSED',
         updatedAt: new Date()
       })
       .where(eq(jobPosts.id, jobId));
@@ -308,7 +308,7 @@ export class JobsService {
       .where(eq(jobPosts.id, applicationData.jobPostId))
       .limit(1);
 
-    if (!jobPost.length || jobPost[0].status !== 'ACTIVE') {
+    if (!jobPost.length || jobPost[0].status !== 'PUBLISHED') {
       throw new NotFoundException('Job post not found or not available');
     }
 
@@ -323,7 +323,7 @@ export class JobsService {
       .from(jobApplications)
       .where(and(
         eq(jobApplications.jobId, applicationData.jobPostId),
-        eq(jobApplications.talentId, talentProfile[0].id)
+        eq(jobApplications.talentProfileId, talentProfile[0].id)
       ))
       .limit(1);
 
@@ -336,11 +336,12 @@ export class JobsService {
     const newApplication = await this.db.insert(jobApplications)
       .values({
         jobId: applicationData.jobPostId,
-        talentId: talentProfile[0].id,
+        talentProfileId: talentProfile[0].id,
+        applicantUserId: userId,
         coverLetter: applicationData.coverLetter,
-        selectedMedia: applicationData.portfolioItems || [],
-        additionalNotes: undefined,
-        status: 'PENDING',
+        // selectedMedia: applicationData.portfolioItems || [], // Field doesn't exist in schema
+        // additionalNotes: undefined, // Field doesn't exist in schema
+        status: 'SUBMITTED',
       })
       .returning();
 
@@ -377,7 +378,7 @@ export class JobsService {
       status: jobApplications.status,
       coverLetter: jobApplications.coverLetter,
       reviewedAt: jobApplications.reviewedAt,
-      talentId: talentProfiles.id,
+      talentProfileId: talentProfiles.id,
       talentFirstName: talentProfiles.firstName,
       talentLastName: talentProfiles.lastName,
       talentDisplayName: talentProfiles.displayName,
@@ -387,7 +388,7 @@ export class JobsService {
       talentExperience: talentProfiles.experience,
     })
       .from(jobApplications)
-      .leftJoin(talentProfiles, eq(jobApplications.talentId, talentProfiles.id))
+      .leftJoin(talentProfiles, eq(jobApplications.talentProfileId, talentProfiles.id))
       .where(eq(jobApplications.jobId, jobId))
       .orderBy(desc(jobApplications.createdAt as any))
       .limit(limit)
@@ -448,7 +449,7 @@ export class JobsService {
       .from(jobApplications)
       .leftJoin(jobPosts, eq(jobApplications.jobId, jobPosts.id))
       .leftJoin(agencyProfiles, eq(jobPosts.agencyId, agencyProfiles.id))
-      .leftJoin(talentProfiles, eq(jobApplications.talentId, talentProfiles.id))
+      .leftJoin(talentProfiles, eq(jobApplications.talentProfileId, talentProfiles.id))
       .where(eq(talentProfiles.userId, userId))
       .orderBy(desc(jobApplications.createdAt as any))
       .limit(limit)
@@ -469,7 +470,7 @@ export class JobsService {
       .from(jobPosts)
       .where(and(
         eq(jobPosts.agencyId, agency[0].id),
-        sql`${jobPosts.status} != 'CANCELLED'`
+        sql`${jobPosts.status} != 'CLOSED'`
       ))
       .orderBy(desc(jobPosts.createdAt))
       .limit(limit)

@@ -1,0 +1,20 @@
+import postgres from 'postgres';
+import * as schema from './schema';
+export declare const client: postgres.Sql<{}>;
+export declare const db: import("drizzle-orm/postgres-js").PostgresJsDatabase<typeof schema> & {
+    $client: postgres.Sql<{}>;
+};
+export declare function healthcheck(): Promise<boolean>;
+export declare function closeDb(): Promise<void>;
+export * from './schema/enums';
+export * from './schema/users';
+export * from './schema/jobs';
+export * from './schema/messages';
+export * from './schema/permissions';
+export * from './schema/subscriptions';
+export * from './schema/payments';
+export * from './schema/audit';
+export * from './schema/verification';
+export * from './schema/consent';
+export type Database = typeof db;
+export type Schema = typeof schema;

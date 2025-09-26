@@ -6,16 +6,17 @@ import {
   BadRequestException 
 } from '@nestjs/common';
 import { eq, and, or, desc } from 'drizzle-orm';
-import { DATABASE_CONNECTION } from '../../config/database.module';
+import { alias } from 'drizzle-orm/pg-core';
+// DATABASE_CONNECTION import removed - using 'DRIZZLE' directly
 import { 
   users,
   agencyProfiles,
-  talentProfiles
-} from '@castlyo/database/schema/users';
-import { 
+  talentProfiles,
   messageThreads,
-  messages
-} from '@castlyo/database/schema/messages';
+  messages,
+  contactPermissions,
+  db
+} from '@castlyo/database';
 import { ContactPermissionsService } from './contact-permissions.service';
 import { 
   CreateMessageThreadDto,
@@ -25,8 +26,11 @@ import type { Database } from '@castlyo/database';
 
 @Injectable()
 export class MessagesService {
+  private agencyUser = alias(users, 'agency_user');
+  private talentUser = alias(users, 'talent_user');
+
   constructor(
-    @Inject(DATABASE_CONNECTION) private readonly db: Database,
+    @Inject('DRIZZLE') private readonly db: Database,
     private contactPermissionsService: ContactPermissionsService,
   ) {}
 
@@ -173,7 +177,7 @@ export class MessagesService {
         senderId: userId,
         content: messageData.content,
         messageType: messageData.messageType || 'TEXT',
-        attachmentUrl: messageData.attachmentUrl,
+        attachments: messageData.attachmentUrl ? [{ url: messageData.attachmentUrl }] : [],
       })
       .returning();
 
@@ -210,9 +214,9 @@ export class MessagesService {
     })
       .from(messageThreads)
       .leftJoin(agencyProfiles, eq(messageThreads.agencyId, agencyProfiles.id))
-      .leftJoin(users.as('agency_user') as any, eq((users as any).id, (agencyProfiles as any).userId))
+      .leftJoin(this.agencyUser, eq(this.agencyUser.id, agencyProfiles.userId))
       .leftJoin(talentProfiles, eq(messageThreads.talentId, talentProfiles.id))
-      .leftJoin(users.as('talent_user') as any, eq((users as any).id, (talentProfiles as any).userId))
+      .leftJoin(this.talentUser, eq(this.talentUser.id, talentProfiles.userId))
       .where(
         or(
           eq(agencyProfiles.userId, userId as any),
@@ -257,13 +261,17 @@ export class MessagesService {
     const offset = (page - 1) * limit;
 
     const threadMessages = await this.db.select({
-      message: messages,
-      sender: {
-        id: users.id,
-        role: users.role,
-        talent: talentProfiles,
-        agency: agencyProfiles,
-      }
+      messageId: messages.id,
+      content: messages.content,
+      messageType: messages.messageType,
+      attachments: messages.attachments,
+      sentAt: messages.sentAt,
+      senderId: users.id,
+      senderRole: users.role,
+      talentFirstName: talentProfiles.firstName,
+      talentLastName: talentProfiles.lastName,
+      talentDisplayName: talentProfiles.displayName,
+      agencyCompanyName: agencyProfiles.companyName,
     })
       .from(messages)
       .leftJoin(users, eq(messages.senderId, users.id))

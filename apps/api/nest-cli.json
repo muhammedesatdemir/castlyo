@@ -6,6 +6,6 @@
     "deleteOutDir": true,
     "webpack": true,
     "webpackConfigPath": "webpack.config.js",
-    "tsConfigPath": "tsconfig.json"
+    "tsConfigPath": "tsconfig.build.json"
   }
 }

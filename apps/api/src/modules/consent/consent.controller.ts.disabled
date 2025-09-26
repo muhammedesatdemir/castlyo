@@ -17,7 +17,7 @@ import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { ConsentService } from './consent.service';
 
 export class UpdateConsentDto {
-  consentType: string;
+  consentType: 'marketing' | 'dataSharing' | 'communication';
   granted: boolean;
 }
 
@@ -60,7 +60,7 @@ export class ConsentController {
    */
   @Get('check/:consentType')
   async checkConsent(
-    @Param('consentType') consentType: string,
+    @Param('consentType') consentType: 'marketing' | 'dataSharing' | 'communication',
     @Request() req,
   ) {
     const hasConsent = await this.consentService.hasConsent(req.user.id, consentType);

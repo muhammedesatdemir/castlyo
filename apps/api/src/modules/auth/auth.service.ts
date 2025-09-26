@@ -8,6 +8,7 @@ import {
 } from '@nestjs/common';
 import { JwtService, JwtSignOptions } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
+import { DRIZZLE } from '@/config/database.module';
 import { UsersService } from '../users/users.service';
 import { 
   LoginDto, 
@@ -17,12 +18,10 @@ import {
   ResetPasswordDto,
   RefreshTokenDto 
 } from './dto/auth.dto';
-import * as bcrypt from 'bcryptjs';
+import * as bcrypt from 'bcrypt';
 import * as crypto from 'crypto';
-import { DATABASE_CONNECTION } from '../../config/database.module';
 import { users, userConsents } from '@castlyo/database';
 import { eq } from 'drizzle-orm';
-import type { Database } from '@castlyo/database';
 
 @Injectable()
 export class AuthService {
@@ -32,15 +31,29 @@ export class AuthService {
     private usersService: UsersService,
     private jwtService: JwtService,
     private configService: ConfigService,
-    @Inject(DATABASE_CONNECTION) private readonly db: Database,
+    @Inject(DRIZZLE) private readonly db: any,
   ) {}
 
   async validateUser(email: string, password: string): Promise<any> {
+    this.logger.log(`[VALIDATE_USER] Attempting validation for email: ${email}`);
+    
     const user = await this.usersService.findByEmail(email);
-    if (user && await bcrypt.compare(password, user.passwordHash)) {
-      const { passwordHash, ...result } = user;
-      return result;
+    this.logger.log(`[VALIDATE_USER] User found: ${!!user}, Status: ${user?.status}, EmailVerified: ${user?.emailVerified}`);
+    
+    if (user) {
+      this.logger.log(`[VALIDATE_USER] Password hash from DB: ${user.passwordHash}`);
+      this.logger.log(`[VALIDATE_USER] Password to compare: ${password}`);
+      const passwordMatch = await bcrypt.compare(password, user.passwordHash);
+      this.logger.log(`[VALIDATE_USER] Password match: ${passwordMatch}`);
+      
+      if (passwordMatch) {
+        const { passwordHash, ...result } = user;
+        this.logger.log(`[VALIDATE_USER] ✅ Validation successful for user: ${user.id}`);
+        return result;
+      }
     }
+    
+    this.logger.warn(`[VALIDATE_USER] ❌ Validation failed for email: ${email}`);
     return null;
   }
 
@@ -58,57 +71,39 @@ export class AuthService {
       const existingUser = await this.usersService.findByEmail(registerDto.email);
       if (existingUser) {
         this.logger.warn(`[REGISTER] User already exists: ${registerDto.email}`);
-        throw new ConflictException('User with this email already exists');
-      }
-
-      // Check KVKK consent
-      if (!registerDto.kvkkConsent) {
-        this.logger.warn(`[REGISTER] KVKK consent missing for email: ${registerDto.email}`);
-        throw new BadRequestException('KVKK consent is required');
-      }
-
-      // Check Terms consent
-      if (!registerDto.termsConsent) {
-        this.logger.warn(`[REGISTER] Terms consent missing for email: ${registerDto.email}`);
-        throw new BadRequestException('Terms and conditions consent is required');
+        throw new ConflictException('Email already registered');
       }
 
       // Hash password
-      const saltRounds = this.configService.get<number>('BCRYPT_ROUNDS', 12);
+      const saltRounds = Number(this.configService.get('BCRYPT_SALT_ROUNDS', 10));
       const passwordHash = await bcrypt.hash(registerDto.password, saltRounds);
       this.logger.debug(`[REGISTER] Password hashed for email: ${registerDto.email}`);
 
+      // Check if email verification is enabled
+      const emailVerificationEnabled = this.configService.get('ENABLE_EMAIL_VERIFICATION', 'true') === 'true';
+      
       // Create user
-      const newUser = await this.db.insert(users).values({
+      const user = await this.usersService.create({
         email: registerDto.email.toLowerCase(),
-        phone: registerDto.phone,
         passwordHash,
         role: registerDto.role,
-        status: 'PENDING', // User needs email verification
-      }).returning();
+        status: emailVerificationEnabled ? 'PENDING' : 'ACTIVE',
+        emailVerified: !emailVerificationEnabled,
+      });
 
-      const userId = newUser[0].id;
-      this.logger.log(`[REGISTER] User created successfully: ${userId} | Email: ${registerDto.email} | Role: ${registerDto.role}`);
-      this.logger.debug(`[REGISTER] Password hash exists: ${!!passwordHash} | Hash length: ${passwordHash.length}`);
+      this.logger.log(`[REGISTER] User created successfully: ${user.id} | Email: ${registerDto.email} | Role: ${registerDto.role}`);
 
-      // Record consents
-      await this.recordConsents(userId, registerDto);
-      this.logger.log(`[REGISTER] Consents recorded for user: ${userId}`);
+      // KVKK/Terms record: temporarily disabled due to consent service issues
+      this.logger.log(`[REGISTER] KVKK: ${registerDto.kvkkConsent}, Terms: ${registerDto.termsConsent} (consent recording disabled)`);
 
-      // Generate email verification token
-      const verificationToken = this.generateEmailVerificationToken(userId);
-      this.logger.debug(`[REGISTER] Verification token generated for user: ${userId}`);
-
-      // TODO: Send verification email
-
-      const response = {
-        message: 'Registration successful. Please check your email for verification.',
-        userId,
-        verificationToken, // Remove this in production
+      // Generate tokens
+      const tokens = await this.issuePair(user.id, user.role);
+      
+      return { 
+        success: true, 
+        user: { id: user.id, email: user.email, role: user.role }, 
+        ...tokens 
       };
-
-      this.logger.log(`[REGISTER] Registration completed successfully for user: ${userId}`);
-      return response;
 
     } catch (error) {
       this.logger.error(`[REGISTER] Registration failed for email: ${registerDto.email}`, error.stack);
@@ -136,6 +131,7 @@ export class AuthService {
       throw new BadRequestException('Invalid or expired verification token');
     }
   }
+
 
   async login(loginDto: LoginDto) {
     this.logger.log(`[LOGIN] Login attempt for email: ${loginDto.email}`);
@@ -227,7 +223,7 @@ export class AuthService {
         secret: this.configService.get('JWT_SECRET') + '_password_reset',
       });
 
-      const saltRounds = this.configService.get<number>('BCRYPT_ROUNDS', 12);
+      const saltRounds = this.configService.get<number>('BCRYPT_SALT_ROUNDS', 10);
       const passwordHash = await bcrypt.hash(resetPasswordDto.password, saltRounds);
 
       await this.db.update(users)
@@ -282,37 +278,84 @@ export class AuthService {
     );
   }
 
-  private async recordConsents(userId: string, registerDto: RegisterDto) {
-    const consentsToRecord = [
-      {
-        userId,
-        consentType: 'KVKK',
-        version: '1.0',
-        consented: registerDto.kvkkConsent,
-        ipAddress: registerDto.ipAddress,
-        userAgent: registerDto.userAgent,
-      },
-      {
-        userId,
-        consentType: 'TERMS',
-        version: '1.0',
-        consented: registerDto.termsConsent,
-        ipAddress: registerDto.ipAddress,
-        userAgent: registerDto.userAgent,
-      }
-    ];
+  // Issue JWT token pair
+  async issuePair(userId: string, role: string) {
+    const payload = { sub: userId, role };
+    
+    const accessToken = this.jwtService.sign(payload, {
+      expiresIn: this.configService.get('JWT_EXPIRES_IN', '7d'),
+    });
 
-    if (registerDto.marketingConsent !== undefined) {
-      consentsToRecord.push({
-        userId,
-        consentType: 'MARKETING',
-        version: '1.0',
-        consented: registerDto.marketingConsent,
-        ipAddress: registerDto.ipAddress,
-        userAgent: registerDto.userAgent,
-      });
+    const refreshToken = this.jwtService.sign(payload, {
+      secret: this.configService.get('JWT_REFRESH_SECRET'),
+      expiresIn: this.configService.get('JWT_REFRESH_EXPIRES_IN', '30d'),
+    });
+
+    return {
+      accessToken,
+      refreshToken,
+    };
+  }
+
+  // Record user consents - support both old and new signature
+  private async recordConsents(data: any) {
+    let consentsToRecord = [];
+
+    // Handle both old RegisterDto format and new structured format
+    if (data.items) {
+      // New format: { userId, items: [...], ipAddress, userAgent }
+      consentsToRecord = data.items.map((item: any) => ({
+        userId: data.userId,
+        consentType: item.consentType.toUpperCase(),
+        version: item.version,
+        consented: item.consented,
+        ipAddress: data.ipAddress,
+        userAgent: data.userAgent,
+      }));
+    } else {
+      // Old format: (userId, registerDto)
+      const userId = typeof data === 'string' ? data : data.userId;
+      const registerDto = arguments[1] || data;
+      
+      consentsToRecord = [
+        {
+          userId,
+          consentType: 'KVKK',
+          version: '1.0',
+          consented: registerDto.kvkkConsent,
+          ipAddress: registerDto.ipAddress,
+          userAgent: registerDto.userAgent,
+        },
+        {
+          userId,
+          consentType: 'TERMS',
+          version: '1.0',
+          consented: registerDto.termsConsent,
+          ipAddress: registerDto.ipAddress,
+          userAgent: registerDto.userAgent,
+        }
+      ];
+
+      if (registerDto.marketingConsent !== undefined) {
+        consentsToRecord.push({
+          userId,
+          consentType: 'MARKETING',
+          version: '1.0',
+          consented: registerDto.marketingConsent,
+          ipAddress: registerDto.ipAddress,
+          userAgent: registerDto.userAgent,
+        });
+      }
     }
 
-    await this.db.insert(userConsents).values(consentsToRecord);
+    try {
+      for (const consent of consentsToRecord) {
+        await this.db.insert(userConsents).values(consent);
+      }
+      this.logger.log(`[recordConsents] Successfully recorded ${consentsToRecord.length} consents for user: ${consentsToRecord[0]?.userId}`);
+    } catch (error) {
+      this.logger.error(`[recordConsents] Failed to record consents`, error);
+      throw error;
+    }
   }
 }

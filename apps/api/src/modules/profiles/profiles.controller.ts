@@ -28,7 +28,7 @@ export class ProfilesController {
 
   @Get('me')
   async getMyProfile(@Request() req) {
-    return this.profilesService.getMyProfile(req.user.id);
+    return this.profilesService.getMyProfile(req.user.userId);
   }
 
   @Post('talent')
@@ -37,7 +37,7 @@ export class ProfilesController {
     @Request() req,
     @Body() profileData: CreateTalentProfileDto
   ) {
-    return this.profilesService.createTalentProfile(req.user.id, profileData);
+    return this.profilesService.createTalentProfile(req.user.userId, profileData);
   }
 
   @Post('agency')
@@ -46,23 +46,23 @@ export class ProfilesController {
     @Request() req,
     @Body() profileData: CreateAgencyProfileDto
   ) {
-    return this.profilesService.createAgencyProfile(req.user.id, profileData);
+    return this.profilesService.createAgencyProfile(req.user.userId, profileData);
   }
 
   @Get('talent/:id')
   async getTalentProfile(@Param('id') id: string, @Request() req) {
-    return this.profilesService.getTalentProfile(id, req.user?.id);
+    return this.profilesService.getTalentProfile(id, req.user?.userId);
   }
 
   @Public()
   @Get('public/talent/:id')
   async getPublicTalentProfile(@Param('id') id: string, @Request() req) {
-    return this.profilesService.getPublicTalentProfile(id, req.user?.id);
+    return this.profilesService.getPublicTalentProfile(id, req.user?.userId);
   }
 
   @Get('agency/:id')
   async getAgencyProfile(@Param('id') id: string, @Request() req) {
-    return this.profilesService.getAgencyProfile(id, req.user?.id);
+    return this.profilesService.getAgencyProfile(id, req.user?.userId);
   }
 
   @Put('talent/:id')
@@ -71,7 +71,7 @@ export class ProfilesController {
     @Body() profileData: UpdateTalentProfileDto,
     @Request() req
   ) {
-    return this.profilesService.updateTalentProfile(id, profileData, req.user.id);
+    return this.profilesService.updateTalentProfile(id, profileData, req.user.userId);
   }
 
   @Put('agency/:id')
@@ -80,17 +80,17 @@ export class ProfilesController {
     @Body() profileData: UpdateAgencyProfileDto,
     @Request() req
   ) {
-    return this.profilesService.updateAgencyProfile(id, profileData, req.user.id);
+    return this.profilesService.updateAgencyProfile(id, profileData, req.user.userId);
   }
 
   @Delete(':id')
   @HttpCode(HttpStatus.NO_CONTENT)
   async deleteProfile(@Param('id') id: string, @Request() req) {
-    return this.profilesService.deleteProfile(id, req.user.id);
+    return this.profilesService.deleteProfile(id, req.user.userId);
   }
 
   @Get('export/me')
   async exportMyData(@Request() req) {
-    return this.profilesService.exportUserData(req.user.id, req.user.id);
+    return this.profilesService.exportUserData(req.user.userId, req.user.userId);
   }
 }
