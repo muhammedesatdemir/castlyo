@@ -1,39 +1,36 @@
 'use client'
 
-import { useState, useEffect } from 'react'
-import { api } from '@/lib/api'
+import { useState, useEffect, useRef } from 'react'
+import { checkApiHealth, getApiDisplayUrl } from '@/lib/health'
 
 export function ApiHealthCheck() {
   const [status, setStatus] = useState<'loading' | 'connected' | 'error'>('loading')
   const [apiUrl, setApiUrl] = useState<string>('')
   const [errorMessage, setErrorMessage] = useState<string>('')
+  const reloadedOnce = useRef(false)
 
   useEffect(() => {
-    // Get the complete API URL including base and prefix
-    const baseUrl = process.env.WEB_API_BASE_URL || 'http://localhost:3001'
-    const prefix = process.env.WEB_API_PREFIX || '/api/v1'
-    const fullUrl = `${baseUrl}${prefix}`
-    setApiUrl(fullUrl)
+    setApiUrl(getApiDisplayUrl())
 
     // Test health endpoint
     const checkHealth = async () => {
       try {
-        console.log('🔍 Testing API connection to:', `${fullUrl}/health`)
-        const response = await api.get('/health')
-        console.log('✅ API Health Check Response:', response.data)
+        console.log('🔍 Testing API connection via proxy')
+        const response = await checkApiHealth()
+        console.log('✅ API Health Check Response:', response)
         setStatus('connected')
         setErrorMessage('')
       } catch (error: any) {
         console.error('❌ API Health Check Failed:', error)
         setStatus('error')
         
-        if (error.response) {
-          setErrorMessage(`HTTP ${error.response.status}: ${error.response.statusText}`)
-        } else if (error.request) {
-          setErrorMessage('Network error: Could not reach API server')
-        } else {
-          setErrorMessage(`Error: ${error.message}`)
+        // Sonsuz reload'ı önle
+        if (!reloadedOnce.current) {
+          reloadedOnce.current = true
+          // İsteğe bağlı: setTimeout(() => window.location.reload(), 5000)
         }
+        
+        setErrorMessage(error.message || 'Health check failed')
       }
     }
 

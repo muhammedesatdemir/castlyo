@@ -1,4 +1,4 @@
-import { Controller, Get, UseGuards, Request, Logger, Patch, Body } from '@nestjs/common';
+import { Controller, Get, UseGuards, Request, Logger, Patch, Body, UnauthorizedException } from '@nestjs/common';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { UsersService } from './users.service';
 
@@ -11,44 +11,51 @@ export class UsersController {
 
   @Get('me')
   async getCurrentUser(@Request() req) {
-    this.logger.log(`[GET /users/me] User: ${req.user.userId} | Email: ${req.user.email}`);
+    // Guard-rail: sub yoksa 401 at
+    const userId = req.user?.sub ?? req.user?.userId ?? req.user?.id;
+    this.logger.log(`[GET /users/me] req.user =`, req.user);
+    
+    if (!userId) {
+      this.logger.error(`[GET /users/me] Invalid token payload - no user ID found`);
+      throw new UnauthorizedException('Invalid token payload');
+    }
+
+    this.logger.log(`[GET /users/me] User: ${userId} | Email: ${req.user.email}`);
     
     try {
-      const user = await this.usersService.findById(req.user.userId);
-      if (!user) {
-        this.logger.warn(`[GET /users/me] User not found: ${req.user.userId}`);
-        return { error: 'User not found' };
-      }
-
-      const { passwordHash, ...userWithoutPassword } = user;
-      this.logger.log(`[GET /users/me] Success for user: ${user.id}`);
-      
-      return {
-        ...userWithoutPassword
-      };
+      const user = await this.usersService.getMe(userId);
+      this.logger.log(`[GET /users/me] Success for user: ${userId}`);
+      return user;
     } catch (error) {
-      this.logger.error(`[GET /users/me] Error for user ${req.user.userId}:`, error.stack);
+      this.logger.error(`[GET /users/me] Error for user ${userId}:`, error.stack);
       throw error;
     }
   }
 
   @Get('profile')
   getProfile(@Request() req) {
-    this.logger.log(`[GET /users/profile] User: ${req.user.userId}`);
+    const userId = req.user?.sub ?? req.user?.userId ?? req.user?.id;
+    this.logger.log(`[GET /users/profile] User: ${userId}`);
     return req.user;
   }
 
   @Patch('onboarding-complete')
   async completeOnboarding(@Request() req) {
-    this.logger.log(`[PATCH /users/onboarding-complete] User: ${req.user.userId}`);
+    const userId = req.user?.sub ?? req.user?.userId ?? req.user?.id;
+    
+    if (!userId) {
+      throw new UnauthorizedException('Invalid token payload');
+    }
+    
+    this.logger.log(`[PATCH /users/onboarding-complete] User: ${userId}`);
     
     try {
-      await this.usersService.completeOnboarding(req.user.userId);
-      this.logger.log(`[PATCH /users/onboarding-complete] Success for user: ${req.user.userId}`);
+      await this.usersService.completeOnboarding(userId);
+      this.logger.log(`[PATCH /users/onboarding-complete] Success for user: ${userId}`);
       
       return { message: 'Onboarding completed successfully' };
     } catch (error) {
-      this.logger.error(`[PATCH /users/onboarding-complete] Error for user ${req.user.userId}:`, error.stack);
+      this.logger.error(`[PATCH /users/onboarding-complete] Error for user ${userId}:`, error.stack);
       throw error;
     }
   }

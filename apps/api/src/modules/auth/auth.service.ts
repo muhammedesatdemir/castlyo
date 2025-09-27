@@ -240,10 +240,10 @@ export class AuthService {
   }
 
   private async generateTokens(user: any) {
-    const payload = { email: user.email, sub: user.id, role: user.role };
+    const payload = { sub: user.id, email: user.email, role: user.role };
 
     const accessToken = this.jwtService.sign(payload, {
-      expiresIn: this.configService.get('JWT_EXPIRES_IN', '15m'),
+      expiresIn: this.configService.get('JWT_EXPIRES_IN', '7d'),
     });
 
     const refreshToken = this.jwtService.sign(payload, {
@@ -254,7 +254,7 @@ export class AuthService {
     return {
       access_token: accessToken,
       refresh_token: refreshToken,
-      expires_in: 15 * 60, // 15 minutes in seconds
+      expires_in: 7 * 24 * 60 * 60, // 7 days in seconds
     };
   }
 

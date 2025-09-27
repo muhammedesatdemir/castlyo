@@ -1,27 +1,29 @@
 import axios from 'axios'
 import { getSession } from 'next-auth/react'
-import { createApiBaseUrl } from './url-utils'
+
+// güvenli join
+const join = (...parts: string[]) =>
+  parts
+    .map((p, i) => (i === 0 ? p.replace(/\/+$/,'') : p.replace(/^\/+|\/+$/g,'')))
+    .filter(Boolean)
+    .join('/');
+
+const isServer = typeof window === 'undefined';
+
+// Use proxy for client-side requests, direct internal URL for server-side
+const BASE_URL = isServer
+  ? process.env.INTERNAL_API_URL ?? 'http://castlyo-api:3001'
+  : '/api/proxy'; // <-- YENİ: Tarayıcı tarafında proxy'yi kullan
+
+const PREFIX = isServer ? '/api/v1' : ''; // <-- YENİ: Proxy path'i zaten /api/v1 içerecek
 
 // Create axios instance with proper API base URL including prefix
 export const api = axios.create({
-  baseURL: createApiBaseUrl(),
+  baseURL: join(BASE_URL, PREFIX),
   timeout: 10000,
   withCredentials: true, // Include credentials for CORS
-})
+});
 
-// Request interceptor to add auth token
-api.interceptors.request.use(
-  async (config) => {
-    const session = await getSession()
-    if (session?.access_token) {
-      config.headers.Authorization = `Bearer ${session.access_token}`
-    }
-    return config
-  },
-  (error) => {
-    return Promise.reject(error)
-  }
-)
 
 // Response interceptor for error handling
 api.interceptors.response.use(
@@ -29,7 +31,9 @@ api.interceptors.response.use(
   async (error) => {
     if (error.response?.status === 401) {
       // Token expired, redirect to login
-      window.location.href = '/auth/signin'
+      if (typeof window !== 'undefined') {
+        window.location.href = '/auth'
+      }
     }
     return Promise.reject(error)
   }

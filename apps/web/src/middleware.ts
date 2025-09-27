@@ -76,7 +76,14 @@ export default withAuth(
 // Middleware'in çalışacağı route'ları belirt
 export const config = {
   matcher: [
-    // Statik dosyaları ve bazı özel yolları hariç tut
-    '/((?!_next/static|_next/image|favicon.ico|robots.txt|sitemap.xml|.*\\.(?:png|jpg|jpeg|gif|svg|webp|mp4|mov|mp3|woff2|ttf)).*)',
+    // Sadece korumalı sayfalar ve onboarding
+    '/profile/:path*',
+    '/settings/:path*', 
+    '/jobs/:path*',
+    '/search/:path*',
+    '/onboarding/:path*',
+    '/auth/:path*',
+    // API proxy koruması
+    '/api/proxy/:path*'
   ],
 }

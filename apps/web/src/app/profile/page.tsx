@@ -55,7 +55,8 @@ export default function ProfilePage() {
     try {
       setError(null);
       console.debug('[ProfilePage] Refetching profile data...');
-      const res = await fetch("/api/profile/me", { cache: "no-store" });
+      // DEĞİŞİKLİK: /api/profile/me -> /api/proxy/users/me
+      const res = await fetch("/api/proxy/users/me", { cache: "no-store" });
       
       if (!res.ok) {
         const errorData = await res.json().catch(() => ({ error: 'NON_JSON_ERROR' }));
@@ -77,7 +78,8 @@ export default function ProfilePage() {
       try {
         setError(null);
         console.debug('[ProfilePage] Initial profile fetch...');
-        const res = await fetch("/api/profile/me", { cache: "no-store" });
+        // DEĞİŞİKLİK: /api/profile/me -> /api/proxy/users/me
+        const res = await fetch("/api/proxy/users/me", { cache: "no-store" });
         
         if (!res.ok) {
           const errorData = await res.json().catch(() => ({ error: 'NON_JSON_ERROR' }));

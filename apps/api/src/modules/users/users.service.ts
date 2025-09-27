@@ -1,7 +1,7 @@
-import { Injectable, Inject, Logger } from '@nestjs/common';
+import { Injectable, Inject, Logger, NotFoundException } from '@nestjs/common';
 import { DRIZZLE } from '@/config/database.module';
 import { eq } from 'drizzle-orm';
-import { users } from '@castlyo/database'; // doğru schema import
+import { users } from '@castlyo/database';
 
 @Injectable()
 export class UsersService {
@@ -67,6 +67,20 @@ export class UsersService {
       .where(eq(users.id, id))
       .limit(1);
     return result[0] || null;
+  }
+
+  async getMe(userId: string) {
+    this.logger.debug(`[getMe] Getting user profile: ${userId}`);
+    
+    const user = await this.findById(userId);
+    if (!user) {
+      this.logger.warn(`[getMe] User not found: ${userId}`);
+      throw new NotFoundException('User not found');
+    }
+    
+    // Güvenli alanlar - password hash'i çıkar
+    const { passwordHash, ...safeUser } = user as any;
+    return safeUser;
   }
 
   async create(payload: { 
