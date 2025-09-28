@@ -212,7 +212,7 @@ function TalentOnboardingContent() {
 
   const loadProfile = async () => {
     try {
-      const res = await fetch("/api/profile/me", { cache: "no-store" });
+      const res = await fetch("/api/proxy/profiles/me", { cache: "no-store" });
       if (!res.ok) throw new Error("profile_fetch_failed");
       const p = await res.json();
 
@@ -332,7 +332,7 @@ function TalentOnboardingContent() {
 
     // 1) PATCH dene (ideal senaryo)
     try {
-      const r = await fetch("/api/profile/me", { method: "PATCH", headers, body });
+      const r = await fetch("/api/proxy/profiles/me", { method: "PATCH", headers, body });
       if (r.ok) return true;
     } catch {
       /* geç */
@@ -340,11 +340,11 @@ function TalentOnboardingContent() {
 
     // 2) PUT tam-replace ise: önce mevcut profili al, derin birleştir, sonra PUT
     try {
-      const g = await fetch("/api/profile/me", { cache: "no-store" });
+      const g = await fetch("/api/proxy/profiles/me", { cache: "no-store" });
       const current = g.ok ? await g.json() : {};
       const merged = deepMerge(current || {}, payload || {});
       const cleaned = pickProfileShape(merged);
-      const r2 = await fetch("/api/profile/me", {
+      const r2 = await fetch("/api/proxy/profiles/me", {
         method: "PUT",
         headers,
         body: JSON.stringify(cleaned),
@@ -528,7 +528,7 @@ function TalentOnboardingContent() {
     }
     // Onboarding complete başarısızsa uyarı ver ama akışı durdurma
     try {
-      const c = await fetch("/api/onboarding/talent/complete", { method: "POST" });
+      const c = await fetch("/api/proxy/onboarding/talent/complete", { method: "POST" });
       if (!c.ok) setMsg("Onboarding servisi yanıtsız (devam ediliyor).");
     } catch {
       setMsg("Onboarding servisine erişilemedi (devam ediliyor).");
@@ -835,7 +835,7 @@ function TalentOnboardingContent() {
                   try {
                     const fd = new FormData();
                     fd.append("file", f);
-                    const up = await fetch("/api/upload", { method: "POST", body: fd });
+                    const up = await fetch("/api/proxy/upload", { method: "POST", body: fd });
                     if (!up.ok) throw new Error("upload failed");
                     const data = await up.json();
                     setCvUrl(data.url ?? null);

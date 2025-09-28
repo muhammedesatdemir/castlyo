@@ -9,7 +9,8 @@ import {
   UseGuards, 
   Request,
   HttpCode,
-  HttpStatus
+  HttpStatus,
+  UnauthorizedException
 } from '@nestjs/common';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { Public } from '../auth/decorators/public.decorator';
@@ -28,7 +29,9 @@ export class ProfilesController {
 
   @Get('me')
   async getMyProfile(@Request() req) {
-    return this.profilesService.getMyProfile(req.user.userId);
+    const userId = req.user?.userId || req.user?.id;
+    if (!userId) throw new UnauthorizedException('Missing user id in token');
+    return this.profilesService.getMyProfile(userId);
   }
 
   @Post('talent')
@@ -63,6 +66,16 @@ export class ProfilesController {
   @Get('agency/:id')
   async getAgencyProfile(@Param('id') id: string, @Request() req) {
     return this.profilesService.getAgencyProfile(id, req.user?.userId);
+  }
+
+  @Put('talent/me')
+  async updateMyTalentProfile(
+    @Body() profileData: UpdateTalentProfileDto,
+    @Request() req
+  ) {
+    const userId = req.user?.userId || req.user?.id;
+    if (!userId) throw new UnauthorizedException('Missing user id in token');
+    return this.profilesService.updateTalentProfile(userId, profileData, userId);
   }
 
   @Put('talent/:id')

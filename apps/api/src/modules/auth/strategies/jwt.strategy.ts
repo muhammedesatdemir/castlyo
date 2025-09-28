@@ -14,7 +14,12 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
   }
 
   async validate(payload: any) {
-    // req.user içine dönen obje - sub alanını koruyarak standartlaştır
-    return { sub: payload.sub, email: payload.email, role: payload.role };
+    // Token: { sub, email, role }
+    return { 
+      id: payload.sub, 
+      userId: payload.sub, // Controller'ların kullandığı field
+      email: payload.email, 
+      role: payload.role 
+    };
   }
 }

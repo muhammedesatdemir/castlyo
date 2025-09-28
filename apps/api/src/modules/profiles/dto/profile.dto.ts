@@ -127,6 +127,10 @@ export class UpdateTalentProfileDto {
   dateOfBirth?: string;
 
   @IsOptional()
+  @IsDateString()
+  birthDate?: string;
+
+  @IsOptional()
   @IsEnum(['MALE', 'FEMALE', 'OTHER'])
   gender?: 'MALE' | 'FEMALE' | 'OTHER';
 

@@ -1,76 +1,65 @@
 import { getServerSession } from "next-auth";
 import { NextRequest, NextResponse } from "next/server";
 import { authOptions } from "@/lib/auth";
-import { logger } from "@/lib/logger";
 
-const INTERNAL_API_URL = process.env.INTERNAL_API_URL;
+const API_BASE = process.env.INTERNAL_API_URL || 'http://castlyo-api:3001';
 
-if (!INTERNAL_API_URL) {
-  throw new Error("INTERNAL_API_URL is not defined in environment variables.");
+function join(base: string, tail: string) {
+  return `${base.replace(/\/$/, '')}/${tail.replace(/^\//, '')}`;
 }
 
-async function handler(
-  req: NextRequest,
-  { params }: { params: Promise<{ path: string[] }> }
-) {
+async function handler(req: NextRequest, { params }: { params: Promise<{ path: string[] }> }) {
   const resolvedParams = await params;
+  const target = join(API_BASE, `api/v1/${resolvedParams.path.join('/')}`);
   const session = await getServerSession(authOptions);
   
-  const path = resolvedParams.path.join("/");
-  const url = `${INTERNAL_API_URL}/api/v1/${path}`;
-  
-  // Session'dan access_token çek
+  const incoming = new Headers(req.headers);
+  const out = new Headers();
+
+  // Hop-by-hop olmayan tüm headerları geçir
+  const skip = new Set(['connection','keep-alive','transfer-encoding','upgrade','host','cookie']);
+  incoming.forEach((v, k) => { if (!skip.has(k.toLowerCase())) out.set(k, v); });
+  if (!out.has('accept')) out.set('accept', 'application/json');
+
+  // Token varsa Authorization header ekle
   const accessToken = (session as any)?.accessToken;
+  const path = resolvedParams.path.join("/");
+  const isPublicEndpoint = path === 'health' || path.startsWith('auth/') || path.startsWith('search/');
   
-  // Health gibi public endpoint'ler için token zorunlu değil
-  const isPublicEndpoint = path === 'health' || path.startsWith('auth/');
-  
-  if (!accessToken && !isPublicEndpoint) {
-    logger.warn("API", "No access token found in session.", { path: resolvedParams.path });
+  if (accessToken) {
+    out.set('Authorization', `Bearer ${accessToken}`);
+  } else if (!isPublicEndpoint) {
     return NextResponse.json({ error: "NO_ACCESS_TOKEN" }, { status: 401 });
   }
 
+  let body: BodyInit | undefined;
+  if (!['GET','HEAD'].includes(req.method)) {
+    const ct = incoming.get('content-type') || '';
+    if (ct.includes('application/json')) {
+      body = JSON.stringify(await req.json());
+      out.set('content-type', 'application/json');
+    } else {
+      body = Buffer.from(await req.arrayBuffer());
+    }
+  }
+
   try {
-    const headers = new Headers(req.headers);
+    const resp = await fetch(target, { method: req.method, headers: out, body, redirect: 'manual' });
+    const ct = resp.headers.get('content-type') || '';
     
-    // Token varsa Authorization header ekle
-    if (accessToken) {
-      headers.set("Authorization", `Bearer ${accessToken}`);
-      console.log("[PROXY]", path, "hasToken:", !!accessToken); // Geçici debug
+    // JSON ise direkt geçir
+    if (ct.includes('application/json')) {
+      const data = await resp.json();
+      return NextResponse.json(data, { status: resp.status });
     }
     
-    // Remove unnecessary headers
-    headers.delete("host");
-    headers.delete("cookie"); // API'ye web cookie'lerini taşımayalım
-
-    const response = await fetch(url, {
-      method: req.method,
-      headers: headers,
-      body: req.method !== "GET" && req.method !== "HEAD" ? req.body : undefined,
-      // Duplex is required for streaming request bodies
-      // @ts-ignore
-      duplex: "half",
-    });
-
-    // If the response is a redirect, follow it
-    if (response.status >= 300 && response.status < 400 && response.headers.has("location")) {
-      return NextResponse.redirect(response.headers.get("location")!, {
-        status: response.status
-      });
-    }
-
-    // Stream the response back to the client
-    return new NextResponse(response.body, {
-      status: response.status,
-      statusText: response.statusText,
-      headers: response.headers,
-    });
+    // JSON değilse hata gövdesini JSON'a sar
+    const text = await resp.text();
+    return NextResponse.json(
+      { message: text.slice(0, 2000), statusCode: resp.status, proxied: true },
+      { status: resp.status }
+    );
   } catch (error: any) {
-    logger.error("API", "Proxy request failed.", {
-      url,
-      method: req.method,
-      error: error.message,
-    });
     return NextResponse.json(
       { error: "PROXY_REQUEST_FAILED", detail: error.message },
       { status: 500 }
@@ -78,4 +67,5 @@ async function handler(
   }
 }
 
-export { handler as GET, handler as POST, handler as PUT, handler as DELETE, handler as PATCH };
+export const GET = handler; export const POST = handler;
+export const PUT = handler; export const PATCH = handler; export const DELETE = handler;

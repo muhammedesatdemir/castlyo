@@ -26,7 +26,7 @@ export default function AvatarInput({ value, onChange, label = "Profil Fotoğraf
     try {
       const fd = new FormData();
       fd.append("file", f);
-      const res = await fetch("/api/avatar", { method: "POST", body: fd });
+      const res = await fetch("/api/proxy/avatar", { method: "POST", body: fd });
       const json = await res.json();
       if (!res.ok) throw new Error(json?.error || "upload_failed");
       onChange(json.url as string);

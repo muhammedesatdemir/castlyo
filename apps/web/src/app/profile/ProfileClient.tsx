@@ -4,6 +4,7 @@
 import * as React from "react";
 import { useSession } from "next-auth/react";
 import type { Profile } from "./page";
+import { apiFetch } from "@/lib/api";
 
 /* ---------- shared helpers ---------- */
 const SPECIALTY_OPTIONS = ["Oyunculuk", "Tiyatro", "Modellik", "Müzik", "Dans", "Dublaj"];
@@ -286,7 +287,7 @@ export default function ProfileClient({
     try {
       const fd = new FormData();
       fd.append("file", file);
-      const up = await fetch("/api/upload", { method: "POST", body: fd });
+      const up = await fetch("/api/proxy/upload", { method: "POST", body: fd });
       if (!up.ok) throw new Error("upload failed");
       const data = await up.json();
       setPhotoUrl(data.url ?? photoUrl);
@@ -312,7 +313,7 @@ export default function ProfileClient({
     try {
       const fd = new FormData();
       fd.append("file", file);
-      const up = await fetch("/api/upload", { method: "POST", body: fd });
+      const up = await fetch("/api/proxy/upload", { method: "POST", body: fd });
       if (!up.ok) throw new Error("upload failed");
       const data = await up.json();
       setCvUrl(toAbsoluteUrl(data.url) ?? null);
@@ -346,65 +347,29 @@ export default function ProfileClient({
         return;
       }
 
-      const phoneDigits = digits(form.phoneDigits).slice(0, 10);
-      const phoneFinal = phoneDigits ? `+90 ${formatTRPhone(phoneDigits)}` : "";
-
-      const cvAbs = toAbsoluteUrl(cvUrl);
-      let experienceToSave = form.exp ?? "";
-      if (cvAbs && !experienceToSave.includes(cvAbs)) {
-        experienceToSave = `${experienceToSave.trim()}\n\nCV: ${cvAbs}`.trim();
-      }
-
-      const guardianPayload = isMinor
-        ? {
-            fullName: toTitleTR(guardian.fullName.trim()),
-            relation: guardian.relation,
-            phone: `+90 ${formatTRPhone(guardian.phoneDigits)}`,
-            email: guardian.email.trim() || null,
-            ...(typeof guardian.consent === "boolean"
-              ? { consent: guardian.consent, consentAccepted: guardian.consent }
-              : {}),
-          }
-        : null;
-
-      const payload: Profile = {
+      // Transform frontend form data to backend schema
+      const payload = {
         firstName: toTitleTR(form.firstName ?? ""),
         lastName: toTitleTR(form.lastName ?? ""),
-        phone: phoneFinal,
-        role,
-        status,
-        profilePhotoUrl: photoUrl ?? null,
-        professional: {
-          bio: (form.bio ?? "").trim(),
-          experience: experienceToSave,
-          specialties: selectedSpecs,
-          cvUrl: cvAbs ?? undefined,
-        },
-        personal: {
-          city: toTitleTR(form.city ?? ""),
-          gender: form.gender || "",
-          birthDate: form.birth || "",
-          heightCm: form.height ? Number(form.height) : undefined,
-          weightKg: form.weight ? Number(form.weight) : undefined,
-          guardian: guardianPayload,
-        },
+        bio: (form.bio ?? "").trim(),
+        birthDate: form.birth ? new Date(form.birth).toISOString() : null,
+        gender: form.gender || null,
+        city: toTitleTR(form.city ?? ""),
+        height: form.height ? Number(form.height) : null,
+        weight: form.weight ? Number(form.weight) : null,
+        experience: form.exp ?? "",
+        specialties: selectedSpecs,
+        profileImage: photoUrl || null,
       };
 
-      const res = await fetch("/api/profile/me", {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
+      // Update talent profile via API using the new /me endpoint
+      await apiFetch('/profiles/talent/me', {
+        method: 'PUT',
         body: JSON.stringify(payload),
       });
-      if (!res.ok) {
-        const text = await res.text();
-        setMsg(text || "Kaydetme sırasında hata oluştu.");
-        setSaving(false);
-        return;
-      }
 
-      const fresh: Profile = await fetch("/api/profile/me", {
-        cache: "no-store",
-      }).then((r) => r.json());
+      // Fetch fresh data
+      const fresh: Profile = await apiFetch('/profiles/me');
 
       // UI rehydrate
       setSelectedSpecs(uniq(fresh.professional?.specialties));
@@ -435,8 +400,9 @@ export default function ProfileClient({
 
       setMsg("Profil kaydedildi.");
       setEditing(false);
-    } catch {
-      setMsg("Kaydetme sırasında hata oluştu.");
+    } catch (error) {
+      console.error('Profile save error:', error);
+      setMsg(error instanceof Error ? error.message : "Kaydetme sırasında hata oluştu.");
     } finally {
       setSaving(false);
     }

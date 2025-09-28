@@ -287,24 +287,38 @@ export class ProfilesService {
       throw new ForbiddenException('Cannot update another user\'s profile');
     }
 
-    const existingProfile = await this.database.select()
-      .from(talentProfiles)
-      .where(eq(talentProfiles.userId, userId))
-      .limit(1);
+    try {
+      const existingProfile = await this.database.select()
+        .from(talentProfiles)
+        .where(eq(talentProfiles.userId, userId))
+        .limit(1);
 
-    if (!existingProfile.length) {
-      throw new NotFoundException('Talent profile not found');
+      if (!existingProfile.length) {
+        throw new NotFoundException('Talent profile not found');
+      }
+
+      // Handle birthDate vs dateOfBirth field mapping
+      const dataToUpdate = { ...profileData };
+      if (profileData.birthDate && !profileData.dateOfBirth) {
+        dataToUpdate.dateOfBirth = profileData.birthDate;
+        delete dataToUpdate.birthDate;
+      }
+
+      const updatedProfile = await this.database.update(talentProfiles)
+        .set({
+          ...dataToUpdate,
+          updatedAt: new Date()
+        })
+        .where(eq(talentProfiles.userId, userId))
+        .returning();
+
+      return updatedProfile[0];
+    } catch (error) {
+      if (error instanceof NotFoundException || error instanceof ForbiddenException) {
+        throw error;
+      }
+      throw new BadRequestException('Invalid profile payload');
     }
-
-    const updatedProfile = await this.database.update(talentProfiles)
-      .set({
-        ...profileData,
-        updatedAt: new Date()
-      })
-      .where(eq(talentProfiles.userId, userId))
-      .returning();
-
-    return updatedProfile[0];
   }
 
   async updateAgencyProfile(

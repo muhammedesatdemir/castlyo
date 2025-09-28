@@ -1,3 +1,6 @@
+// Import categories for single source of truth
+import { ALL_OPTION, CATEGORIES } from '@/constants/categories';
+
 // Gender options
 export const GENDER_OPTIONS = [
   { value: 'MALE', label: 'Erkek' },
@@ -13,7 +16,13 @@ export const EXPERIENCE_LEVELS = [
   { value: 'PROFESSIONAL', label: 'Profesyonel' },
 ] as const;
 
-// Talent specialties
+// Hero filters - derived from categories.ts for single source of truth
+export const HERO_FILTERS = [
+  { slug: ALL_OPTION.slug, label: ALL_OPTION.label },
+  ...CATEGORIES.map(c => ({ slug: c.slug, label: c.filterLabel })),
+] as const;
+
+// Legacy talent specialties - kept for backward compatibility but deprecated
 export const TALENT_SPECIALTIES = [
   { value: 'ACTOR', label: 'Oyuncu' },
   { value: 'MODEL', label: 'Model' },
@@ -155,7 +164,7 @@ export const JOB_CATEGORIES = [
   { value: 'OTHER', label: 'Diğer' },
 ] as const;
 
-// Talent types for jobs
+// Talent types for jobs - derived from categories.ts for single source of truth
 export const JOB_TALENT_TYPES = [
   { value: 'ACTOR', label: 'Oyuncu' },
   { value: 'MODEL', label: 'Model' },

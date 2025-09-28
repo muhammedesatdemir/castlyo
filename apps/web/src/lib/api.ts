@@ -78,6 +78,11 @@ export const uploadApi = {
   getFileInfo: (fileUrl: string) => api.get(`/upload/file-info?fileUrl=${encodeURIComponent(fileUrl)}`),
 }
 
+export const talentsApi = {
+  // Get talents with filters  
+  getTalents: (params?: any) => api.get('/search/talents', { params }),
+}
+
 export const jobsApi = {
   // Get job posts with filters
   getJobPosts: (params?: any) => api.get('/jobs', { params }),
@@ -112,4 +117,33 @@ export const jobsApi = {
   
   // Get my applications (talent view)
   getMyApplications: (params?: any) => api.get('/jobs/my/applications', { params }),
+}
+
+// Helper function for simple API calls through proxy
+export async function apiFetch<T>(
+  path: string,
+  init: RequestInit = {}
+): Promise<T> {
+  const url = path.startsWith('/api/proxy')
+    ? path
+    : `/api/proxy${path.startsWith('/') ? '' : '/'}${path}`;
+
+  const headers = new Headers(init.headers);
+  if (!headers.has('Accept')) headers.set('Accept', 'application/json');
+  if (init.body && !headers.has('Content-Type')) headers.set('Content-Type', 'application/json');
+
+  const res = await fetch(url, { ...init, headers });
+
+  const ct = res.headers.get('content-type') || '';
+  if (!ct.includes('application/json')) {
+    const text = await res.text(); // burada HTML'i asla UI'da göstermeyelim
+    throw new Error(`Beklenmeyen yanıt (JSON değil). Status ${res.status}.`);
+  }
+
+  const data = await res.json();
+  if (!res.ok) {
+    const msg = (data?.message as string) || 'İstek başarısız';
+    throw new Error(msg);
+  }
+  return data as T;
 }
