@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { ArrowRight, Play, Star } from 'lucide-react'
 import { montserratDisplay } from '@/lib/fonts'
+import RoleGateCTA from '@/components/shared/RoleGateCTA'
 
 interface HeroProps {
   onSignup: (type: "talent" | "agency") => void
@@ -46,23 +47,23 @@ export default function Hero({ onSignup }: HeroProps) {
           </p>
           
           <div className="mt-10 flex items-center justify-center gap-x-6">
-            <button
-              type="button"
-              onClick={() => onSignup("talent")}
+            <RoleGateCTA
+              targetRole="TALENT"
+              to="/onboarding/talent"
               className="bg-brand-gradient-smooth hover:from-brand-700 hover:to-brand-300 text-white font-semibold shadow-lg px-6 py-3 rounded-xl flex items-center gap-2 text-lg transition-all duration-300 hover:scale-105"
             >
               Yetenek Olarak Başla
               <ArrowRight className="h-4 w-4" />
-            </button>
+            </RoleGateCTA>
             
-            <button
-              type="button"
-              onClick={() => onSignup("agency")}
+            <RoleGateCTA
+              targetRole="AGENCY"
+              to="/onboarding/agency"
               className="border-white/20 text-white hover:bg-white/10 bg-white/5 px-6 py-3 rounded-xl flex items-center gap-2 text-lg border transition-all duration-300 hover:scale-105"
             >
               <Play className="h-4 w-4" />
               Ajans Olarak Başla
-            </button>
+            </RoleGateCTA>
           </div>
           
           <div className="mt-16 flex items-center justify-center gap-x-8 text-sm text-gray-400">

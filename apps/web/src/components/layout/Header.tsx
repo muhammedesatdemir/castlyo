@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { useSession, signIn, signOut } from 'next-auth/react'
 import { Menu, X } from 'lucide-react'
 import { useState } from 'react'
+import RoleGateCTA from '@/components/shared/RoleGateCTA'
 
 interface HeaderProps {
   onSignup: (type: "talent" | "agency") => void
@@ -54,8 +55,24 @@ export default function Header({ onSignup }: HeaderProps) {
           <Link href="/#discover" onClick={() => setOpen(false)} className="block hover:text-[#F6E6C3]">Keşfet</Link>
           <Link href="/jobs" onClick={() => setOpen(false)} className="block hover:text-[#F6E6C3]">İlanlar</Link>
           <Link href="/#features" onClick={() => setOpen(false)} className="block hover:text-[#F6E6C3]">Özellikler</Link>
-          <Link href="/onboarding/talent" onClick={() => setOpen(false)} className="block hover:text-[#F6E6C3]">Yetenek Olarak Başla</Link>
-          <Link href="/onboarding/agency" onClick={() => setOpen(false)} className="block hover:text-[#F6E6C3]">Ajans Olarak Başla</Link>
+          <div onClick={() => setOpen(false)}>
+            <RoleGateCTA 
+              targetRole="TALENT" 
+              to="/onboarding/talent" 
+              className="w-full justify-start text-left hover:text-[#F6E6C3] bg-transparent border-none text-left p-0"
+            >
+              Yetenek Olarak Başla
+            </RoleGateCTA>
+          </div>
+          <div onClick={() => setOpen(false)}>
+            <RoleGateCTA 
+              targetRole="AGENCY" 
+              to="/onboarding/agency" 
+              className="w-full justify-start text-left hover:text-[#F6E6C3] bg-transparent border-none text-left p-0"
+            >
+              Ajans Olarak Başla
+            </RoleGateCTA>
+          </div>
           <Link href="/profile" onClick={() => setOpen(false)} className="block hover:text-[#F6E6C3]">Profilim</Link>
 
           <button

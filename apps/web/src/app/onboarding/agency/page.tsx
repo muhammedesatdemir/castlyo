@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { ArrowLeft, ArrowRight, Check } from 'lucide-react'
 import { AuthGuard } from '@/components/auth/AuthGuard'
+import RoleRequired from '@/components/auth/RoleRequired'
 
 const STEPS = [
   { id: 1, title: 'Şirket Bilgileri', description: 'Temel şirket bilgilerinizi girin' },
@@ -488,7 +489,9 @@ function AgencyOnboardingContent() {
 export default function AgencyOnboarding() {
   return (
     <AuthGuard checkOnboardingCompleted={true}>
-      <AgencyOnboardingContent />
+      <RoleRequired required="AGENCY">
+        <AgencyOnboardingContent />
+      </RoleRequired>
     </AuthGuard>
   )
 }

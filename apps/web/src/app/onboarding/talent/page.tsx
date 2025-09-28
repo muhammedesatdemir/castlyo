@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ArrowLeft, ArrowRight, Check } from "lucide-react";
 import { AuthGuard } from "@/components/auth/AuthGuard";
+import RoleRequired from "@/components/auth/RoleRequired";
 import AvatarInput from "@/components/AvatarInput";
 
 /* ------------------------------------------------------------------ */
@@ -1009,7 +1010,9 @@ function TalentOnboardingContent() {
 export default function TalentOnboarding() {
   return (
     <AuthGuard checkOnboardingCompleted={true}>
-      <TalentOnboardingContent />
+      <RoleRequired required="TALENT">
+        <TalentOnboardingContent />
+      </RoleRequired>
     </AuthGuard>
   );
 }

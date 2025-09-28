@@ -2,6 +2,7 @@
 
 import { motion } from 'framer-motion'
 import Link from 'next/link'
+import RoleGateCTA from '@/components/shared/RoleGateCTA'
 
 interface HeroShowreelProps {
   onSignup: (type: "talent" | "agency") => void
@@ -77,18 +78,20 @@ export default function HeroShowreel({ onSignup }: HeroShowreelProps) {
           transition={{ delay: 0.4 }}
           className="mt-8 flex flex-col sm:flex-row items-center justify-center gap-4"
         >
-          <button
-            onClick={() => onSignup("talent")}
+          <RoleGateCTA
+            targetRole="TALENT"
+            to="/onboarding/talent"
             className="w-full sm:w-auto rounded-xl bg-brand-gradient-smooth px-8 py-4 text-lg font-semibold text-white shadow-lg shadow-brand-primary/20 hover:scale-105 transition-all duration-300 hover:shadow-xl hover:shadow-brand-primary/30"
           >
             Yetenek Olarak Başla
-          </button>
-          <button
-            onClick={() => onSignup("agency")}
+          </RoleGateCTA>
+          <RoleGateCTA
+            targetRole="AGENCY"
+            to="/onboarding/agency"
             className="w-full sm:w-auto rounded-xl border border-white/20 bg-white/10 px-8 py-4 text-lg font-semibold text-white backdrop-blur-sm hover:bg-white/20 transition-all duration-300"
           >
             Ajans Olarak Başla
-          </button>
+          </RoleGateCTA>
         </motion.div>
 
         {/* Stats Row */}

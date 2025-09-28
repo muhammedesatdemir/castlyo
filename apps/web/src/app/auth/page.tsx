@@ -205,7 +205,7 @@ export default function AuthPage() {
           email: formData.email,
           password: formData.password,
           redirect: false,
-          callbackUrl: nextUrl || '/onboarding/talent',
+          callbackUrl: nextUrl || '/',
         })
 
         logger.logAuthAction('login', !!result?.ok, { email: formData.email, error: result?.error })
@@ -252,9 +252,9 @@ export default function AuthPage() {
           router.replace(result.url)
         } else if (result?.ok) {
           logger.info('AUTH', 'Login successful', { email: formData.email })
-          logger.info('NAVIGATION', 'Redirecting after login', { destination: nextUrl || '/onboarding/talent' })
-          // Fallback: callbackUrl'e yönlendir
-          router.replace(nextUrl || '/onboarding/talent')
+          logger.info('NAVIGATION', 'Redirecting after login', { destination: nextUrl || '/' })
+          // Fallback: callbackUrl'e yönlendir (ana sayfaya, role'e göre onboarding'e yönlendirilir)
+          router.replace(nextUrl || '/')
         }
       }
     } catch (error) {

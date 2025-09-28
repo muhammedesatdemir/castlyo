@@ -13,7 +13,7 @@ export const authOptions: NextAuthOptions = {
         password: { label: "Password", type: "password" },
       },
       async authorize(credentials) {
-        if (!credentials?.email || !credentials?.password) return null; // boş post guard
+        if (!credentials?.email || !credentials?.password) return null;
 
         const res = await fetch(`${API}/api/v1/auth/login`, {
           method: "POST",
@@ -29,32 +29,32 @@ export const authOptions: NextAuthOptions = {
 
         if (!data?.access_token || !data?.user?.id) return null;
 
-        // NextAuth 'user' nesnesine tokenları taşı
+        // ⬇⬇⬇  ROLÜ MUTLAKA DÖN!  ⬇⬇⬇
         return {
           id: data.user.id,
           email: data.user.email,
-          role: data.user.role,
-          access_token: data.access_token,  // Backend'den gelen format
-          refresh_token: data.refresh_token,
+          role: data.user.role,           // <— KRİTİK
+          accessToken: data.access_token, // NextAuth için camelCase
+          refreshToken: data.refresh_token,
         };
       },
     }),
   ],
   callbacks: {
     async jwt({ token, user }) {
-      // Login anında user gelir → token'a yaz
-      if (user?.access_token) {
-        token.access_token = user.access_token;
-        token.refresh_token = user.refresh_token;
+      // İlk login'de user gelir → role'ü JWT'ye yaz
+      if (user) {
+        token.role = (user as any).role ?? null;            // <— KRİTİK
+        (token as any).accessToken  = (user as any).accessToken;
+        (token as any).refreshToken = (user as any).refreshToken;
       }
       return token;
     },
     async session({ session, token }) {
-      // Session'a geçir (frontend için camelCase)
-      if (token?.access_token) {
-        (session as any).accessToken = token.access_token;
-        (session as any).refreshToken = token.refresh_token;
-      }
+      // Her session'da role'ü user'a koy
+      (session.user as any).role = (token as any)?.role ?? null;  // <— KRİTİK
+      (session as any).accessToken  = (token as any)?.accessToken;
+      (session as any).refreshToken = (token as any)?.refreshToken;
       return session;
     },
   },

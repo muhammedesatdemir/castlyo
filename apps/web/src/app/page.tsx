@@ -10,18 +10,58 @@ import StickyCta from '@/components/StickyCta'
 import { NotificationPermission } from '@/components/ui/notification-permission'
 import { montserratDisplay } from '@/lib/fonts'
 import { UI } from '@/config/ui'
+import RoleGateCTA from '@/components/shared/RoleGateCTA'
+import ToastHandler from '@/components/shared/ToastHandler'
 
 export default function Home() {
   const router = useRouter()
   const { data: session, status } = useSession()
 
   const handleSignup = (type: "talent" | "agency") => {
-    // Doğrudan onboarding sayfasına yönlendir
+    // Role kontrolü ile güvenli yönlendirme
+    const userRole = (session?.user as any)?.role as "TALENT" | "AGENCY" | undefined;
+    const isAuthed = status === "authenticated" && !!userRole;
+    const targetRole = type === "talent" ? "TALENT" : "AGENCY";
+    
+    if (isAuthed && userRole !== targetRole) {
+      // Role mismatch - toast göster ve yönlendirme yapma
+      import('@/components/ui/toast').then(({ toast }) => {
+        toast({
+          type: "error",
+          title: "Rolüne uygun olmayan işlem",
+          message: userRole === "TALENT"
+            ? "Yetenek olarak kayıt oldunuz. Ajans olarak başlamak isterseniz çıkış yapıp ajans kaydı oluşturabilirsiniz."
+            : "Ajans olarak kayıt oldunuz. Yetenek olarak başlamak isterseniz çıkış yapıp yetenek kaydı oluşturabilirsiniz.",
+        });
+      });
+      return;
+    }
+    
+    // Güvenli - yönlendir
     router.push(`/onboarding/${type}`)
   }
 
   const handleStartOnboarding = (type: "talent" | "agency") => {
-    // Kullanıcı giriş yapmış ve onboarding başlatmak istiyor
+    // Role kontrolü ile güvenli yönlendirme
+    const userRole = (session?.user as any)?.role as "TALENT" | "AGENCY" | undefined;
+    const isAuthed = status === "authenticated" && !!userRole;
+    const targetRole = type === "talent" ? "TALENT" : "AGENCY";
+    
+    if (isAuthed && userRole !== targetRole) {
+      // Role mismatch - toast göster ve yönlendirme yapma
+      import('@/components/ui/toast').then(({ toast }) => {
+        toast({
+          type: "error",
+          title: "Rolüne uygun olmayan işlem",
+          message: userRole === "TALENT"
+            ? "Yetenek olarak kayıt oldunuz. Ajans olarak başlamak isterseniz çıkış yapıp ajans kaydı oluşturabilirsiniz."
+            : "Ajans olarak kayıt oldunuz. Yetenek olarak başlamak isterseniz çıkış yapıp yetenek kaydı oluşturabilirsiniz.",
+        });
+      });
+      return;
+    }
+    
+    // Güvenli - yönlendir
     router.push(`/onboarding/${type}`)
   }
 
@@ -56,12 +96,13 @@ export default function Home() {
                 <p className="text-white/70 mb-6">
                   Oyuncu, model, müzisyen veya diğer yeteneklerin için profil oluştur
                 </p>
-                <button
-                  onClick={() => handleStartOnboarding('talent')}
+                <RoleGateCTA
+                  targetRole="TALENT"
+                  to="/onboarding/talent"
                   className="w-full bg-brand-primary hover:bg-brand-primary/90 text-white font-semibold py-3 px-6 rounded-lg transition-colors"
                 >
                   Yetenek Profili Oluştur
-                </button>
+                </RoleGateCTA>
               </div>
 
               {/* Ajans Profili Oluştur */}
@@ -71,12 +112,13 @@ export default function Home() {
                 <p className="text-white/70 mb-6">
                   Casting ajansı, prodüksiyon şirketi veya medya ajansı olarak katıl
                 </p>
-                <button
-                  onClick={() => handleStartOnboarding('agency')}
+                <RoleGateCTA
+                  targetRole="AGENCY"
+                  to="/onboarding/agency"
                   className="w-full bg-brand-primary hover:bg-brand-primary/90 text-white font-semibold py-3 px-6 rounded-lg transition-colors"
                 >
                   Ajans Profili Oluştur
-                </button>
+                </RoleGateCTA>
               </div>
             </div>
 
@@ -218,12 +260,13 @@ export default function Home() {
                 </ul>
 
                 <div className="mt-6 md:mt-8 md:pt-2 mt-auto">
-                  <button
-                    onClick={() => handleSignup("talent")}
+                  <RoleGateCTA
+                    targetRole="TALENT"
+                    to="/onboarding/talent"
                     className={montserratDisplay.className + " inline-flex items-center justify-center rounded-xl bg-[#F6E6C3] px-5 py-3 text-sm md:text-base font-bold text-[#962901] shadow w-full"}
                   >
                     Yetenek Olarak Başla
-                  </button>
+                  </RoleGateCTA>
                 </div>
               </div>
             </div>
@@ -242,12 +285,13 @@ export default function Home() {
                 </ul>
 
                 <div className="mt-6 md:mt-8 md:pt-2 mt-auto">
-                  <button
-                    onClick={() => handleSignup("agency")}
+                  <RoleGateCTA
+                    targetRole="AGENCY"
+                    to="/onboarding/agency"
                     className={montserratDisplay.className + " inline-flex items-center justify-center rounded-xl bg-[#F6E6C3] px-5 py-3 text-sm md:text-base font-bold text-[#962901] shadow w-full"}
                   >
                     Ajans Olarak Başla
-                  </button>
+                  </RoleGateCTA>
                 </div>
               </div>
             </div>
@@ -259,6 +303,9 @@ export default function Home() {
       
       {/* Modern Notification Permission Popup - only for non-authenticated users */}
       {!session && <NotificationPermission />}
+      
+      {/* Toast Handler for middleware redirects */}
+      <ToastHandler />
     </main>
   )
 }
