@@ -138,7 +138,7 @@ export default function AuthPage() {
           console.log('REGISTER PAYLOAD', payload);
         }
 
-        const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/auth/register`, {
+        const response = await fetch('/api/proxy/api/v1/auth/register', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -170,7 +170,44 @@ export default function AuthPage() {
           setShowKvkkDialog(true)
           return
         } else {
-          // Other errors (500, etc.) → general error
+          // Other errors (500, etc.) → try fallback before showing error
+          try {
+            logger.info('AUTH', 'Registration failed, trying exists fallback', { email: formData.email, status: response.status })
+            
+            const existsResponse = await fetch(`/api/proxy/api/v1/auth/exists?email=${encodeURIComponent(formData.email)}`, {
+              method: 'GET',
+              headers: { 'Content-Type': 'application/json' }
+            })
+            
+            if (existsResponse.ok) {
+              const existsResult = await existsResponse.json()
+              if (existsResult.exists) {
+                // User already exists, treat as success
+                logger.info('AUTH', 'User already exists, treating as successful registration', { email: formData.email })
+                
+                setDialogTitle('Kayıt Başarılı! 🎉')
+                setDialogMessage('Bu e-posta ile kayıt zaten tamamlanmış. Şimdi giriş yapabilirsiniz.')
+                setShowKvkkDialog(true)
+                
+                // Switch to login mode
+                setMode('login')
+                setFormData({
+                  email: formData.email,
+                  password: '',
+                  confirmPassword: '',
+                  consents: {
+                    acceptedTerms: false,
+                    acceptedPrivacy: false
+                  }
+                })
+                return
+              }
+            }
+          } catch (fallbackError) {
+            logger.error('AUTH', 'Exists fallback also failed', { error: fallbackError })
+          }
+          
+          // If fallback also failed or user doesn't exist, show general error
           const errorResult = await response.json().catch(() => ({}))
           const errorMessage = errorResult.message || 'Bir şeyler ters gitti. Lütfen tekrar deneyin.'
           

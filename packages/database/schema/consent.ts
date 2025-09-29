@@ -5,12 +5,12 @@ import { auditActionEnum } from './enums';
 export const userConsents = pgTable('user_consents', {
   id: uuid('id').defaultRandom().primaryKey(),
   userId: uuid('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
-  acceptedTerms: boolean('accepted_terms').notNull(),
-  acceptedPrivacy: boolean('accepted_privacy').notNull(),
-  termsVersion: text('terms_version').notNull(),
-  privacyVersion: text('privacy_version').notNull(),
-  acceptedIp: inet('accepted_ip'),
-  acceptedAt: timestamp('accepted_at').notNull().defaultNow(),
+  consentType: text('consent_type').notNull(),
+  version: text('version').notNull(),
+  consented: boolean('consented').notNull(),
+  ipAddress: text('ip_address'),
+  userAgent: text('user_agent'),
+  consentedAt: timestamp('consented_at').notNull().defaultNow(),
 });
 
 // Legacy consent table for backward compatibility

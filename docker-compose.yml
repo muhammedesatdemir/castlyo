@@ -84,7 +84,8 @@ services:
     ports:
       - "3000:3000"
     environment:
-      NODE_ENV: production
+      NODE_ENV: development
+      API_INTERNAL_URL: http://api:3001
       WEB_API_BASE_URL: http://castlyo-api:3001
       WEB_API_PREFIX: /api/v1
       NEXT_PUBLIC_WEB_API_BASE_URL: http://localhost:3001

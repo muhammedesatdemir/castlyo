@@ -1,6 +1,8 @@
 import { 
   Controller, 
   Post, 
+  Get,
+  Query,
   Body, 
   UseGuards, 
   Request,
@@ -96,5 +98,15 @@ export class AuthController {
   @HttpCode(HttpStatus.OK)
   async resetPassword(@Body() resetPasswordDto: ResetPasswordDto) {
     return this.authService.resetPassword(resetPasswordDto);
+  }
+
+  @Public()
+  @Get('exists')
+  @HttpCode(HttpStatus.OK)
+  async checkEmailExists(@Query('email') email: string) {
+    if (!email) {
+      throw new BadRequestException('Email is required');
+    }
+    return this.authService.checkEmailExists(email);
   }
 }

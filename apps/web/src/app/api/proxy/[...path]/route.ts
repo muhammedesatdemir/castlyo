@@ -1,71 +1,56 @@
-import { getServerSession } from "next-auth";
-import { NextRequest, NextResponse } from "next/server";
-import { authOptions } from "@/lib/auth";
+// apps/web/src/app/api/proxy/[...path]/route.ts
+import { NextResponse } from 'next/server';
 
-const API_BASE = process.env.INTERNAL_API_URL || 'http://castlyo-api:3001';
+export const runtime = 'nodejs'; // Edge değil! Body stream için şart.
 
-function join(base: string, tail: string) {
-  return `${base.replace(/\/$/, '')}/${tail.replace(/^\//, '')}`;
-}
+// Use internal API URL for Docker container communication
+const API_BASE = process.env.API_INTERNAL_URL || process.env.INTERNAL_API_URL || 'http://api:3001';
 
-async function handler(req: NextRequest, { params }: { params: Promise<{ path: string[] }> }) {
-  const resolvedParams = await params;
-  const target = join(API_BASE, `api/v1/${resolvedParams.path.join('/')}`);
-  const session = await getServerSession(authOptions);
+async function proxy(req: Request, { params }: { params: { path: string[] } }) {
+  const segs = params.path || [];
+  let upstreamPath = '/' + segs.join('/');
   
-  const incoming = new Headers(req.headers);
-  const out = new Headers();
-
-  // Hop-by-hop olmayan tüm headerları geçir
-  const skip = new Set(['connection','keep-alive','transfer-encoding','upgrade','host','cookie']);
-  incoming.forEach((v, k) => { if (!skip.has(k.toLowerCase())) out.set(k, v); });
-  if (!out.has('accept')) out.set('accept', 'application/json');
-
-  // Token varsa Authorization header ekle
-  const accessToken = (session as any)?.accessToken;
-  const path = resolvedParams.path.join("/");
-  const isPublicEndpoint = path === 'health' || path.startsWith('auth/') || path.startsWith('search/');
+  // Backward compatibility: /api/proxy/health -> /api/proxy/api/v1/health
+  if (upstreamPath === '/health') {
+    upstreamPath = '/api/v1/health';
+  }
   
-  if (accessToken) {
-    out.set('Authorization', `Bearer ${accessToken}`);
-  } else if (!isPublicEndpoint) {
-    return NextResponse.json({ error: "NO_ACCESS_TOKEN" }, { status: 401 });
+  // If path doesn't start with /api/v1, add it
+  if (!upstreamPath.startsWith('/api/v1')) {
+    upstreamPath = '/api/v1' + upstreamPath;
   }
 
-  let body: BodyInit | undefined;
-  if (!['GET','HEAD'].includes(req.method)) {
-    const ct = incoming.get('content-type') || '';
-    if (ct.includes('application/json')) {
-      body = JSON.stringify(await req.json());
-      out.set('content-type', 'application/json');
-    } else {
-      body = Buffer.from(await req.arrayBuffer());
-    }
-  }
+  const url = new URL(API_BASE + upstreamPath);
+  // Query string'i de aynen taşı
+  const original = new URL(req.url);
+  original.searchParams.forEach((v, k) => url.searchParams.append(k, v));
+
+  // Body'yi güvenle yeniden oluştur
+  const hasBody = !['GET','HEAD'].includes(req.method.toUpperCase());
+  const body = hasBody ? Buffer.from(await req.arrayBuffer()) : undefined;
+
+  // Problem çıkaran header'ları at
+  const headers = new Headers(req.headers);
+  ['host','content-length'].forEach(h => headers.delete(h));
 
   try {
-    const resp = await fetch(target, { method: req.method, headers: out, body, redirect: 'manual' });
-    const ct = resp.headers.get('content-type') || '';
-    
-    // JSON ise direkt geçir
-    if (ct.includes('application/json')) {
-      const data = await resp.json();
-      return NextResponse.json(data, { status: resp.status });
-    }
-    
-    // JSON değilse hata gövdesini JSON'a sar
-    const text = await resp.text();
-    return NextResponse.json(
-      { message: text.slice(0, 2000), statusCode: resp.status, proxied: true },
-      { status: resp.status }
-    );
-  } catch (error: any) {
-    return NextResponse.json(
-      { error: "PROXY_REQUEST_FAILED", detail: error.message },
-      { status: 500 }
+    const res = await fetch(url.toString(), {
+      method: req.method,
+      headers,
+      body,
+      credentials: 'include',
+    });
+
+    // Yanıtı aynen döndür
+    const respHeaders = new Headers(res.headers);
+    return new NextResponse(res.body, { status: res.status, headers: respHeaders });
+  } catch (error) {
+    console.error('[proxy]', { targetUrl: url.toString(), error: error.message });
+    return new NextResponse(
+      JSON.stringify({ error: 'Proxy request failed', message: error.message }),
+      { status: 500, headers: { 'Content-Type': 'application/json' } }
     );
   }
 }
 
-export const GET = handler; export const POST = handler;
-export const PUT = handler; export const PATCH = handler; export const DELETE = handler;
+export { proxy as GET, proxy as POST, proxy as PUT, proxy as PATCH, proxy as DELETE, proxy as OPTIONS }

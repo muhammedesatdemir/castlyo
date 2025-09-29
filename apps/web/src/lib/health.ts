@@ -7,8 +7,8 @@ export async function checkApiHealth() {
   // Client tarafında daima proxy kullan
   const isBrowser = typeof window !== "undefined";
   const url = isBrowser
-    ? "/api/proxy/health"  // Proxy üzerinden health endpoint'e git
-    : `${process.env.INTERNAL_API_URL}/api/v1/health`; // SSR'da direkt internal
+    ? "/api/proxy/health"  // Proxy will automatically add /api/v1 prefix
+    : `${process.env.API_INTERNAL_URL || process.env.INTERNAL_API_URL || 'http://api:3001'}/api/v1/health`; // SSR'da direkt internal
 
   try {
     const res = await fetch(url, { 

@@ -25,6 +25,25 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="tr" className={`${inter.variable} ${cinzel.variable}`}>
       <head>
         {/* Poppins linkine ihtiyacımız yok, kaldırdım */}
+        {process.env.NODE_ENV === 'development' && (
+          <script
+            dangerouslySetInnerHTML={{
+              __html: `
+                // Geliştirici koruması - doğrudan :3001 çağrılarını engelle
+                (function() {
+                  const _fetch = window.fetch.bind(window);
+                  window.fetch = (input, init) => {
+                    const url = typeof input === 'string' ? input : input.toString();
+                    if (url.startsWith("http://localhost:3001")) {
+                      throw new Error("Doğrudan :3001 çağrısı yasak. /api/proxy kullan.");
+                    }
+                    return _fetch(input, init);
+                  };
+                })();
+              `,
+            }}
+          />
+        )}
       </head>
       {/* bundan sonra default fontu Tailwind 'sans' üzerinden vereceğiz */}
       <body className="font-sans antialiased">

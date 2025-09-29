@@ -98,13 +98,24 @@ export class AuthService {
           throw Object.assign(new Error("CONSENTS_REQUIRED"), { status: 400 });
         }
 
+        // Insert terms consent
         await tx.insert(userConsents).values({
           userId: user[0].id,
-          acceptedTerms: true,
-          acceptedPrivacy: true,
-          termsVersion: registerDto.consents.termsVersion,
-          privacyVersion: registerDto.consents.privacyVersion,
-          acceptedIp: ip ?? null,
+          consentType: 'TERMS',
+          version: registerDto.consents.termsVersion,
+          consented: true,
+          ipAddress: ip ?? null,
+          userAgent: registerDto.userAgent ?? null,
+        });
+
+        // Insert privacy consent
+        await tx.insert(userConsents).values({
+          userId: user[0].id,
+          consentType: 'PRIVACY',
+          version: registerDto.consents.privacyVersion,
+          consented: true,
+          ipAddress: ip ?? null,
+          userAgent: registerDto.userAgent ?? null,
         });
 
         return { user: user[0] };
@@ -126,21 +137,9 @@ export class AuthService {
       return { user: { id: user.id, email: user.email, role: user.role }, ...tokens };
 
     } catch (e) {
-      // Unique email → 409
-      if (isUniqueViolation(e)) {
-        throw new ConflictException("EMAIL_TAKEN");
-      }
-      // Konsent eksikliği → 400
-      if (e?.status === 400 || e?.message === "CONSENTS_REQUIRED") {
-        throw new BadRequestException("CONSENTS_REQUIRED");
-      }
-      // Password mismatch → 400
-      if (e?.message === "PASSWORDS_DO_NOT_MATCH") {
-        throw new BadRequestException("PASSWORDS_DO_NOT_MATCH");
-      }
-      // Diğerleri → 500
+      // Let the global exception filter handle the error mapping
       this.logger.error({ msg: "register failed", err: e });
-      throw new InternalServerErrorException("REGISTER_FAILED");
+      throw e; // Re-throw to let the filter handle it
     }
   }
 
@@ -344,6 +343,24 @@ export class AuthService {
       this.logger.log(`[recordUserConsents] Successfully recorded consents for user: ${userId}`);
     } catch (error) {
       this.logger.error(`[recordUserConsents] Failed to record consents`, error);
+      throw error;
+    }
+  }
+
+  async checkEmailExists(email: string) {
+    try {
+      const existingUser = await this.db
+        .select({ id: users.id })
+        .from(users)
+        .where(eq(users.email, email.toLowerCase().trim()))
+        .limit(1);
+
+      return { 
+        exists: existingUser.length > 0,
+        email: email.toLowerCase().trim()
+      };
+    } catch (error) {
+      this.logger.error(`[checkEmailExists] Failed to check email existence`, error);
       throw error;
     }
   }

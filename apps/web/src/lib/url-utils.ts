@@ -30,8 +30,12 @@ export function joinUrl(base: string, prefix: string, path: string = ''): string
  * @returns Complete base URL for axios
  */
 export function createApiBaseUrl(baseUrl?: string, prefix?: string): string {
-  const base = baseUrl || process.env.NEXT_PUBLIC_WEB_API_BASE_URL || process.env.WEB_API_BASE_URL || 'http://localhost:3001'
-  const apiPrefix = prefix || process.env.NEXT_PUBLIC_WEB_API_PREFIX || process.env.WEB_API_PREFIX || '/api/v1'
+  // For client-side, always use proxy
+  const isServer = typeof window === 'undefined'
+  const base = baseUrl || (isServer 
+    ? process.env.API_INTERNAL_URL || process.env.INTERNAL_API_URL || 'http://api:3001'
+    : '/api/proxy')
+  const apiPrefix = prefix || (isServer ? '/api/v1' : '')
   
   return joinUrl(base, apiPrefix)
 }

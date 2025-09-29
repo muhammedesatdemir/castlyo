@@ -12,16 +12,29 @@ const isServer = typeof window === 'undefined';
 
 // Use proxy for client-side requests, direct internal URL for server-side
 const BASE_URL = isServer
-  ? process.env.INTERNAL_API_URL ?? 'http://castlyo-api:3001'
+  ? process.env.API_INTERNAL_URL ?? process.env.INTERNAL_API_URL ?? 'http://api:3001'
   : '/api/proxy'; // <-- YENİ: Tarayıcı tarafında proxy'yi kullan
 
 const PREFIX = isServer ? '/api/v1' : ''; // <-- YENİ: Proxy path'i zaten /api/v1 içerecek
 
 // Create axios instance with proper API base URL including prefix
 export const api = axios.create({
-  baseURL: join(BASE_URL, PREFIX),
+  baseURL: isServer ? join(BASE_URL, PREFIX) : BASE_URL,
   timeout: 10000,
   withCredentials: true, // Include credentials for CORS
+  headers: { "Content-Type": "application/json" },
+});
+
+// DEV: İstem dışı absolute URL'leri engelle
+api.interceptors.request.use((cfg) => {
+  // Her zaman relative path bekliyoruz
+  if (/^https?:\/\//i.test(cfg.url || "")) {
+    // localhost:3001 vb yakala
+    if (cfg.url?.includes("localhost:3001")) {
+      throw new Error("[API] Doğrudan :3001 çağrısı engellendi. /api/proxy kullanın.");
+    }
+  }
+  return cfg;
 });
 
 

@@ -75,15 +75,5 @@ export default withAuth(
 
 // Middleware'in çalışacağı route'ları belirt
 export const config = {
-  matcher: [
-    // Sadece korumalı sayfalar ve onboarding
-    '/profile/:path*',
-    '/settings/:path*', 
-    '/jobs/:path*',
-    '/search/:path*',
-    '/onboarding/:path*',
-    '/auth/:path*',
-    // API proxy koruması
-    '/api/proxy/:path*'
-  ],
+  matcher: ['/((?!api/proxy).*)'], // proxy hariç
 }
