@@ -409,3 +409,28 @@
     border-radius: inherit;
   }
 }
+
+/* Etiketleri her durumda görünür kıl */
+label, .form-label, [data-slot="label"], .text-muted-foreground {
+  color: rgba(17, 24, 39, .85) !important; /* slate-900 yakını */
+  opacity: 1 !important;
+  visibility: visible !important;
+}
+
+/* Yanlışlıkla ekran okuyucu stili verilmişse iptal et */
+label.sr-only, .sr-only[data-slot="label"] {
+  position: static !important;
+  width: auto !important;
+  height: auto !important;
+  padding: 0 !important;
+  margin: 0 0 .25rem 0 !important;
+  overflow: visible !important;
+  clip: auto !important;
+  white-space: normal !important;
+}
+
+/* Placeholder'lar kesin görünsün */
+input::placeholder, textarea::placeholder {
+  opacity: 1 !important;
+  color: rgba(100, 116, 139, .95) !important; /* slate-500 yakını */
+}

@@ -119,7 +119,7 @@ const UField = React.memo(function UField({
   const controlledValue = value == null ? "" : String(value);
   return (
     <div>
-      <div className="text-xs opacity-70 mb-1">{label}</div>
+      <div className="text-sm font-medium text-slate-700 mb-1">{label}</div>
       <input
         ref={inputRef}
         type={type}
@@ -609,7 +609,7 @@ export default function ProfileClient({
 
             {/* Telefon */}
             <div>
-              <div className="text-xs opacity-70 mb-1">Telefon</div>
+              <div className="text-sm font-medium text-slate-700 mb-1">Telefon</div>
               <div
                 className={`flex rounded-lg ring-1 ${
                   editing ? "ring-neutral-300" : "ring-neutral-200/70"
@@ -646,7 +646,7 @@ export default function ProfileClient({
 
             {/* Cinsiyet */}
             <div>
-              <div className="text-xs opacity-70 mb-1">Cinsiyet</div>
+              <div className="text-sm font-medium text-slate-700 mb-1">Cinsiyet</div>
               <select
                 ref={genderRef}
                 value={form.gender}
@@ -711,7 +711,7 @@ export default function ProfileClient({
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <div className="text-xs opacity-70 mb-1">Veli/Vasi Ad Soyad</div>
+                  <div className="text-sm font-medium text-slate-700 mb-1">Veli/Vasi Ad Soyad</div>
                   <input
                     type="text"
                     value={guardian.fullName}
@@ -732,7 +732,7 @@ export default function ProfileClient({
                 </div>
 
                 <div>
-                  <div className="text-xs opacity-70 mb-1">Yakınlık</div>
+                  <div className="text-sm font-medium text-slate-700 mb-1">Yakınlık</div>
                   <select
                     value={guardian.relation}
                     onChange={(e) => {
@@ -753,7 +753,7 @@ export default function ProfileClient({
                 </div>
 
                 <div>
-                  <div className="text-xs opacity-70 mb-1">Veli/Vasi Telefon</div>
+                  <div className="text-sm font-medium text-slate-700 mb-1">Veli/Vasi Telefon</div>
                   <div
                     className={`flex rounded-lg ring-1 ${
                       editing ? "ring-neutral-300" : "ring-neutral-200/70"
@@ -778,7 +778,7 @@ export default function ProfileClient({
                 </div>
 
                 <div>
-                  <div className="text-xs opacity-70 mb-1">Veli/Vasi E-posta (opsiyonel)</div>
+                  <div className="text-sm font-medium text-slate-700 mb-1">Veli/Vasi E-posta (opsiyonel)</div>
                   <input
                     type="email"
                     value={guardian.email}
@@ -804,7 +804,7 @@ export default function ProfileClient({
           <div className="my-6 h-px bg-neutral-200/70" />
 
           <div>
-            <div className="text-xs opacity-70 mb-1">Biyografi</div>
+            <div className="text-sm font-medium text-slate-700 mb-1">Biyografi</div>
             <textarea
               disabled={!editing}
               value={form.bio}
@@ -820,7 +820,7 @@ export default function ProfileClient({
           </div>
 
           <div className="mt-4">
-            <div className="text-xs opacity-70 mb-1">Deneyim</div>
+            <div className="text-sm font-medium text-slate-700 mb-1">Deneyim</div>
             <textarea
               disabled={!editing}
               value={form.exp}
