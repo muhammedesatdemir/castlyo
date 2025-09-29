@@ -5,6 +5,7 @@ import * as React from "react";
 import { useSession } from "next-auth/react";
 import type { Profile } from "./page";
 import { apiFetch } from "@/lib/api";
+import { ProfileHeader } from "@/components/ProfileAvatar";
 
 /* ---------- shared helpers ---------- */
 const SPECIALTY_OPTIONS = ["Oyunculuk", "Tiyatro", "Modellik", "Müzik", "Dans", "Dublaj"];
@@ -102,6 +103,8 @@ const UField = React.memo(function UField({
   min,
   max,
   readOnly,
+  description,
+  error,
 }: {
   label: string;
   type?: string;
@@ -115,6 +118,8 @@ const UField = React.memo(function UField({
   min?: number;
   max?: number;
   readOnly?: boolean;
+  description?: string;
+  error?: string;
 }) {
   const controlledValue = value == null ? "" : String(value);
   return (
@@ -143,6 +148,15 @@ const UField = React.memo(function UField({
           disabled || readOnly ? "ring-neutral-200/70 bg-slate-50 cursor-not-allowed text-slate-800" : "ring-neutral-300 focus:outline-none focus:ring-2"
         }`}
       />
+      {/* yardımcı yazılar için sabit yükseklik */}
+      <div className="mt-1 min-h-[16px] leading-4">
+        {/* hata varsa hata, yoksa açıklama */}
+        {error ? (
+          <p className="text-xs text-red-600">{error}</p>
+        ) : description ? (
+          <p className="text-xs text-slate-500">{description}</p>
+        ) : null}
+      </div>
     </div>
   );
 });
@@ -168,6 +182,31 @@ export default function ProfileClient({
   onDemandRefetch?: () => Promise<void>;
 }) {
   const { data: session } = useSession();
+
+  /* ---------- editing state ---------- */
+  const [editing, setEditing] = React.useState(false);
+
+  const handleEdit = () => {
+    setEditing(true);
+    setTimeout(() => firstNameRef.current?.focus(), 0);
+  };
+  const handleCancel = () => {
+    setEditing(false);
+    // Formu eski haline döndür
+    setForm({
+      firstName: defaults.firstName,
+      lastName: defaults.lastName,
+      city: defaults.city,
+      gender: defaults.gender,
+      birth: defaults.birth,
+      height: defaults.height ? String(defaults.height) : "",
+      weight: defaults.weight ? String(defaults.weight) : "",
+      phoneDigits: digits(defaults.phoneFmt).slice(-10),
+      bio: defaults.bio,
+      exp: defaults.exp,
+    });
+    setPhotoUrl(initialProfile.profilePhotoUrl ?? null);
+  };
 
   /* ---------- header state ---------- */
   const [photoUrl, setPhotoUrl] = React.useState(initialProfile.profilePhotoUrl ?? null);
@@ -217,7 +256,6 @@ export default function ProfileClient({
     return d.length >= 10 ? d.slice(-10) : d;
   })();
 
-  const [editing, setEditing] = React.useState(false);
   const [saving, setSaving] = React.useState(false);
   const [msg, setMsg] = React.useState<string | null>(null);
 
@@ -307,9 +345,8 @@ export default function ProfileClient({
   }, [form.firstName, form.lastName]);
 
   /* fotoğraf */
-  const fileInputRef = React.useRef<HTMLInputElement>(null);
   async function handlePhotoChange(file?: File) {
-    if (!editing || !file) return;
+    if (!file) return;
     try {
       const fd = new FormData();
       fd.append("file", file);
@@ -442,48 +479,6 @@ export default function ProfileClient({
     }
   }
 
-  function handleCancel() {
-    setEditing(false);
-    setMsg(null);
-
-    // formu defaults'a geri sar
-    setForm({
-      firstName: defaults.firstName,
-      lastName: defaults.lastName,
-      city: defaults.city,
-      gender: defaults.gender,
-      birth: defaults.birth,
-      height: defaults.height ? String(defaults.height) : "",
-      weight: defaults.weight ? String(defaults.weight) : "",
-      phoneDigits: digits(defaults.phoneFmt).slice(-10),
-      bio: defaults.bio,
-      exp: defaults.exp,
-    });
-
-    setPhotoUrl(initialProfile.profilePhotoUrl ?? null);
-    setStatus(initialProfile.status ?? "Aktif");
-    setCvUrl(
-      toAbsoluteUrl(
-        initialProfile.professional?.cvUrl ??
-          extractAnyUrl(initialProfile.professional?.experience) ??
-          null,
-      ),
-    );
-    setSelectedSpecs(uniq(initialProfile.professional?.specialties));
-
-    setIsMinor(isMinorByDate(initialProfile.personal?.birthDate || undefined));
-    setGuardian({
-      fullName: initialProfile.personal?.guardian?.fullName ?? "",
-      relation: (initialProfile.personal?.guardian?.relation as any) ?? "",
-      phoneDigits: digits(initialGuardianPhoneDigits).slice(-10),
-      email: (initialProfile.personal?.guardian?.email as any) ?? "",
-      consent:
-        !!(
-          initialProfile.personal?.guardian?.consent ??
-          initialProfile.personal?.guardian?.consentAccepted
-        ),
-    });
-  }
 
   /* ---------- UI ---------- */
   const toggleSpec = (name: string) =>
@@ -495,51 +490,15 @@ export default function ProfileClient({
       {/* Üst profil özeti */}
       <section className="-mt-2 rounded-2xl bg-white border border-neutral-200/70 shadow-sm p-6 md:p-8">
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-6">
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-6">
             {/* avatar */}
-            <div className="flex flex-col items-center">
-              <div className="h-20 w-20 rounded-2xl overflow-hidden ring-1 ring-neutral-200/70">
-                {photoUrl ? (
-                  <img src={photoUrl} alt={displayName} className="h-full w-full object-cover" />
-                ) : (
-                  <div
-                    className="h-full w-full grid place-items-center text-xl font-bold text-white"
-                    style={{ backgroundColor: theme.dark }}
-                  >
-                    {initials}
-                  </div>
-                )}
-              </div>
-
-              {editing && (
-                <>
-                  <input
-                    ref={fileInputRef}
-                    type="file"
-                    accept="image/*"
-                    className="hidden"
-                    onChange={(e) => handlePhotoChange(e.target.files?.[0] ?? undefined)}
-                  />
-                  <div className="mt-2 grid grid-cols-2 gap-2 w-36">
-                    <button
-                      type="button"
-                      className="text-xs rounded-md px-0 py-1 bg-white/90 ring-1 ring-neutral-300 whitespace-nowrap"
-                      onClick={() => fileInputRef.current?.click()}
-                    >
-                      Değiştir
-                    </button>
-                    <button
-                      type="button"
-                      className="text-xs rounded-md px-0 py-1 bg-white/90 ring-1 ring-neutral-300 disabled:opacity-50"
-                      onClick={removePhoto}
-                      disabled={!photoUrl}
-                    >
-                      Kaldır
-                    </button>
-                  </div>
-                </>
-              )}
-            </div>
+            <ProfileHeader
+              photoUrl={photoUrl}
+              initials={initials}
+              editing={editing}
+              onChangePhoto={handlePhotoChange}
+              onRemovePhoto={removePhoto}
+            />
 
             <div>
               <h1 className="text-2xl md:text-3xl font-extrabold tracking-tight text-neutral-900">
@@ -605,10 +564,8 @@ export default function ProfileClient({
               readOnly
               type="email"
               value={session?.user?.email ?? defaults.email}
+              description="Bu alan giriş e-postanızdır; değiştirilemez."
             />
-            <div className="mt-1 text-xs text-slate-500">
-              Bu alan giriş e-postanızdır; değiştirilemez.
-            </div>
 
             {/* Telefon */}
             <div>
@@ -678,10 +635,8 @@ export default function ProfileClient({
                 setForm((f) => ({ ...f, birth: v }));
                 setIsMinor(isMinorByDate(v));
               }}
+              description="gg.aa.yyyy biçiminde giriniz."
             />
-            <div className="mt-1 text-xs text-slate-500">
-              gg.aa.yyyy biçiminde
-            </div>
             <UField
               label="Boy (cm)"
               inputRef={heightRef}
@@ -936,10 +891,7 @@ export default function ProfileClient({
               <button
                 type="button"
                 className="mt-4 rounded-xl bg-white text-neutral-900 px-3 py-2 text-sm"
-                onClick={() => {
-                  setEditing(true);
-                  setTimeout(() => firstNameRef.current?.focus(), 0);
-                }}
+                onClick={handleEdit}
               >
                 Hemen Düzenle
               </button>

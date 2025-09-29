@@ -490,3 +490,14 @@ input[type="date"] {
 .profile-page input[type="date"]::-webkit-datetime-edit-year-field {
   color: #1f2937 !important;
 }
+
+/* Avatar butonları için gizleme kurallarını override et */
+.avatar-actions {
+  opacity: 1 !important;
+  visibility: visible !important;
+  pointer-events: auto !important;
+}
+
+/* Avatar aksiyonlarını edit modunda görünür ve okunur yap */
+.avatar-actions { opacity:1 !important; visibility:visible !important; pointer-events:auto !important; }
+.avatar-actions, .avatar-actions * { color:#1f2937 !important; }
