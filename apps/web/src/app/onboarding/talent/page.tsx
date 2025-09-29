@@ -213,8 +213,33 @@ function TalentOnboardingContent() {
 
   const loadProfile = async () => {
     try {
-      const res = await fetch("/api/proxy/profiles/me", { cache: "no-store" });
-      if (!res.ok) throw new Error("profile_fetch_failed");
+      const res = await fetch("/api/proxy/profiles/me", { 
+        cache: "no-store",
+        credentials: 'include'
+      });
+      if (!res.ok) {
+        // 401 için özel handling
+        if (res.status === 401) {
+          router.push('/auth/login?next=/onboarding/talent');
+          throw new Error('Oturum açmanız gerekiyor.');
+        }
+        
+        // Ham gövdeyi al ve parse etmeye çalış
+        const text = await res.text();
+        let obj: any = null;
+        try { 
+          obj = JSON.parse(text); 
+        } catch (_) { 
+          // JSON değilse yoksay
+        }
+
+        const msg =
+          obj?.error ??
+          obj?.message ??
+          (text?.trim() || `Request failed: ${res.status}`);
+
+        throw new Error(msg);
+      }
       const p = await res.json();
 
       const userTen = onlyLocal10(p.phone ?? "").slice(0, 10);
@@ -333,7 +358,12 @@ function TalentOnboardingContent() {
 
     // 1) PATCH dene (ideal senaryo)
     try {
-      const r = await fetch("/api/proxy/profiles/me", { method: "PATCH", headers, body });
+      const r = await fetch("/api/proxy/profiles/me", { 
+        method: "PATCH", 
+        headers, 
+        body,
+        credentials: 'include'
+      });
       if (r.ok) return true;
     } catch {
       /* geç */
@@ -341,7 +371,10 @@ function TalentOnboardingContent() {
 
     // 2) PUT tam-replace ise: önce mevcut profili al, derin birleştir, sonra PUT
     try {
-      const g = await fetch("/api/proxy/profiles/me", { cache: "no-store" });
+      const g = await fetch("/api/proxy/profiles/me", { 
+        cache: "no-store",
+        credentials: 'include'
+      });
       const current = g.ok ? await g.json() : {};
       const merged = deepMerge(current || {}, payload || {});
       const cleaned = pickProfileShape(merged);
@@ -349,6 +382,7 @@ function TalentOnboardingContent() {
         method: "PUT",
         headers,
         body: JSON.stringify(cleaned),
+        credentials: 'include'
       });
       return r2.ok;
     } catch {
@@ -836,7 +870,11 @@ function TalentOnboardingContent() {
                   try {
                     const fd = new FormData();
                     fd.append("file", f);
-                    const up = await fetch("/api/proxy/upload", { method: "POST", body: fd });
+                    const up = await fetch("/api/proxy/upload", { 
+        method: "POST", 
+        body: fd,
+        credentials: 'include'
+      });
                     if (!up.ok) throw new Error("upload failed");
                     const data = await up.json();
                     setCvUrl(data.url ?? null);

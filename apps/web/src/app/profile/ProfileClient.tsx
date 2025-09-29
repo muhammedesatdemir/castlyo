@@ -123,7 +123,7 @@ const UField = React.memo(function UField({
       <input
         ref={inputRef}
         type={type}
-        placeholder={placeholder}
+        placeholder={placeholder || " "}
         autoComplete="off"
         disabled={disabled}
         readOnly={readOnly}
@@ -174,7 +174,7 @@ export default function ProfileClient({
   const [status, setStatus] = React.useState(initialProfile.status ?? "Aktif");
   const [role] = React.useState((initialProfile.role as any) ?? "TALENT");
   const [selectedSpecs, setSelectedSpecs] = React.useState<string[]>(
-    uniq(initialProfile.professional?.specialties),
+    uniq(initialProfile.professional?.specialties) || [],
   );
   const [cvUrl, setCvUrl] = React.useState<string | null>(
     initialProfile.professional?.cvUrl ??
@@ -194,7 +194,7 @@ export default function ProfileClient({
   const weightRef = React.useRef<HTMLInputElement>(null);
 
   /* ---------- guardian ---------- */
-  const [isMinor, setIsMinor] = React.useState(isMinorByDate(initialProfile.personal?.birthDate));
+  const [isMinor, setIsMinor] = React.useState(isMinorByDate(initialProfile.personal?.birthDate || undefined));
   const initialGuardianPhoneDigits = digits(initialProfile.personal?.guardian?.phone ?? "").slice(
     -10,
   );
@@ -254,6 +254,18 @@ export default function ProfileClient({
 
   // defaults değişirse (ör. rehydrate) formu bir kez senkronla
   React.useEffect(() => {
+    console.debug('[ProfileClient] Updating form with new data:', {
+      firstName: defaults.firstName,
+      lastName: defaults.lastName,
+      city: defaults.city,
+      gender: defaults.gender,
+      birth: defaults.birth,
+      height: defaults.height,
+      weight: defaults.weight,
+      bio: defaults.bio,
+      exp: defaults.exp,
+    });
+    
     setForm({
       firstName: toTitleTR(defaults.firstName),
       lastName: toTitleTR(defaults.lastName),
@@ -266,7 +278,21 @@ export default function ProfileClient({
       bio: defaults.bio,
       exp: defaults.exp,
     });
-  }, [defaults]);
+    
+    // Specialty chips'leri de güncelle
+    const specialties = uniq(initialProfile.professional?.specialties) || [];
+    // Eğer API'den gelen specialties boşsa, varsayılan olarak bazı örnekler ekle
+    if (specialties.length === 0 && initialProfile.professional?.bio) {
+      // Eğer bio varsa, içinden specialty çıkarmaya çalış
+      const bioText = initialProfile.professional.bio.toLowerCase();
+      const detectedSpecs = SPECIALTY_OPTIONS.filter(opt => 
+        bioText.includes(opt.toLowerCase())
+      );
+      setSelectedSpecs(detectedSpecs);
+    } else {
+      setSelectedSpecs(specialties);
+    }
+  }, [defaults, initialProfile]);
 
   /* başlık bilgileri (gereksiz bağımlılık yok) */
   const displayName = React.useMemo(() => {
@@ -287,7 +313,11 @@ export default function ProfileClient({
     try {
       const fd = new FormData();
       fd.append("file", file);
-      const up = await fetch("/api/proxy/upload", { method: "POST", body: fd });
+      const up = await fetch("/api/proxy/upload", { 
+        method: "POST", 
+        body: fd,
+        credentials: 'include'
+      });
       if (!up.ok) throw new Error("upload failed");
       const data = await up.json();
       setPhotoUrl(data.url ?? photoUrl);
@@ -313,7 +343,11 @@ export default function ProfileClient({
     try {
       const fd = new FormData();
       fd.append("file", file);
-      const up = await fetch("/api/proxy/upload", { method: "POST", body: fd });
+      const up = await fetch("/api/proxy/upload", { 
+        method: "POST", 
+        body: fd,
+        credentials: 'include'
+      });
       if (!up.ok) throw new Error("upload failed");
       const data = await up.json();
       setCvUrl(toAbsoluteUrl(data.url) ?? null);
@@ -437,7 +471,7 @@ export default function ProfileClient({
     );
     setSelectedSpecs(uniq(initialProfile.professional?.specialties));
 
-    setIsMinor(isMinorByDate(initialProfile.personal?.birthDate));
+    setIsMinor(isMinorByDate(initialProfile.personal?.birthDate || undefined));
     setGuardian({
       fullName: initialProfile.personal?.guardian?.fullName ?? "",
       relation: (initialProfile.personal?.guardian?.relation as any) ?? "",
@@ -681,6 +715,7 @@ export default function ProfileClient({
                   <input
                     type="text"
                     value={guardian.fullName}
+                    placeholder=" "
                     onChange={(e) => {
                       const val = e.currentTarget.value;
                       setGuardian((p) => ({ ...p, fullName: val }));
@@ -747,6 +782,7 @@ export default function ProfileClient({
                   <input
                     type="email"
                     value={guardian.email}
+                    placeholder=" "
                     onChange={(e) => {
                       const val = e.currentTarget.value;
                       setGuardian((p) => ({ ...p, email: val }));
@@ -772,6 +808,7 @@ export default function ProfileClient({
             <textarea
               disabled={!editing}
               value={form.bio}
+              placeholder=" "
               onChange={(e) => {
                 const val = e.currentTarget.value; // event pooling'e takılmamak için önce al
                 setForm((f) => ({ ...f, bio: val }));
@@ -787,6 +824,7 @@ export default function ProfileClient({
             <textarea
               disabled={!editing}
               value={form.exp}
+              placeholder=" "
               onChange={(e) => {
                 const val = e.currentTarget.value; // event pooling'e takılmamak için önce al
                 setForm((f) => ({ ...f, exp: val }));

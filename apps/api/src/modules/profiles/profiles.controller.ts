@@ -30,9 +30,39 @@ export class ProfilesController {
   @Get('me')
   @UseGuards(JwtAuthGuard)
   async getMyProfile(@Request() req) {
-    const userId = req.user?.userId || req.user?.id;
-    if (!userId) throw new UnauthorizedException('Missing user id in token');
-    return this.profilesService.getMyProfile(userId);
+    // 1) Güvenlik: user var mı?
+    const userId = req?.user?.id || req?.user?.userId;
+    if (!userId) {
+      // Nest zaten 401 döndürür ama yine de defensif olalım
+      throw new UnauthorizedException('Missing user id in token');
+    }
+
+    // 2) Profil getir (bulunamazsa boş obje dönsün)
+    const profile = await this.profilesService.getMyProfile(userId);
+    if (!profile) {
+      // 200 boş gövde - UI boş profille açacak
+      return {};
+    }
+
+    // 3) CamelCase map (sadece camelCase kullan)
+    return {
+      id: profile.id,
+      userId: profile.userId,
+      firstName: profile.firstName ?? '',
+      lastName: profile.lastName ?? '',
+      displayName: profile.displayName ?? '',
+      bio: profile.bio ?? '',
+      headline: profile.headline ?? '',
+      city: profile.city ?? '',
+      country: profile.country ?? '',
+      heightCm: profile.heightCm ?? null,
+      weightKg: profile.weightKg ?? null,
+      profileImage: profile.profileImage ?? null,
+      specialties: profile.specialties ?? [],
+      experience: profile.experience ?? '',
+      createdAt: profile.createdAt,
+      updatedAt: profile.updatedAt,
+    };
   }
 
   @Post('talent')

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
+import { useRouter } from "next/navigation";
 import ProfileClient from "./ProfileClient";
 
 /** Sunucudan dönen profil tipi — ProfileClient de bunu kullanır */
@@ -27,7 +28,7 @@ export type Profile = {
 
   personal?: {
     city?: string;
-    birthDate?: string;            // ISO (yyyy-MM-dd)
+    birthDate?: string | null;     // ISO (yyyy-MM-dd) or null
     gender?: string;               // "MALE" | "FEMALE" | ""
     heightCm?: number;
     weightKg?: number;
@@ -46,7 +47,78 @@ export type Profile = {
 
 const THEME = { light: "#F6E6C3", dark: "#962901", black: "#000000" };
 
+/* ---------- API mapping helpers ---------- */
+const g = (o: any, ...keys: string[]) => {
+  for (const k of keys) {
+    const v = o?.[k];
+    if (v !== undefined && v !== null) return v;
+  }
+  return undefined;
+};
+
+const toDateOnly = (v: any): string | null => {
+  if (!v) return null;
+  // 24.04.2009 gibi TR formatını da destekle
+  if (typeof v === "string" && /^\d{2}\.\d{2}\.\d{4}$/.test(v)) {
+    const [dd, mm, yyyy] = v.split(".");
+    return `${yyyy}-${mm}-${dd}`;
+  }
+  const d = new Date(v);
+  return Number.isNaN(d.getTime()) ? null : d.toISOString().slice(0, 10);
+};
+
+function mapApiToProfile(api: any): Profile {
+  // API now returns flat structure with camelCase fields
+  const data = api ?? {};
+
+  // Helper function to safely convert to number
+  const num = (v: any) => v === null || v === undefined || v === '' ? null : Number(v);
+
+  // specialties hem ["ACTING"] hem [{code:"ACTING"}] hem ["Oyunculuk"] gelebilir
+  const rawSpecs = data.specialties ?? [];
+  const specialties = Array.isArray(rawSpecs)
+    ? rawSpecs.map((s: any) => (typeof s === "string" ? s : s?.code ?? s?.label)).filter(Boolean)
+    : [];
+
+  return {
+    firstName: data.firstName ?? data.first_name ?? "",
+    lastName: data.lastName ?? data.last_name ?? "",
+    email: data.email ?? "",
+    phone: data.phone ?? "",
+    role: data.role ?? null,
+    status: data.status ?? null,
+    company: data.company ?? null,
+    profilePhotoUrl: data.profileImage ?? data.profilePhotoUrl ?? data.avatarUrl ?? data.photoUrl ?? data.avatar ?? null,
+
+    professional: {
+      specialties,
+      bio: data.bio ?? "",
+      experience: data.experience ?? "",
+      cvUrl: data.cvUrl ?? data.cv_url ?? null,
+    },
+
+    personal: {
+      city: data.city ?? "",
+      birthDate: toDateOnly(data.birthDate ?? data.birth_date),
+      gender: data.gender ?? "",
+      heightCm: num(data.heightCm ?? data.height_cm) ?? undefined,
+      weightKg: num(data.weightKg ?? data.weight_kg) ?? undefined,
+      guardian: data.guardian
+        ? {
+            fullName: data.guardian.fullName ?? data.guardian.name ?? "",
+            relation: data.guardian.relation ?? "",
+            phone: data.guardian.phone ?? data.guardian.mobile ?? "",
+            email: data.guardian.email ?? "",
+            consent: data.guardian.consent ?? data.guardian.consentAccepted ?? false,
+            consentAccepted: undefined,
+          }
+        : null,
+    },
+  };
+}
+
 export default function ProfilePage() {
+  const router = useRouter();
   const [data, setData] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -56,15 +128,47 @@ export default function ProfilePage() {
       setError(null);
       console.debug('[ProfilePage] Refetching profile data...');
       // DEĞİŞİKLİK: /api/profile/me -> /api/proxy/profiles/me
-      const res = await fetch("/api/proxy/profiles/me", { cache: "no-store" });
+      const res = await fetch("/api/proxy/profiles/me", { 
+        cache: "no-store",
+        credentials: 'include'
+      });
       
       if (!res.ok) {
-        const errorData = await res.json().catch(() => ({ error: 'NON_JSON_ERROR' }));
-        throw new Error(errorData.error ?? `Request failed: ${res.status}`);
+        // 401 için özel handling
+        if (res.status === 401) {
+          router.push('/auth/login?next=/profile');
+          throw new Error('Oturum açmanız gerekiyor.');
+        }
+        
+        // Ham gövdeyi al ve parse etmeye çalış
+        const text = await res.text();
+        let obj: any = null;
+        try { 
+          obj = JSON.parse(text); 
+        } catch (_) { 
+          // JSON değilse yoksay
+        }
+
+        const msg =
+          obj?.error ??
+          obj?.message ??
+          (text?.trim() || `Request failed: ${res.status}`);
+
+        throw new Error(msg);
       }
       
-      const p: Profile = await res.json();
-      console.debug('[ProfilePage] Profile data received:', p);
+      const apiResponse = await res.json();
+      console.debug('[ProfilePage] Profile data received:', apiResponse);
+      console.log('[ProfilePage] API Response structure (refetch):', {
+        hasUser: !!apiResponse.user,
+        hasProfile: !!apiResponse.profile,
+        userKeys: apiResponse.user ? Object.keys(apiResponse.user) : [],
+        profileKeys: apiResponse.profile ? Object.keys(apiResponse.profile) : []
+      });
+      
+      // API response'u Profile formatına dönüştür
+      const p: Profile = mapApiToProfile(apiResponse);
+      
       setData(p);
     } catch (error) {
       console.error('[ProfilePage] Refetch error:', error);
@@ -79,15 +183,47 @@ export default function ProfilePage() {
         setError(null);
         console.debug('[ProfilePage] Initial profile fetch...');
         // DEĞİŞİKLİK: /api/profile/me -> /api/proxy/profiles/me
-        const res = await fetch("/api/proxy/profiles/me", { cache: "no-store" });
+        const res = await fetch("/api/proxy/profiles/me", { 
+          cache: "no-store",
+          credentials: 'include'
+        });
         
         if (!res.ok) {
-          const errorData = await res.json().catch(() => ({ error: 'NON_JSON_ERROR' }));
-          throw new Error(errorData.error ?? `Request failed: ${res.status}`);
+          // 401 için özel handling
+          if (res.status === 401) {
+            router.push('/auth/login?next=/profile');
+            throw new Error('Oturum açmanız gerekiyor.');
+          }
+          
+          // Ham gövdeyi al ve parse etmeye çalış
+          const text = await res.text();
+          let obj: any = null;
+          try { 
+            obj = JSON.parse(text); 
+          } catch (_) { 
+            // JSON değilse yoksay
+          }
+
+          const msg =
+            obj?.error ??
+            obj?.message ??
+            (text?.trim() || `Request failed: ${res.status}`);
+
+          throw new Error(msg);
         }
         
-        const p: Profile = await res.json();
-        console.debug('[ProfilePage] Initial profile data received:', p);
+        const apiResponse = await res.json();
+        console.debug('[ProfilePage] Initial profile data received:', apiResponse);
+        console.log('[ProfilePage] API Response structure:', {
+          hasUser: !!apiResponse.user,
+          hasProfile: !!apiResponse.profile,
+          userKeys: apiResponse.user ? Object.keys(apiResponse.user) : [],
+          profileKeys: apiResponse.profile ? Object.keys(apiResponse.profile) : []
+        });
+        
+        // API response'u Profile formatına dönüştür
+        const p: Profile = mapApiToProfile(apiResponse);
+        
         if (alive) setData(p);
       } catch (error) {
         console.error('[ProfilePage] Initial fetch error:', error);
