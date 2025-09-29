@@ -5,6 +5,7 @@ import { useSession, signIn, signOut } from 'next-auth/react'
 import { Menu, X } from 'lucide-react'
 import { useState } from 'react'
 import RoleGateCTA from '@/components/shared/RoleGateCTA'
+import { MENU } from '@/constants/menu'
 
 interface HeaderProps {
   onSignup: (type: "talent" | "agency") => void
@@ -14,6 +15,9 @@ export default function Header({ onSignup }: HeaderProps) {
   const { data: session, status } = useSession()
   const isLoggedIn = status === 'authenticated'
   const [open, setOpen] = useState(false)
+  
+  // Filter menu items based on authentication status
+  const visibleMenuItems = MENU.filter(item => !('requiresAuth' in item) || isLoggedIn)
 
   return (
     <header className="site-header fixed top-0 w-full z-50 bg-black border-b border-gray-800">
@@ -52,28 +56,34 @@ export default function Header({ onSignup }: HeaderProps) {
         <nav
           className={`$${''} ${open ? 'block' : 'hidden'} absolute right-6 top-16 md:right-8 md:top-16 bg-black text-white shadow-xl border border-gray-800 rounded-lg p-4 space-y-3 w-64`}
         >
-          <Link href="/#discover" onClick={() => setOpen(false)} className="block hover:text-[#F6E6C3]">Keşfet</Link>
-          <Link href="/jobs" onClick={() => setOpen(false)} className="block hover:text-[#F6E6C3]">İlanlar</Link>
-          <Link href="/#features" onClick={() => setOpen(false)} className="block hover:text-[#F6E6C3]">Özellikler</Link>
-          <div onClick={() => setOpen(false)}>
-            <RoleGateCTA 
-              targetRole="TALENT" 
-              to="/onboarding/talent" 
-              className="w-full justify-start text-left hover:text-[#F6E6C3] bg-transparent border-none text-left p-0"
-            >
-              Yetenek Olarak Başla
-            </RoleGateCTA>
-          </div>
-          <div onClick={() => setOpen(false)}>
-            <RoleGateCTA 
-              targetRole="AGENCY" 
-              to="/onboarding/agency" 
-              className="w-full justify-start text-left hover:text-[#F6E6C3] bg-transparent border-none text-left p-0"
-            >
-              Ajans Olarak Başla
-            </RoleGateCTA>
-          </div>
-          <Link href="/profile" onClick={() => setOpen(false)} className="block hover:text-[#F6E6C3]">Profilim</Link>
+          {visibleMenuItems.map((item) => {
+            if ('role' in item && item.role) {
+              // Role-based items (Yetenek/Ajans)
+              return (
+                <div key={item.href} onClick={() => setOpen(false)}>
+                  <RoleGateCTA 
+                    targetRole={item.role} 
+                    to={item.href} 
+                    className="w-full justify-start text-left hover:text-[#F6E6C3] bg-transparent border-none text-left p-0"
+                  >
+                    {item.label}
+                  </RoleGateCTA>
+                </div>
+              )
+            } else {
+              // Regular navigation items
+              return (
+                <Link 
+                  key={item.href} 
+                  href={item.href} 
+                  onClick={() => setOpen(false)} 
+                  className="block hover:text-[#F6E6C3]"
+                >
+                  {item.label}
+                </Link>
+              )
+            }
+          })}
 
           <button
             onClick={() => (isLoggedIn ? signOut() : signIn())}

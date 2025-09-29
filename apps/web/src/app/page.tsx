@@ -18,6 +18,7 @@ import ToastHandler from '@/components/shared/ToastHandler'
 export default function Home() {
   const router = useRouter()
   const { data: session, status } = useSession()
+  const isLoggedIn = status === 'authenticated'
 
 
   const handleSignup = (type: "talent" | "agency") => {
@@ -119,12 +120,14 @@ export default function Home() {
                 >
                   İş İlanlarını Görüntüle
                 </button>
-                <button
-                  onClick={() => router.push('/profile')}
-                  className="bg-white/10 hover:bg-white/20 text-white px-6 py-2 rounded-lg transition-colors"
-                >
-                  Profilim
-                </button>
+                {isLoggedIn && (
+                  <button
+                    onClick={() => router.push('/profile')}
+                    className="bg-white/10 hover:bg-white/20 text-white px-6 py-2 rounded-lg transition-colors"
+                  >
+                    Profilim
+                  </button>
+                )}
               </div>
             </div>
           </div>
