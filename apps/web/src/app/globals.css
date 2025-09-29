@@ -434,3 +434,59 @@ input::placeholder, textarea::placeholder {
   opacity: 1 !important;
   color: rgba(100, 116, 139, .95) !important; /* slate-500 yakını */
 }
+
+/* Metinler koyu, placeholder'lar görünür (light tema) */
+input, textarea, select, [role="combobox"], .select-trigger {
+  color: #1f2937 !important; /* slate-800 */
+}
+
+input::placeholder,
+textarea::placeholder {
+  opacity: 1 !important;
+  color: #64748b !important;  /* slate-500 */
+}
+
+/* Radix/shadcn Select: placeholder ve seçili değer */
+[data-placeholder] {
+  color: #64748b !important;
+}
+.select-trigger span,
+[role="combobox"] span {
+  color: #1f2937 !important;
+}
+
+/* Date input değeri de aynı rengi alsın */
+input[type="date"] {
+  color: #1f2937 !important;
+}
+
+/* Sadece profil sayfasında yazıları zorla görünür yap */
+.profile-page input,
+.profile-page textarea {
+  color: #1f2937 !important;              /* slate-800 */
+  -webkit-text-fill-color: #1f2937 !important; /* Chrome autofill vs. */
+}
+
+/* Placeholder'lar görünür olsun */
+.profile-page input::placeholder,
+.profile-page textarea::placeholder {
+  opacity: 1 !important;
+  color: #64748b !important;              /* slate-500 */
+}
+
+/* Select tetikleyici ve iç metin (Radix/shadcn) */
+.profile-page [role="combobox"],
+.profile-page .select-trigger,
+.profile-page .select-trigger span,
+.profile-page [data-placeholder] {
+  color: #1f2937 !important;
+}
+
+/* Chrome'un tarih input'u için değer parçaları */
+.profile-page input[type="date"]::-webkit-datetime-edit,
+.profile-page input[type="date"]::-webkit-datetime-edit-text,
+.profile-page input[type="date"]::-webkit-datetime-edit-month-field,
+.profile-page input[type="date"]::-webkit-datetime-edit-day-field,
+.profile-page input[type="date"]::-webkit-datetime-edit-year-field {
+  color: #1f2937 !important;
+}

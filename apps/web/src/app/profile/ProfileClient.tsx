@@ -140,7 +140,7 @@ const UField = React.memo(function UField({
         min={min}
         max={max}
         className={`w-full rounded-lg px-3 py-2 ring-1 bg-white ${
-          disabled ? "ring-neutral-200/70" : "ring-neutral-300 focus:outline-none focus:ring-2"
+          disabled || readOnly ? "ring-neutral-200/70 bg-slate-50 cursor-not-allowed text-slate-800" : "ring-neutral-300 focus:outline-none focus:ring-2"
         }`}
       />
     </div>
@@ -606,6 +606,9 @@ export default function ProfileClient({
               type="email"
               value={session?.user?.email ?? defaults.email}
             />
+            <div className="mt-1 text-xs text-slate-500">
+              Bu alan giriş e-postanızdır; değiştirilemez.
+            </div>
 
             {/* Telefon */}
             <div>
@@ -676,6 +679,9 @@ export default function ProfileClient({
                 setIsMinor(isMinorByDate(v));
               }}
             />
+            <div className="mt-1 text-xs text-slate-500">
+              gg.aa.yyyy biçiminde
+            </div>
             <UField
               label="Boy (cm)"
               inputRef={heightRef}

@@ -237,7 +237,8 @@ export default function ProfilePage() {
 
   return (
     <main
-      className="min-h-screen"
+      id="profile-page"
+      className="profile-page min-h-screen"
       style={{ background: `linear-gradient(180deg, ${THEME.light} 0%, #ffffff 55%)` }}
     >
       <header className="sticky top-0 z-10 border-b border-neutral-200/70 bg-white/70 backdrop-blur">

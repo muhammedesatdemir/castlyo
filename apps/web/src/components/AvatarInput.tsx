@@ -61,14 +61,12 @@ export default function AvatarInput({ value, onChange, label = "Profil Fotoğraf
         <div className="flex gap-2">
           <button type="button" className="px-3 py-2 rounded-md bg-white/10 hover:bg-white/15"
                   onClick={() => inp.current?.click()} disabled={busy}>
-            {preview ? "Değiştir" : "Fotoğraf Ekle"}
+            Değiştir
           </button>
-          {preview && (
-            <button type="button" className="px-3 py-2 rounded-md bg-white/5 hover:bg-white/10"
-                    onClick={() => { setPreview(null); onChange(null); }} disabled={busy}>
-              Kaldır
-            </button>
-          )}
+          <button type="button" className="px-3 py-2 rounded-md bg-white/5 hover:bg-white/10"
+                  onClick={() => { setPreview(null); onChange(null); }} disabled={busy}>
+            Kaldır
+          </button>
         </div>
       </div>
 
