@@ -1,8 +1,20 @@
-import { pgTable, uuid, text, timestamp, boolean } from 'drizzle-orm/pg-core';
+import { pgTable, uuid, text, timestamp, boolean, inet } from 'drizzle-orm/pg-core';
 import { users } from './users';
 import { auditActionEnum } from './enums';
 
 export const userConsents = pgTable('user_consents', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  userId: uuid('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  acceptedTerms: boolean('accepted_terms').notNull(),
+  acceptedPrivacy: boolean('accepted_privacy').notNull(),
+  termsVersion: text('terms_version').notNull(),
+  privacyVersion: text('privacy_version').notNull(),
+  acceptedIp: inet('accepted_ip'),
+  acceptedAt: timestamp('accepted_at').notNull().defaultNow(),
+});
+
+// Legacy consent table for backward compatibility
+export const legacyUserConsents = pgTable('legacy_user_consents', {
   id: uuid('id').defaultRandom().primaryKey(),
   userId: uuid('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
   consentType: text('consent_type').notNull(),

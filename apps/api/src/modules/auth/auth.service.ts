@@ -21,6 +21,7 @@ import {
 import * as bcrypt from 'bcrypt';
 import * as crypto from 'crypto';
 import { users, userConsents } from '@castlyo/database';
+import { ConsentDto } from './dto/auth.dto';
 import { eq } from 'drizzle-orm';
 
 @Injectable()
@@ -93,8 +94,9 @@ export class AuthService {
 
       this.logger.log(`[REGISTER] User created successfully: ${user.id} | Email: ${registerDto.email} | Role: ${registerDto.role}`);
 
-      // KVKK/Terms record: temporarily disabled due to consent service issues
-      this.logger.log(`[REGISTER] KVKK: ${registerDto.kvkkConsent}, Terms: ${registerDto.termsConsent} (consent recording disabled)`);
+      // Record consents with version tracking
+      await this.recordUserConsents(user.id, registerDto.consents, registerDto.ipAddress);
+      this.logger.log(`[REGISTER] Consents recorded - Terms: ${registerDto.consents.acceptedTerms}, Privacy: ${registerDto.consents.acceptedPrivacy}, Versions: ${registerDto.consents.termsVersion}/${registerDto.consents.privacyVersion}`);
 
       // Generate tokens
       const tokens = await this.issuePair(user.id, user.role);
@@ -297,7 +299,25 @@ export class AuthService {
     };
   }
 
-  // Record user consents - support both old and new signature
+  // Record user consents with version tracking
+  private async recordUserConsents(userId: string, consents: ConsentDto, ipAddress?: string) {
+    try {
+      await this.db.insert(userConsents).values({
+        userId,
+        acceptedTerms: consents.acceptedTerms,
+        acceptedPrivacy: consents.acceptedPrivacy,
+        termsVersion: consents.termsVersion,
+        privacyVersion: consents.privacyVersion,
+        acceptedIp: ipAddress || null,
+      });
+      this.logger.log(`[recordUserConsents] Successfully recorded consents for user: ${userId}`);
+    } catch (error) {
+      this.logger.error(`[recordUserConsents] Failed to record consents`, error);
+      throw error;
+    }
+  }
+
+  // Record user consents - support both old and new signature (legacy)
   private async recordConsents(data: any) {
     let consentsToRecord = [];
 

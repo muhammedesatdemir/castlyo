@@ -39,9 +39,10 @@ export default function AuthPage() {
     email: '',
     password: '',
     confirmPassword: '',
-    kvkkConsent: false,
-    marketingConsent: false,
-    termsConsent: false
+    consents: {
+      acceptedTerms: false,
+      acceptedPrivacy: false
+    }
   })
 
   // Get next URL and role from URL params
@@ -81,9 +82,9 @@ export default function AuthPage() {
     
     if (mode === 'register') {
       // Validate required consents
-      if (!formData.kvkkConsent || !formData.termsConsent) {
-        setDialogTitle('KVKK ve Kullanım Şartları')
-        setDialogMessage('KVKK Aydınlatma Metni ve Kullanım Şartlarını kabul etmeniz gerekmektedir.')
+      if (!formData.consents.acceptedTerms || !formData.consents.acceptedPrivacy) {
+        setDialogTitle('Kullanım Koşulları ve Gizlilik Politikası')
+        setDialogMessage('Kullanım Koşulları ve Gizlilik Politikasını kabul etmeniz gerekmektedir.')
         setShowKvkkDialog(true)
         return
       }
@@ -116,9 +117,12 @@ export default function AuthPage() {
           password: formData.password,
           passwordConfirm: formData.confirmPassword,
           role: role.toUpperCase(),
-          kvkkConsent: formData.kvkkConsent,
-          termsConsent: formData.termsConsent,
-          marketingConsent: formData.marketingConsent,
+          consents: {
+            acceptedTerms: formData.consents.acceptedTerms,
+            acceptedPrivacy: formData.consents.acceptedPrivacy,
+            termsVersion: "2025-09-28",
+            privacyVersion: "2025-09-28"
+          },
           // Temporary dummy values for profile fields
           firstName: 'Test',
           lastName: 'User',
@@ -189,9 +193,10 @@ export default function AuthPage() {
             email: formData.email, // Email'i koruyalım
             password: '',
             confirmPassword: '',
-            kvkkConsent: false,
-            marketingConsent: false,
-            termsConsent: false
+            consents: {
+              acceptedTerms: false,
+              acceptedPrivacy: false
+            }
           })
         }
         
@@ -281,9 +286,10 @@ export default function AuthPage() {
       email: '',
       password: '',
       confirmPassword: '',
-      kvkkConsent: false,
-      marketingConsent: false,
-      termsConsent: false
+      consents: {
+        acceptedTerms: false,
+        acceptedPrivacy: false
+      }
     })
   }
 
@@ -423,60 +429,47 @@ export default function AuthPage() {
                   Onaylar ve Sözleşmeler
                 </h3>
                 
-                {/* KVKK Consent */}
-                <div className="flex items-start space-x-3">
-                  <Checkbox
-                    id="kvkk-consent"
-                    checked={formData.kvkkConsent}
-                    onCheckedChange={(checked) => 
-                      setFormData({ ...formData, kvkkConsent: checked as boolean })
-                    }
-                    className="mt-0.5 border-white/30 data-[state=checked]:bg-brand-primary"
-                  />
-                  <label htmlFor="kvkk-consent" className="text-sm text-white/80 leading-relaxed">
-                    <Link href="/kvkk" target="_blank" className="text-brand-primary hover:underline">
-                      KVKK Aydınlatma Metni
-                    </Link>
-                    'ni okudum ve anladım. Kişisel verilerimin işlenmesine onay veriyorum.
-                    <span className="text-red-400 ml-1">*</span>
-                  </label>
-                </div>
-
                 {/* Terms Consent */}
                 <div className="flex items-start space-x-3">
                   <Checkbox
                     id="terms-consent"
-                    checked={formData.termsConsent}
+                    checked={formData.consents.acceptedTerms}
                     onCheckedChange={(checked) => 
-                      setFormData({ ...formData, termsConsent: checked as boolean })
+                      setFormData({ 
+                        ...formData, 
+                        consents: { ...formData.consents, acceptedTerms: checked as boolean }
+                      })
                     }
                     className="mt-0.5 border-white/30 data-[state=checked]:bg-brand-primary"
                   />
                   <label htmlFor="terms-consent" className="text-sm text-white/80 leading-relaxed">
                     <Link href="/terms" target="_blank" className="text-brand-primary hover:underline">
-                      Kullanım Şartları
+                      Kullanım Koşulları ve Üyelik Sözleşmesi
                     </Link>
-                    'nı ve 
-                    <Link href="/privacy" target="_blank" className="text-brand-primary hover:underline ml-1">
-                      Gizlilik Politikası
-                    </Link>
-                    'nı okudum ve kabul ediyorum.
+                    'ni okudum ve kabul ediyorum.
                     <span className="text-red-400 ml-1">*</span>
                   </label>
                 </div>
 
-                {/* Marketing Consent */}
+                {/* Privacy Consent */}
                 <div className="flex items-start space-x-3">
                   <Checkbox
-                    id="marketing-consent"
-                    checked={formData.marketingConsent}
+                    id="privacy-consent"
+                    checked={formData.consents.acceptedPrivacy}
                     onCheckedChange={(checked) => 
-                      setFormData({ ...formData, marketingConsent: checked as boolean })
+                      setFormData({ 
+                        ...formData, 
+                        consents: { ...formData.consents, acceptedPrivacy: checked as boolean }
+                      })
                     }
                     className="mt-0.5 border-white/30 data-[state=checked]:bg-brand-primary"
                   />
-                  <label htmlFor="marketing-consent" className="text-sm text-white/80 leading-relaxed">
-                    Pazarlama amaçlı e-posta ve SMS gönderilmesine onay veriyorum. (İsteğe bağlı)
+                  <label htmlFor="privacy-consent" className="text-sm text-white/80 leading-relaxed">
+                    <Link href="/privacy" target="_blank" className="text-brand-primary hover:underline">
+                      Gizlilik Politikası (KVKK)
+                    </Link>
+                    'nı okudum ve kabul ediyorum.
+                    <span className="text-red-400 ml-1">*</span>
                   </label>
                 </div>
 
@@ -493,8 +486,8 @@ export default function AuthPage() {
             {/* Submit button */}
             <Button
               type="submit"
-              disabled={isLoading}
-              className="w-full bg-brand-primary hover:bg-brand-primary/90 text-white font-semibold py-3 mt-6"
+              disabled={isLoading || (mode === 'register' && (!formData.consents.acceptedTerms || !formData.consents.acceptedPrivacy))}
+              className="w-full bg-brand-primary hover:bg-brand-primary/90 text-white font-semibold py-3 mt-6 disabled:opacity-50"
             >
               {isLoading ? 'İşleniyor...' : (mode === 'login' ? 'Giriş Yap' : 'Kayıt Ol ve Devam Et')}
             </Button>

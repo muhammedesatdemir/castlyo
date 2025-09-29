@@ -1,132 +1,81 @@
 export default function TermsPage() {
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-black">
-      <div className="container mx-auto px-4 py-8">
-        <div className="max-w-4xl mx-auto">
-          <div className="bg-white/5 backdrop-blur-lg rounded-2xl border border-white/10 p-8 shadow-2xl">
-            <h1 className="text-3xl font-bold text-white mb-8">Kullanım Şartları</h1>
+    <div className="min-h-screen bg-gray-50 py-12">
+      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="bg-white shadow-lg rounded-lg p-8">
+          <h1 className="text-3xl font-bold text-gray-900 mb-8">
+            CASTLYO KULLANIM KOŞULLARI VE ÜYELİK SÖZLEŞMESİ
+          </h1>
+          
+          <div className="prose prose-lg max-w-none">
+            <h2>1. Taraflar</h2>
+            <p>
+              Bu sözleşme, bir tarafta Castlyo (bundan sonra "Platform", "Castlyo", "Biz" olarak anılacaktır) ile diğer tarafta Platform'a üye olan gerçek veya tüzel kişiler (bundan sonra birlikte "Kullanıcı", ayrı ayrı "Üye", "Aday" veya "Ajans" olarak anılacaktır) arasında, işbu metnin koşulları çerçevesinde düzenlenir.
+            </p>
+
+            <h2>2. Tanımlar</h2>
+            <ul>
+              <li><strong>"Aday":</strong> Platform'a bireysel profil ile kayıtlı gerçek kişi.</li>
+              <li><strong>"Ajans":</strong> Platform'a kurumsal hesap ile kayıtlı, ilan yayınlayan veya Aday arayan kurum/kuruluş.</li>
+              <li><strong>"Hizmet":</strong> Platform tarafından sunulan profil barındırma, eşleştirme, ilan yayınlama, iletişim onayı ve ilgili dijital hizmetler.</li>
+            </ul>
+
+            <h2>3. Sözleşmenin Konusu</h2>
+            <p>
+              Bu sözleşme, Platform'un kullanımına ilişkin esasları, üyelik koşullarını, tarafların hak ve yükümlülüklerini, içerik paylaşımı ve sorumlulukları düzenler.
+            </p>
+
+            <h2>4. Üyelik ve Kayıt</h2>
+            <h3>4.1.</h3>
+            <p>Üyelik yalnızca kayıt formunda istenen bilgilerin doğru ve güncel olarak verilmesi ile mümkündür.</p>
             
-            <div className="prose prose-invert max-w-none">
-              <div className="space-y-6 text-white/80">
-                <section>
-                  <h2 className="text-xl font-semibold text-white mb-4">1. Genel Hükümler</h2>
-                  <p>
-                    Bu kullanım şartları ("Şartlar"), Castlyo Teknoloji A.Ş. ("Castlyo") tarafından işletilen 
-                    casting ve yetenek eşleştirme platformunun ("Platform") kullanımına ilişkin kuralları belirler.
-                  </p>
-                </section>
+            <h3>4.2.</h3>
+            <p>Üye, hesabı oluştururken işbu Kullanım Koşullarını ve Gizlilik Politikasını okuduğunu, anladığını ve kabul ettiğini beyan ve taahhüt eder.</p>
+            
+            <h3>4.3.</h3>
+            <p>Üye hesap bilgileri (e-posta, parola vb.) ile meydana gelecek kullanım ve sonuçlardan kendisi sorumludur; şifre güvenliği Üye'ye aittir. Şifre veya hesap güvenliği ihlali tespit edildiğinde derhal Platform'a bildirim yapılacaktır.</p>
 
-                <section>
-                  <h2 className="text-xl font-semibold text-white mb-4">2. Hizmet Tanımı</h2>
-                  <p>Castlyo aşağıdaki hizmetleri sunar:</p>
-                  <ul className="list-disc list-inside mt-2 space-y-1">
-                    <li>Yetenekler ve ajanslar arasında güvenli eşleştirme</li>
-                    <li>Profesyonel profil oluşturma ve yönetimi</li>
-                    <li>İş fırsatları ve casting duyuruları</li>
-                    <li>Platform içi güvenli mesajlaşma</li>
-                    <li>KVKK uyumlu veri paylaşımı</li>
-                  </ul>
-                </section>
+            <h2>5. Hizmetin Niteliği ve Aracı Rolü</h2>
+            <h3>5.1.</h3>
+            <p>Platform, Aday profillerini toplayıp Ajanslara sunan bir aracı hizmet sağlayıcıdır. Platform, Ajans-Aday arasında doğrudan işveren veya hizmet sağlayıcı konumunda olmayıp, eşleştirme ve iletişim altyapısı sağlar.</p>
+            
+            <h3>5.2.</h3>
+            <p>Platform, Ajanslar tarafından yayınlanan ilanların içeriğinin doğruluğunu garanti etmez; Ajansların beyan ve yükümlülükleri Ajanslara aittir.</p>
 
-                <section>
-                  <h2 className="text-xl font-semibold text-white mb-4">3. Kullanıcı Yükümlülükleri</h2>
-                  <p>Platform kullanıcıları olarak:</p>
-                  <ul className="list-disc list-inside mt-2 space-y-1">
-                    <li>Doğru ve güncel bilgi paylaşmakla yükümlüsünüz</li>
-                    <li>Başkalarının haklarına saygı göstermelisiniz</li>
-                    <li>Platform kurallarına uygun davranmalısınız</li>
-                    <li>Fikri mülkiyet haklarını ihlal etmemelisiniz</li>
-                    <li>Spam veya rahatsız edici içerik paylaşmamalısınız</li>
-                  </ul>
-                </section>
+            <h2>6. İçerik, Telif ve Lisans</h2>
+            <h3>6.1.</h3>
+            <p>Üye tarafından yüklenen fotoğraf, video, metin ve diğer içeriklerin fikri mülkiyet hakları Üye'ye aittir. Üye, Platform'a bu içerikleri Platform üzerinde yayımlama, Ajanslarla paylaşma, tanıtım amaçlı kullanma hakkı veren münhasır olmayan, devredilebilir olmayan, süresiz bir lisans verir.</p>
+            
+            <h3>6.2.</h3>
+            <p>Üye, yüklediği içeriklerin üçüncü kişilerin haklarını ihlal etmediğini beyan ve taahhüt eder. Üçüncü kişilerce iddia edilen hak ihlallerinden doğacak tüm hukuki ve mali sonuçlar Üye sorumluluğundadır.</p>
 
-                <section>
-                  <h2 className="text-xl font-semibold text-white mb-4">4. Gizlilik ve Veri Güvenliği</h2>
-                  <div className="bg-green-500/10 border border-green-500/20 rounded-lg p-4">
-                    <p className="text-green-200">
-                      <strong>🔒 Gizlilik Güvencemiz:</strong>
-                    </p>
-                    <ul className="list-disc list-inside mt-2 space-y-1 text-green-200">
-                      <li>İletişim bilgileriniz sadece onayınızla paylaşılır</li>
-                      <li>Tüm veri paylaşımları audit log ile izlenir</li>
-                      <li>KVKK ve GDPR standartlarına tam uyum</li>
-                      <li>Verilerinizi istediğiniz zaman silebilirsiniz</li>
-                    </ul>
-                  </div>
-                </section>
+            <h2>7. Ücret ve Ödeme</h2>
+            <h3>7.1.</h3>
+            <p>Bazı hizmetler ücretli olabilir; ücretler ve paket koşulları Platform'da ayrı olarak duyurulur. Ücretli hizmet satın alımında uygulanacak iptal/iade koşulları Mesafeli Sözleşmeler çerçevesinde olacaktır.</p>
 
-                <section>
-                  <h2 className="text-xl font-semibold text-white mb-4">5. İçerik Politikası</h2>
-                  <p>Platform üzerinde paylaşılan içerikler:</p>
-                  <ul className="list-disc list-inside mt-2 space-y-1">
-                    <li>Yasal, etik ve profesyonel olmalıdır</li>
-                    <li>Telif hakları size ait olmalı veya kullanım izniniz bulunmalıdır</li>
-                    <li>Müstehcen, ayrımcı veya nefret içerikli olmamalıdır</li>
-                    <li>Spam veya aldatıcı bilgi içermemelidir</li>
-                  </ul>
-                </section>
+            <h2>8. Yükümlülükler ve Sorumluluk Sınırı</h2>
+            <h3>8.1.</h3>
+            <p>Platform, makul özen ve beceri ile hizmet sunar; ancak Ajans ve Aday arasındaki iş ilişkilerinden, müzakere ve sözleşmelerden, doğrudan veya dolaylı zararlardan sorumlu değildir. Bu sınırlama kasten veya ağır kusur durumunda uygulanmayabilir.</p>
+            
+            <h3>8.2.</h3>
+            <p>Platform'un hizmet kesintilerinden, üçüncü taraf hizmet sağlayıcıların davranışlarından veya teknik arızalardan kaynaklanan zararlar için sorumluluk sınırlıdır.</p>
 
-                <section>
-                  <h2 className="text-xl font-semibold text-white mb-4">6. Ücretlendirme</h2>
-                  <p>
-                    Temel platform kullanımı ücretsizdir. Premium özellikler için ücretlendirme 
-                    politikalarımız ayrı olarak belirtilmiştir. Ücretli hizmetler için iade 
-                    politikamız geçerlidir.
-                  </p>
-                </section>
+            <h2>9. Fesih ve Askıya Alma</h2>
+            <h3>9.1.</h3>
+            <p>Platform, Üye'nin işbu maddelere aykırı davranması halinde tek taraflı olarak hesap askıya alma veya silebilme hakkına sahiptir.</p>
+            
+            <h3>9.2.</h3>
+            <p>Üye dilediği zaman hesabını kapatabilir; kapatma sonrası veri silme talepleri KVKK çerçevesinde işleme alınır.</p>
 
-                <section>
-                  <h2 className="text-xl font-semibold text-white mb-4">7. Hesap Askıya Alma ve Sonlandırma</h2>
-                  <p>
-                    Castlyo, kullanım şartlarını ihlal eden hesapları uyarı vermeksizin 
-                    askıya alabilir veya sonlandırabilir. Kullanıcılar da hesaplarını 
-                    istediği zaman kapatabilir.
-                  </p>
-                </section>
+            <h2>10. Uyuşmazlık ve Uygulanacak Hukuk</h2>
+            <h3>10.1.</h3>
+            <p>İşbu sözleşme Türkiye Cumhuriyeti mevzuatına tabidir. Taraflar arasında doğacak uyuşmazlıklarda İstanbul Mahkemeleri ve İcra Daireleri yetkilidir (yerelde farklı seçim belirtilebilir).</p>
 
-                <section>
-                  <h2 className="text-xl font-semibold text-white mb-4">8. Sorumluluk Sınırlaması</h2>
-                  <p>
-                    Castlyo, platform üzerinden yapılan anlaşmalar veya iletişimlerden 
-                    doğan zararlardan sorumlu değildir. Kullanıcılar kendi sorumluluklarında 
-                    hareket ederler.
-                  </p>
-                </section>
-
-                <section>
-                  <h2 className="text-xl font-semibold text-white mb-4">9. Değişiklikler</h2>
-                  <p>
-                    Bu şartlar gerektiğinde güncellenebilir. Önemli değişiklikler 
-                    kullanıcılara e-posta ile bildirilir ve platform üzerinde duyurulur.
-                  </p>
-                </section>
-
-                <section>
-                  <h2 className="text-xl font-semibold text-white mb-4">10. İletişim</h2>
-                  <p>
-                    Kullanım şartları ile ilgili sorularınız için <strong>legal@castlyo.com</strong> 
-                    adresine e-posta gönderebilirsiniz.
-                  </p>
-                </section>
-
-                <section>
-                  <h2 className="text-xl font-semibold text-white mb-4">11. Yürürlük</h2>
-                  <p>
-                    Bu kullanım şartları, platformu kullanmaya başladığınız andan itibaren 
-                    yürürlüğe girer ve hesabınızı kapattığınızda sona erer.
-                  </p>
-                </section>
-              </div>
-            </div>
-
-            <div className="mt-8 pt-6 border-t border-white/10">
-              <p className="text-white/60 text-sm">
-                <strong>Son Güncelleme:</strong> {new Date().toLocaleDateString('tr-TR')}
-              </p>
-            </div>
+            <h2>11. Kabul</h2>
+            <p>Üye kayıt formunu onaylayarak bu Kullanım Koşullarını okuduğunu, anladığını ve kabul ettiğini beyan eder.</p>
           </div>
         </div>
       </div>
     </div>
-  )
+  );
 }

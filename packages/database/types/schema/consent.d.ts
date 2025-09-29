@@ -36,9 +36,152 @@ export declare const userConsents: import("drizzle-orm/pg-core").PgTableWithColu
             identity: undefined;
             generated: undefined;
         }, {}, {}>;
+        acceptedTerms: import("drizzle-orm/pg-core").PgColumn<{
+            name: "accepted_terms";
+            tableName: "user_consents";
+            dataType: "boolean";
+            columnType: "PgBoolean";
+            data: boolean;
+            driverParam: boolean;
+            notNull: true;
+            hasDefault: false;
+            isPrimaryKey: false;
+            isAutoincrement: false;
+            hasRuntimeDefault: false;
+            enumValues: undefined;
+            baseColumn: never;
+            identity: undefined;
+            generated: undefined;
+        }, {}, {}>;
+        acceptedPrivacy: import("drizzle-orm/pg-core").PgColumn<{
+            name: "accepted_privacy";
+            tableName: "user_consents";
+            dataType: "boolean";
+            columnType: "PgBoolean";
+            data: boolean;
+            driverParam: boolean;
+            notNull: true;
+            hasDefault: false;
+            isPrimaryKey: false;
+            isAutoincrement: false;
+            hasRuntimeDefault: false;
+            enumValues: undefined;
+            baseColumn: never;
+            identity: undefined;
+            generated: undefined;
+        }, {}, {}>;
+        termsVersion: import("drizzle-orm/pg-core").PgColumn<{
+            name: "terms_version";
+            tableName: "user_consents";
+            dataType: "string";
+            columnType: "PgText";
+            data: string;
+            driverParam: string;
+            notNull: true;
+            hasDefault: false;
+            isPrimaryKey: false;
+            isAutoincrement: false;
+            hasRuntimeDefault: false;
+            enumValues: [string, ...string[]];
+            baseColumn: never;
+            identity: undefined;
+            generated: undefined;
+        }, {}, {}>;
+        privacyVersion: import("drizzle-orm/pg-core").PgColumn<{
+            name: "privacy_version";
+            tableName: "user_consents";
+            dataType: "string";
+            columnType: "PgText";
+            data: string;
+            driverParam: string;
+            notNull: true;
+            hasDefault: false;
+            isPrimaryKey: false;
+            isAutoincrement: false;
+            hasRuntimeDefault: false;
+            enumValues: [string, ...string[]];
+            baseColumn: never;
+            identity: undefined;
+            generated: undefined;
+        }, {}, {}>;
+        acceptedIp: import("drizzle-orm/pg-core").PgColumn<{
+            name: "accepted_ip";
+            tableName: "user_consents";
+            dataType: "string";
+            columnType: "PgInet";
+            data: string;
+            driverParam: string;
+            notNull: false;
+            hasDefault: false;
+            isPrimaryKey: false;
+            isAutoincrement: false;
+            hasRuntimeDefault: false;
+            enumValues: undefined;
+            baseColumn: never;
+            identity: undefined;
+            generated: undefined;
+        }, {}, {}>;
+        acceptedAt: import("drizzle-orm/pg-core").PgColumn<{
+            name: "accepted_at";
+            tableName: "user_consents";
+            dataType: "date";
+            columnType: "PgTimestamp";
+            data: Date;
+            driverParam: string;
+            notNull: true;
+            hasDefault: true;
+            isPrimaryKey: false;
+            isAutoincrement: false;
+            hasRuntimeDefault: false;
+            enumValues: undefined;
+            baseColumn: never;
+            identity: undefined;
+            generated: undefined;
+        }, {}, {}>;
+    };
+    dialect: "pg";
+}>;
+export declare const legacyUserConsents: import("drizzle-orm/pg-core").PgTableWithColumns<{
+    name: "legacy_user_consents";
+    schema: undefined;
+    columns: {
+        id: import("drizzle-orm/pg-core").PgColumn<{
+            name: "id";
+            tableName: "legacy_user_consents";
+            dataType: "string";
+            columnType: "PgUUID";
+            data: string;
+            driverParam: string;
+            notNull: true;
+            hasDefault: true;
+            isPrimaryKey: true;
+            isAutoincrement: false;
+            hasRuntimeDefault: false;
+            enumValues: undefined;
+            baseColumn: never;
+            identity: undefined;
+            generated: undefined;
+        }, {}, {}>;
+        userId: import("drizzle-orm/pg-core").PgColumn<{
+            name: "user_id";
+            tableName: "legacy_user_consents";
+            dataType: "string";
+            columnType: "PgUUID";
+            data: string;
+            driverParam: string;
+            notNull: true;
+            hasDefault: false;
+            isPrimaryKey: false;
+            isAutoincrement: false;
+            hasRuntimeDefault: false;
+            enumValues: undefined;
+            baseColumn: never;
+            identity: undefined;
+            generated: undefined;
+        }, {}, {}>;
         consentType: import("drizzle-orm/pg-core").PgColumn<{
             name: "consent_type";
-            tableName: "user_consents";
+            tableName: "legacy_user_consents";
             dataType: "string";
             columnType: "PgText";
             data: string;
@@ -55,7 +198,7 @@ export declare const userConsents: import("drizzle-orm/pg-core").PgTableWithColu
         }, {}, {}>;
         version: import("drizzle-orm/pg-core").PgColumn<{
             name: "version";
-            tableName: "user_consents";
+            tableName: "legacy_user_consents";
             dataType: "string";
             columnType: "PgText";
             data: string;
@@ -72,7 +215,7 @@ export declare const userConsents: import("drizzle-orm/pg-core").PgTableWithColu
         }, {}, {}>;
         consented: import("drizzle-orm/pg-core").PgColumn<{
             name: "consented";
-            tableName: "user_consents";
+            tableName: "legacy_user_consents";
             dataType: "boolean";
             columnType: "PgBoolean";
             data: boolean;
@@ -89,7 +232,7 @@ export declare const userConsents: import("drizzle-orm/pg-core").PgTableWithColu
         }, {}, {}>;
         ipAddress: import("drizzle-orm/pg-core").PgColumn<{
             name: "ip_address";
-            tableName: "user_consents";
+            tableName: "legacy_user_consents";
             dataType: "string";
             columnType: "PgText";
             data: string;
@@ -106,7 +249,7 @@ export declare const userConsents: import("drizzle-orm/pg-core").PgTableWithColu
         }, {}, {}>;
         userAgent: import("drizzle-orm/pg-core").PgColumn<{
             name: "user_agent";
-            tableName: "user_consents";
+            tableName: "legacy_user_consents";
             dataType: "string";
             columnType: "PgText";
             data: string;
@@ -123,7 +266,7 @@ export declare const userConsents: import("drizzle-orm/pg-core").PgTableWithColu
         }, {}, {}>;
         consentedAt: import("drizzle-orm/pg-core").PgColumn<{
             name: "consented_at";
-            tableName: "user_consents";
+            tableName: "legacy_user_consents";
             dataType: "date";
             columnType: "PgTimestamp";
             data: Date;

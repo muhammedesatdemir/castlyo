@@ -1,8 +1,23 @@
-import { IsEmail, IsString, MinLength, IsEnum, IsBoolean, IsOptional, IsPhoneNumber, Matches, Length, IsArray } from 'class-validator';
+import { IsEmail, IsString, MinLength, IsEnum, IsBoolean, IsOptional, IsPhoneNumber, Matches, Length, IsArray, ValidateNested } from 'class-validator';
+import { Type } from 'class-transformer';
 
 export enum UserRole {
   TALENT = 'TALENT',
   AGENCY = 'AGENCY'
+}
+
+export class ConsentDto {
+  @IsBoolean()
+  acceptedTerms: boolean;
+
+  @IsBoolean()
+  acceptedPrivacy: boolean;
+
+  @IsString()
+  termsVersion: string;
+
+  @IsString()
+  privacyVersion: string;
 }
 
 export class LoginDto {
@@ -36,11 +51,18 @@ export class RegisterDto {
   @IsPhoneNumber('TR')
   phone?: string;
 
-  @IsBoolean()
-  kvkkConsent: boolean;
+  @ValidateNested()
+  @Type(() => ConsentDto)
+  consents: ConsentDto;
 
+  // Legacy fields for backward compatibility (deprecated)
+  @IsOptional()
   @IsBoolean()
-  termsConsent: boolean;
+  kvkkConsent?: boolean;
+
+  @IsOptional()
+  @IsBoolean()
+  termsConsent?: boolean;
 
   @IsOptional()
   @IsBoolean()

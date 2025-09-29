@@ -3,6 +3,15 @@ const nextConfig = {
   images: {
     domains: ['localhost', 'castlyo.com'],
   },
+  async redirects() {
+    return [
+      {
+        source: '/kvkk',
+        destination: '/privacy',
+        permanent: true,
+      },
+    ];
+  },
   env: {
     NEXT_PUBLIC_API_URL: process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001',
     WEB_API_BASE_URL: process.env.WEB_API_BASE_URL || 'http://localhost:3001',

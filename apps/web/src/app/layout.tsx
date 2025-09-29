@@ -3,6 +3,7 @@ import { Inter, Cinzel } from 'next/font/google'
 import { AuthProvider } from '@/providers/auth-provider'
 import { ToastContainer } from '@/components/ui/toast'
 import { ApiHealthCheck } from '@/components/dev/ApiHealthCheck'
+import RoleGateGlobalGuard from '@/components/auth/RoleGateGlobalGuard'
 import './globals.css'
 
 const inter = Inter({
@@ -32,6 +33,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             {children}
           </div>
           <ToastContainer />
+          <RoleGateGlobalGuard />
           {process.env.NODE_ENV === 'development' && <ApiHealthCheck />}
         </AuthProvider>
       </body>

@@ -7,7 +7,8 @@ import {
   Ip,
   Headers,
   HttpCode,
-  HttpStatus
+  HttpStatus,
+  BadRequestException
 } from '@nestjs/common';
 import { Throttle, SkipThrottle } from '@nestjs/throttler';
 import { AuthService } from './auth.service';
@@ -37,6 +38,11 @@ export class AuthController {
     @Ip() ipAddress: string,
     @Headers('user-agent') userAgent: string,
   ) {
+    // Validate required consents
+    if (!registerDto.consents?.acceptedTerms || !registerDto.consents?.acceptedPrivacy) {
+      throw new BadRequestException('Zorunlu onaylar alınmadı');
+    }
+
     registerDto.ipAddress = ipAddress;
     registerDto.userAgent = userAgent;
     return this.authService.register(registerDto);
