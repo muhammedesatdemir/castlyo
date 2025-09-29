@@ -22,7 +22,7 @@ export const viewport: Viewport = { /* ... aynı ... */ }
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="tr" className={`${inter.variable} ${cinzel.variable}`}>
+    <html lang="tr" className={`${inter.variable} ${cinzel.variable} dark`}>
       <head>
         {/* Poppins linkine ihtiyacımız yok, kaldırdım */}
         {process.env.NODE_ENV === 'development' && (
@@ -46,9 +46,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         )}
       </head>
       {/* bundan sonra default fontu Tailwind 'sans' üzerinden vereceğiz */}
-      <body className="font-sans antialiased">
+      <body className="font-sans antialiased bg-[#0b0b0f] text-white">
         <AuthProvider>
-          <div className="min-h-screen bg-background">
+          <div className="min-h-screen">
             {children}
           </div>
           <ToastContainer />

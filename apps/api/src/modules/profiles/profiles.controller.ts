@@ -6,6 +6,7 @@ import {
   Delete,
   Body, 
   Param, 
+  Query,
   UseGuards, 
   Request,
   HttpCode,
@@ -23,11 +24,11 @@ import {
 } from './dto/profile.dto';
 
 @Controller('profiles')
-@UseGuards(JwtAuthGuard)
 export class ProfilesController {
   constructor(private readonly profilesService: ProfilesService) {}
 
   @Get('me')
+  @UseGuards(JwtAuthGuard)
   async getMyProfile(@Request() req) {
     const userId = req.user?.userId || req.user?.id;
     if (!userId) throw new UnauthorizedException('Missing user id in token');
@@ -35,6 +36,7 @@ export class ProfilesController {
   }
 
   @Post('talent')
+  @UseGuards(JwtAuthGuard)
   @HttpCode(HttpStatus.CREATED)
   async createTalentProfile(
     @Request() req,
@@ -44,6 +46,7 @@ export class ProfilesController {
   }
 
   @Post('agency')
+  @UseGuards(JwtAuthGuard)
   @HttpCode(HttpStatus.CREATED)
   async createAgencyProfile(
     @Request() req,
@@ -53,6 +56,7 @@ export class ProfilesController {
   }
 
   @Get('talent/:id')
+  @UseGuards(JwtAuthGuard)
   async getTalentProfile(@Param('id') id: string, @Request() req) {
     return this.profilesService.getTalentProfile(id, req.user?.userId);
   }
@@ -63,12 +67,42 @@ export class ProfilesController {
     return this.profilesService.getPublicTalentProfile(id, req.user?.userId);
   }
 
+  @Public()
+  @Get('public/talents')
+  async getPublicTalents(
+    @Query('page') page: string = '1',
+    @Query('limit') limit: string = '12',
+    @Query('skills') skills?: string
+  ) {
+    return this.profilesService.getPublicTalents(
+      parseInt(page),
+      parseInt(limit),
+      skills ? skills.split(',') : undefined
+    );
+  }
+
+  @Public()
+  @Get('talents')
+  async getTalents(
+    @Query('page') page: string = '1',
+    @Query('limit') limit: string = '12',
+    @Query('skills') skills?: string
+  ) {
+    return this.profilesService.getPublicTalents(
+      parseInt(page),
+      parseInt(limit),
+      skills ? skills.split(',') : undefined
+    );
+  }
+
   @Get('agency/:id')
+  @UseGuards(JwtAuthGuard)
   async getAgencyProfile(@Param('id') id: string, @Request() req) {
     return this.profilesService.getAgencyProfile(id, req.user?.userId);
   }
 
   @Put('talent/me')
+  @UseGuards(JwtAuthGuard)
   async updateMyTalentProfile(
     @Body() profileData: UpdateTalentProfileDto,
     @Request() req
@@ -79,6 +113,7 @@ export class ProfilesController {
   }
 
   @Put('talent/:id')
+  @UseGuards(JwtAuthGuard)
   async updateTalentProfile(
     @Param('id') id: string,
     @Body() profileData: UpdateTalentProfileDto,
@@ -88,6 +123,7 @@ export class ProfilesController {
   }
 
   @Put('agency/:id')
+  @UseGuards(JwtAuthGuard)
   async updateAgencyProfile(
     @Param('id') id: string,
     @Body() profileData: UpdateAgencyProfileDto,
@@ -97,12 +133,14 @@ export class ProfilesController {
   }
 
   @Delete(':id')
+  @UseGuards(JwtAuthGuard)
   @HttpCode(HttpStatus.NO_CONTENT)
   async deleteProfile(@Param('id') id: string, @Request() req) {
     return this.profilesService.deleteProfile(id, req.user.userId);
   }
 
   @Get('export/me')
+  @UseGuards(JwtAuthGuard)
   async exportMyData(@Request() req) {
     return this.profilesService.exportUserData(req.user.userId, req.user.userId);
   }

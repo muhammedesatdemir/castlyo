@@ -10,34 +10,7 @@ interface HeroShowreelProps {
 
 export default function HeroShowreel({ onSignup }: HeroShowreelProps) {
   return (
-    <section className="relative overflow-hidden min-h-screen flex items-center">
-      {/* Video Background */}
-      <div className="absolute inset-0">
-        <video
-          className="h-full w-full object-cover"
-          src="/showreel.mp4" 
-          autoPlay 
-          muted 
-          loop 
-          playsInline
-          poster="/hero-poster.jpg"
-        />
-      </div>
-      
-      {/* Header Gradient Transition - Smooth black to transparent */}
-      <div 
-        className="
-          pointer-events-none absolute inset-x-0 top-0 z-20
-          h-16 md:h-20
-          bg-gradient-to-b
-          from-black via-[#222]/80 to-transparent
-        "
-        aria-hidden="true"
-      />
-      
-      {/* Dark Overlay + Gradient Glow */}
-      <div className="absolute inset-0 bg-gradient-to-b from-black/50 via-black/60 to-[#100822]/70" />
-      <div className="pointer-events-none absolute -top-24 left-1/2 h-[520px] w-[520px] -translate-x-1/2 rounded-full bg-[radial-gradient(ellipse_at_center,rgba(150,41,1,0.35),rgba(16,8,8,0))] blur-2xl" />
+    <section className="relative overflow-hidden min-h-screen flex items-center castlyo-hero-bg castlyo-hero-vignette">
 
       <div className="relative mx-auto max-w-6xl px-6 pt-24 pb-32 text-center z-10">
         <motion.p 
@@ -53,13 +26,13 @@ export default function HeroShowreel({ onSignup }: HeroShowreelProps) {
           initial={{ opacity: 0, y: 10 }} 
           animate={{ opacity: 1, y: 0 }} 
           transition={{ delay: 0.2 }}
-          className="mt-6 text-5xl font-extrabold tracking-tight text-white md:text-6xl lg:text-7xl"
+          className="mt-6 text-5xl sm:text-6xl md:text-7xl font-extrabold leading-tight"
         >
-          Yetenekler{' '}
-          <span className="text-brand-gradient-smooth">
+          <span className="text-white/90">Yetenekler </span>
+          <span className="bg-gradient-to-r from-[#a24b22] via-[#c67942] to-[#edc8a0] bg-clip-text text-transparent">
             Sahneye
-          </span>{' '}
-          Çıkıyor
+          </span>
+          <span className="text-white/90"> Çıkıyor</span>
         </motion.h1>
         
         <motion.p 
@@ -81,7 +54,7 @@ export default function HeroShowreel({ onSignup }: HeroShowreelProps) {
           <RoleGateCTA
             targetRole="TALENT"
             to="/onboarding/talent"
-            className="w-full sm:w-auto rounded-xl bg-brand-gradient-smooth px-8 py-4 text-lg font-semibold text-white shadow-lg shadow-brand-primary/20 hover:scale-105 transition-all duration-300 hover:shadow-xl hover:shadow-brand-primary/30"
+            className="w-full sm:w-auto rounded-2xl px-8 py-4 shadow-xl shadow-black/30 bg-gradient-to-r from-[#a24b22] via-[#c67942] to-[#edc8a0] text-white/95 hover:opacity-95 transition"
           >
             Yetenek Olarak Başla
           </RoleGateCTA>

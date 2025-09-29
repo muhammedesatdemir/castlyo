@@ -93,7 +93,7 @@ export const uploadApi = {
 
 export const talentsApi = {
   // Get talents with filters  
-  getTalents: (params?: any) => api.get('/search/talents', { params }),
+  getTalents: (params?: any) => api.get('/talents', { params }),
 }
 
 export const jobsApi = {

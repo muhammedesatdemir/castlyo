@@ -65,6 +65,10 @@ import { FEATURES } from './config/features';
       provide: APP_GUARD,
       useClass: ThrottlerGuard,
     },
+    {
+      provide: APP_GUARD,
+      useClass: GlobalJwtAuthGuard,
+    },
   ],
 })
 export class AppModule {}

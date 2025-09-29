@@ -29,12 +29,15 @@ export default function ExploreGrid() {
     router.push(`/?${sp.toString()}`, { scroll: false })
   }
 
-  // API'den talents'ları fetch et
+  // API'den talents'ları fetch et (geçici olarak devre dışı)
   const fetchTalents = async () => {
     try {
       setLoading(true)
       setError(null)
       
+      // Geçici olarak API çağrısını devre dışı bırak
+      // TODO: API hazır olduğunda bu kısmı aktif et
+      /*
       const params: any = {
         page: 1,
         limit: 12,
@@ -47,10 +50,19 @@ export default function ExploreGrid() {
       
       const response = await talentsApi.getTalents(params)
       setTalents(response.data?.hits || [])
+      */
+      
+      // Şimdilik mock data kullan
+      console.log('Using mock data for talents (API not ready)')
+      setTalents(mockTalents.filter(talent => 
+        currentSkill === 'all' || talent.skillSlug === currentSkill
+      ))
+      
     } catch (err: any) {
       console.error('Talents fetch error:', err)
       setError('Yetenekler yüklenirken hata oluştu')
-      // Hata durumunda mock data kullan
+      
+      // Mock data kullan
       setTalents(mockTalents.filter(talent => 
         currentSkill === 'all' || talent.skillSlug === currentSkill
       ))

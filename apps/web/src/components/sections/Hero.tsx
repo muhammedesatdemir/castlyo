@@ -32,12 +32,19 @@ export default function Hero({ onSignup }: HeroProps) {
             <span>Türkiye'nin en büyük casting platformu</span>
           </div>
           
-          <h1 className={montserratDisplay.className + " bg-gradient-to-r from-white to-gray-300 bg-clip-text text-4xl font-extrabold tracking-tight text-transparent sm:text-6xl"}>
-            Yetenekler{" "}
-            <span className="bg-gradient-to-r from-[#962901] via-[#C0713A] to-[#F1C38E] bg-clip-text text-transparent">
+          <h1 className={montserratDisplay.className + " text-white text-4xl font-extrabold tracking-tight sm:text-6xl"}>
+            <span>Yetenekler </span>
+            <span
+              className="align-middle bg-clip-text text-transparent"
+              style={{
+                backgroundImage:
+                  'linear-gradient(90deg,#C3561F 0%, #D99664 48%, #F2D7B6 100%)',
+                WebkitBackgroundClip: 'text'
+              }}
+            >
               Sahneye
-            </span>{" "}
-            Çıkıyor
+            </span>
+            <span> Çıkıyor</span>
           </h1>
           
           <p className="mt-6 text-lg leading-8 text-gray-300">
