@@ -662,11 +662,11 @@ export default function ProfileClient({
           {/* 18 yaş altı */}
           {isMinor && (
             <div
-              className="mt-6 rounded-xl p-4 ring-1"
+              className="guardian-card mt-6 rounded-xl p-4 ring-1"
               style={{ backgroundColor: "#fff7ed", borderColor: "#fdba74" }}
             >
-              <div className="font-semibold mb-2">18 yaş altı — Veli/Vasi Bilgileri (Zorunlu)</div>
-              <p className="text-sm opacity-70 mb-4">
+              <div className="guardian-title mb-2">18 yaş altı — Veli/Vasi Bilgileri (Zorunlu)</div>
+              <p className="guardian-desc mb-4">
                 18 yaş altı kullanıcılarımız için ebeveyn/yasal vasi bilgileri zorunludur.
               </p>
 
@@ -840,7 +840,7 @@ export default function ProfileClient({
           <div className="mt-6">
             <div className="text-lg font-semibold mb-2">Uzmanlık Alanları</div>
             {!editing ? (
-              <div className="flex flex-wrap gap-2">
+              <div className="profile-specialties flex flex-wrap gap-2">
                 {selectedSpecs.length === 0 ? (
                   <span className="text-sm opacity-70">Seçim yok.</span>
                 ) : (
@@ -861,11 +861,11 @@ export default function ProfileClient({
                       <input
                         id={id}
                         type="checkbox"
-                        className="size-4"
+                        className="peer size-4"
                         checked={checked}
                         onChange={() => setSelectedSpecs((prev) => (prev.includes(opt) ? prev.filter((x) => x !== opt) : [...prev, opt]))}
                       />
-                      <span className="text-sm">{opt}</span>
+                      <span className="chip-checkbox-label text-sm px-3 py-1 rounded-full border border-slate-200 bg-white">{opt}</span>
                     </label>
                   );
                 })}

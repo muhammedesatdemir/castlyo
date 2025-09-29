@@ -230,6 +230,7 @@ function AgencyOnboardingContent() {
                   <label key={specialty} className="flex items-center space-x-2">
                     <input
                       type="checkbox"
+                      className="peer rounded border-white/20 bg-white/10"
                       checked={formData.specialties.includes(specialty)}
                       onChange={(e) => {
                         if (e.target.checked) {
@@ -244,9 +245,8 @@ function AgencyOnboardingContent() {
                           })
                         }
                       }}
-                      className="rounded border-white/20 bg-white/10"
                     />
-                    <span className="text-white/80 text-sm">{specialty}</span>
+                    <span className="chip-checkbox-label text-white/80 text-sm px-3 py-1 rounded-full border border-white/20 bg-white/10">{specialty}</span>
                   </label>
                 ))}
               </div>

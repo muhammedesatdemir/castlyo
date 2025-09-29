@@ -501,3 +501,66 @@ input[type="date"] {
 /* Avatar aksiyonlarını edit modunda görünür ve okunur yap */
 .avatar-actions { opacity:1 !important; visibility:visible !important; pointer-events:auto !important; }
 .avatar-actions, .avatar-actions * { color:#1f2937 !important; }
+
+/* === Chip / ToggleGroup görünürlük düzeltmeleri === */
+/* Radix Toggle / ToggleGroup: */
+[data-state="off"].chip, [data-state="off"] .chip-label {
+  color: #1f2937 !important;          /* slate-800 */
+  background: #ffffff !important;
+  border-color: #e2e8f0 !important;   /* slate-200 */
+}
+[data-state="on"].chip, [data-state="on"] .chip-label {
+  color: #ffffff !important;
+  background: #2563eb !important;     /* blue-600 */
+  border-color: #2563eb !important;
+}
+
+/* Checkbox + peer varyantı: default'ı asla şeffaf yapma */
+.chip-checkbox-label{
+  color:#1f2937 !important;           /* slate-800 */
+}
+.peer:checked + .chip-checkbox-label{
+  color:#ffffff !important;
+  background:#2563eb !important;
+  border-color:#2563eb !important;
+}
+
+/* === Guardian (18 yaş altı) bölüm tipografi === */
+.guardian-card .guardian-title{
+  color:#0f172a !important;           /* slate-900 */
+  font-weight:600 !important;
+  font-size:1rem !important;          /* text-base */
+}
+.guardian-card .guardian-desc{
+  color:#334155 !important;           /* slate-700 */
+  font-size:.875rem !important;       /* text-sm */
+}
+.guardian-card input,
+.guardian-card select,
+.guardian-card textarea,
+.guardian-card label{
+  color:#1f2937 !important;           /* alan içi metinler */
+}
+.guardian-card ::placeholder{
+  color:#94a3b8 !important;           /* placeholder */
+  opacity:1 !important;
+}
+
+/* Uzmanlık etiketleri görünür kıl */
+.profile-specialties .badge,
+.profile-specialties .chip,
+.profile-specialties > span,
+.profile-tags .badge,
+.profile-tags > span {
+  color: #1f2937 !important;              /* text-slate-800 */
+  -webkit-text-fill-color: #1f2937 !important; /* bazı tarayıcılar için */
+  background-color: #f8fafc !important;   /* bg-slate-50 (isteğe bağlı) */
+  border-color: #cbd5e1 !important;       /* border-slate-300 (isteğe bağlı) */
+}
+
+/* Seçiliyken de iyi görünsün */
+.profile-specialties .badge::selection,
+.profile-specialties > span::selection {
+  background: #e5e7eb; /* slate-200 */
+  color: #111827;      /* slate-900 */
+}

@@ -272,7 +272,7 @@ export default function ExploreGrid() {
                 </p>
                 
                 {/* Etiketler */}
-                <div className="mt-2.5 flex flex-wrap gap-2">
+                <div className="profile-tags mt-2.5 flex flex-wrap gap-2">
                   {(talent.skills || talent.specialties || []).slice(0, 3).map((skill: string, idx: number) => (
                     <span
                       key={`${skill}-${idx}`}

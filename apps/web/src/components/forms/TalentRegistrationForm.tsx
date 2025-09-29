@@ -425,6 +425,7 @@ export default function TalentRegistrationForm({ onClose }: TalentRegistrationFo
                 {LANGUAGES.map(language => (
                   <label key={language.value} className="flex items-center space-x-2 cursor-pointer">
                     <Checkbox
+                      className="peer"
                       checked={watchedLanguages.includes(language.value)}
                       onCheckedChange={() => {
                         const newLanguages = watchedLanguages.includes(language.value)
@@ -433,7 +434,7 @@ export default function TalentRegistrationForm({ onClose }: TalentRegistrationFo
                         setValue('languages', newLanguages.slice(0, 5))
                       }}
                     />
-                    <span className="text-sm">{language.label}</span>
+                    <span className="chip-checkbox-label text-sm px-3 py-1 rounded-full border border-slate-200 bg-white">{language.label}</span>
                   </label>
                 ))}
               </div>

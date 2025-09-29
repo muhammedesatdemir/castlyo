@@ -827,13 +827,13 @@ function TalentOnboardingContent() {
                   type="button"
                   key={s}
                   onClick={() => toggleSpecialty(s)}
-                  className={`px-3 py-1.5 rounded-full ring-1 text-sm ${
+                  className={`chip px-3 py-1.5 rounded-full ring-1 text-sm ${
                     active
                       ? "bg-green-500/10 text-green-700 ring-green-500/30"
                       : "bg-white/70 text-neutral-700 ring-neutral-300"
                   }`}
                 >
-                  {s}
+                  <span className="chip-label">{s}</span>
                 </button>
               );
             })}
