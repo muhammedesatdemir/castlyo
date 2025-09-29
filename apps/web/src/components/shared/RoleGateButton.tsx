@@ -4,7 +4,6 @@ import * as React from "react";
 import Link from "next/link";
 import { useSession } from "next-auth/react";
 import { Button } from "@/components/ui/button";
-import { toast } from "@/components/ui/toast";
 import { cn } from "@/lib/utils";
 
 type Role = "TALENT" | "AGENCY";
@@ -36,11 +35,6 @@ export default function RoleGateButton({
   const isAuthed = status === "authenticated" && !!userRole;
   const isMismatch = isAuthed && userRole !== targetRole;
 
-  const blockedMsg =
-    userRole === "TALENT"
-      ? "Yetenek olarak kayıt oldunuz. Ajans olarak başlamak isterseniz çıkış yapıp ajans kaydı oluşturabilirsiniz."
-      : "Ajans olarak kayıt oldunuz. Yetenek olarak başlamak isterseniz çıkış yapıp yetenek kaydı oluşturabilirsiniz.";
-
   const block = (e: React.SyntheticEvent) => {
     if (isMismatch) {
       e.preventDefault();
@@ -51,11 +45,7 @@ export default function RoleGateButton({
         // @ts-ignore
         e.nativeEvent.stopImmediatePropagation();
       }
-      toast({
-        type: "error",
-        title: "Rolüne uygun olmayan işlem",
-        message: blockedMsg,
-      });
+      // ❌ toast yok — guard gösterecek
       return true;
     }
     return false;
@@ -95,6 +85,8 @@ export default function RoleGateButton({
       className={cn(isMismatch && "opacity-60 cursor-not-allowed", className)}
       data-role-target={targetRole}
       data-role-user={userRole ?? "ANON"}
+      data-role-mismatch={isMismatch ? "true" : "false"}
+      data-role-guard="1"
     >
       <Link
         href={href}

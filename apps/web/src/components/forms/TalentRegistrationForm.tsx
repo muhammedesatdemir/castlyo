@@ -549,7 +549,7 @@ export default function TalentRegistrationForm({ onClose }: TalentRegistrationFo
                 <div className="text-sm text-gray-600">
                   <span className="text-red-600">*</span> 
                   <a href="/privacy" target="_blank" className="text-brand-primary hover:underline">
-                    KVKK Aydınlatma Metni
+                    Gizlilik Politikası (KVKK)
                   </a>
                   'ni okudum ve kişisel verilerimin işlenmesini onaylıyorum.
                 </div>

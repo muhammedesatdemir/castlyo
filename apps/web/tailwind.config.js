@@ -51,6 +51,9 @@ module.exports = {
           foreground: "hsl(var(--card-foreground))",
         },
         brand: {
+          light: "#F6E6C3",
+          dark: "#962901",
+          black: "#0A0A0A",
           primary: '#962901',
           secondary: '#F6E6C3',
           mid: '#c77f50',
@@ -72,13 +75,37 @@ module.exports = {
         }
       },
       borderRadius: {
+        xl2: "1.25rem",
         lg: "var(--radius)",
         md: "calc(var(--radius) - 2px)",
         sm: "calc(var(--radius) - 4px)",
       },
+      boxShadow: {
+        soft: "0 10px 30px rgba(0,0,0,.06)",
+      },
       fontFamily: {
         brand: ["var(--font-cinzel)"],
       },
+      typography: ({ theme }) => ({
+        DEFAULT: {
+          css: {
+            "--tw-prose-body": theme("colors.zinc.800"),
+            "--tw-prose-headings": theme("colors.brand.dark"),
+            "--tw-prose-links": theme("colors.brand.dark"),
+            "--tw-prose-bold": theme("colors.zinc.900"),
+            "--tw-prose-counters": theme("colors.zinc.600"),
+            "--tw-prose-bullets": theme("colors.brand.dark"),
+            "--tw-prose-hr": theme("colors.zinc.200"),
+            a: { textDecoration: "none", borderBottom: `1px solid ${theme("colors.brand.dark")}` },
+            h1: { fontWeight: "800", letterSpacing: "-0.02em" },
+            h2: { fontWeight: "700", marginTop: "2.5rem" },
+            h3: { fontWeight: "700", marginTop: "2rem" },
+            "ol > li::marker": { color: theme("colors.brand.dark") },
+            "ul > li::marker": { color: theme("colors.brand.dark") },
+            code: { backgroundColor: theme("colors.zinc.100"), padding: "2px 6px", borderRadius: "6px" },
+          },
+        },
+      }),
       keyframes: {
         "accordion-down": {
           from: { height: 0 },
@@ -105,5 +132,5 @@ module.exports = {
       },
     },
   },
-  plugins: [require("tailwindcss-animate")],
+  plugins: [require("tailwindcss-animate"), require("@tailwindcss/typography")],
 }

@@ -3,6 +3,7 @@
 import { useEffect } from 'react'
 import { Button } from './button'
 import { X, FileText, Shield, CheckCircle, AlertCircle } from 'lucide-react'
+import { LEGAL_LINKS_2 } from '@/constants/legalLinks'
 
 interface KvkkDialogProps {
   open: boolean
@@ -18,7 +19,7 @@ export function KvkkDialog({
   onClose, 
   onConfirm,
   title = "KVKK ve Kullanım Şartları",
-  message = "Devam etmek için KVKK Aydınlatma Metni ve Kullanım Şartlarını kabul etmeniz gerekmektedir.",
+  message = "Devam etmek için Kullanım Şartları ve Gizlilik Politikasını kabul etmeniz gerekmektedir.",
   variant = 'default'
 }: KvkkDialogProps) {
   
@@ -102,9 +103,6 @@ export function KvkkDialog({
               <h2 id="kvkk-title" className="text-lg font-semibold text-white">
                 {title}
               </h2>
-              <p className="text-white/60 text-sm">
-                Validation error
-              </p>
             </div>
           </div>
         </div>
@@ -119,33 +117,18 @@ export function KvkkDialog({
           <div className="bg-blue-500/10 border border-blue-500/20 rounded-lg p-4 mb-6">
             <p className="text-blue-200 text-xs mb-3 font-medium">📋 Hızlı Erişim:</p>
             <div className="flex flex-wrap gap-2">
-              <a
-                href="/kvkk"
-                target="_blank"
-                rel="noreferrer"
-                className="inline-flex items-center space-x-1 text-xs text-blue-300 hover:text-blue-200 underline underline-offset-2 transition-colors"
-              >
-                <FileText className="w-3 h-3" />
-                <span>KVKK Aydınlatma Metni</span>
-              </a>
-              <a
-                href="/terms"
-                target="_blank"
-                rel="noreferrer"
-                className="inline-flex items-center space-x-1 text-xs text-blue-300 hover:text-blue-200 underline underline-offset-2 transition-colors"
-              >
-                <FileText className="w-3 h-3" />
-                <span>Kullanım Şartları</span>
-              </a>
-              <a
-                href="/privacy"
-                target="_blank"
-                rel="noreferrer"
-                className="inline-flex items-center space-x-1 text-xs text-blue-300 hover:text-blue-200 underline underline-offset-2 transition-colors"
-              >
-                <FileText className="w-3 h-3" />
-                <span>Gizlilik Politikası</span>
-              </a>
+              {LEGAL_LINKS_2.map((link, i) => (
+                <a
+                  key={link.href}
+                  href={link.href}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="inline-flex items-center space-x-1 text-xs text-blue-300 hover:text-blue-200 underline underline-offset-2 transition-colors"
+                >
+                  <FileText className="w-3 h-3" />
+                  <span>{link.label}</span>
+                </a>
+              ))}
             </div>
           </div>
 
@@ -171,10 +154,6 @@ export function KvkkDialog({
             </Button>
           </div>
 
-          {/* Footer */}
-          <p className="text-white/40 text-xs mt-4 text-center">
-            Checkbox'ları işaretleyerek devam edebilirsiniz.
-          </p>
         </div>
       </div>
     </div>

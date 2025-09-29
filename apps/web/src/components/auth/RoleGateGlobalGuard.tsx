@@ -1,21 +1,16 @@
 'use client';
 
 import { useEffect } from 'react';
-import { toast } from '@/components/ui/toast';
+import { showRoleMismatchToast } from '@/lib/role-toast';
 
-function showRoleToast(userRole?: string | null, targetRole?: string | null) {
-  if (userRole === 'TALENT' && targetRole === 'AGENCY') {
-    toast.error(
-      'Yetenek olarak giriş yaptınız. Ajans olarak başlamak için lütfen çıkış yapıp farklı bir e-posta ile ajans kaydı oluşturun.'
-    );
-  } else if (userRole === 'AGENCY' && targetRole === 'TALENT') {
-    toast.error(
-      'Ajans olarak giriş yaptınız. Yetenek olarak başlamak için lütfen çıkış yapıp farklı bir e-posta ile yetenek kaydı oluşturun.'
-    );
-  } else {
-    toast.error('Bu işlem mevcut rolünüz için uygun değil.');
-  }
-}
+// Dedupe logic: prevent multiple toasts within 400ms
+let lastToastAt = 0;
+const shouldSkip = (gap = 400) => {
+  const now = Date.now();
+  if (now - lastToastAt < gap) return true;
+  lastToastAt = now;
+  return false;
+};
 
 export default function RoleGateGlobalGuard() {
   useEffect(() => {
@@ -23,23 +18,27 @@ export default function RoleGateGlobalGuard() {
       const target = e.target as HTMLElement | null;
       if (!target) return;
 
-      // En yakın role-etiketli elementi bul
-      const el = target.closest<HTMLElement>('[data-role-target]');
+      // Only work on opt-in elements with data-role-guard="1"
+      const el = target.closest<HTMLElement>('[data-role-guard="1"]');
       if (!el) return;
 
-      const userRole = el.getAttribute('data-role-user');
-      const targetRole = el.getAttribute('data-role-target');
+      const userRole = el.getAttribute('data-role-user') as 'TALENT' | 'AGENCY' | null;
+      const targetRole = el.getAttribute('data-role-target') as 'TALENT' | 'AGENCY' | null;
       const mismatchAttr = el.getAttribute('data-role-mismatch');
 
       const isMismatch = mismatchAttr === 'true' ||
         (!!userRole && !!targetRole && userRole !== targetRole);
 
-      if (!isMismatch) return;
+      if (!isMismatch || !userRole) return;
 
-      // Navigasyonu kesin olarak engelle + toast
+      // Prevent navigation
       e.preventDefault();
       e.stopPropagation();
-      showRoleToast(userRole, targetRole);
+
+      // 🔒 çift olayı sustur
+      if (shouldSkip()) return;
+
+      showRoleMismatchToast(userRole);
     };
 
     // capture fazında hem sol tık hem orta tık

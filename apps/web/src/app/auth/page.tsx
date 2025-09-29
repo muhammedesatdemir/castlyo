@@ -150,16 +150,34 @@ export default function AuthPage() {
         // Log API call details
         logger.logApiCall('POST', '/api/v1/auth/register', payload, null, response.status)
 
-        if (!response.ok) {
+        if (response.status === 201 || response.ok) {
+          // Success - continue with success flow
+        } else if (response.status === 409) {
+          // EMAIL_TAKEN
+          setDialogTitle('Hata Oluştu')
+          setDialogMessage('Bu e-posta zaten kayıtlı.')
+          setShowKvkkDialog(true)
+          return
+        } else if (response.status === 400) {
+          // CONSENTS_REQUIRED or other validation errors
           const errorResult = await response.json().catch(() => ({}))
-          logger.error('AUTH', 'Registration failed', { status: response.status, error: errorResult })
+          const errorMessage = errorResult.message === 'CONSENTS_REQUIRED' 
+            ? 'Zorunlu sözleşme onaylarını işaretleyin.'
+            : errorResult.message || 'Geçersiz veri. Lütfen bilgilerinizi kontrol edin.'
           
-          // Duplicate email için düzgün mesaj
-          const errorMessage = response.status === 409
-            ? 'Bu e-posta zaten kayıtlı.'
-            : errorResult.message || `Kayıt başarısız (HTTP ${response.status}).`;
+          setDialogTitle('Eksik Onay')
+          setDialogMessage(errorMessage)
+          setShowKvkkDialog(true)
+          return
+        } else {
+          // Other errors (500, etc.) → general error
+          const errorResult = await response.json().catch(() => ({}))
+          const errorMessage = errorResult.message || 'Bir şeyler ters gitti. Lütfen tekrar deneyin.'
           
-          throw new Error(errorMessage)
+          setDialogTitle('Hata Oluştu')
+          setDialogMessage(errorMessage)
+          setShowKvkkDialog(true)
+          return
         }
 
         const result = await response.json()
@@ -266,14 +284,18 @@ export default function AuthPage() {
       logger.error('AUTH', 'Auth process failed', { mode, email: formData.email, error: error.message })
       console.error('Auth error:', error)
       
-      // Duplicate e-posta durumu için özel mesaj
-      const errorMessage = error.message?.includes('zaten kayıtlı') 
-        ? error.message 
-        : error instanceof Error ? error.message : 'Bir hata oluştu. Lütfen tekrar deneyin.';
-        
-      setDialogTitle('Hata Oluştu')
-      setDialogMessage(errorMessage)
-      setShowKvkkDialog(true)
+      // Network errors
+      if (error instanceof TypeError && error.message.includes('fetch')) {
+        setDialogTitle('Bağlantı Hatası')
+        setDialogMessage('Sunucuya ulaşılamadı. İnternetinizi kontrol edin.')
+        setShowKvkkDialog(true)
+      } else {
+        // Other errors
+        const errorMessage = error instanceof Error ? error.message : 'Bir hata oluştu. Lütfen tekrar deneyin.';
+        setDialogTitle('Hata Oluştu')
+        setDialogMessage(errorMessage)
+        setShowKvkkDialog(true)
+      }
     } finally {
       setIsLoading(false)
     }

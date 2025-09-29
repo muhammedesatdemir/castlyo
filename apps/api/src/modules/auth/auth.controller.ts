@@ -40,12 +40,12 @@ export class AuthController {
   ) {
     // Validate required consents
     if (!registerDto.consents?.acceptedTerms || !registerDto.consents?.acceptedPrivacy) {
-      throw new BadRequestException('Zorunlu onaylar alınmadı');
+      throw new BadRequestException('CONSENTS_REQUIRED');
     }
 
     registerDto.ipAddress = ipAddress;
     registerDto.userAgent = userAgent;
-    return this.authService.register(registerDto);
+    return this.authService.register(registerDto, ipAddress);
   }
 
   @Public()

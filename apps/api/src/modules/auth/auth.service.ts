@@ -3,6 +3,7 @@ import {
   UnauthorizedException, 
   ConflictException, 
   BadRequestException,
+  InternalServerErrorException,
   Inject,
   Logger 
 } from '@nestjs/common';
@@ -23,6 +24,10 @@ import * as crypto from 'crypto';
 import { users, userConsents } from '@castlyo/database';
 import { ConsentDto } from './dto/auth.dto';
 import { eq } from 'drizzle-orm';
+
+// Prisma error code helper
+const isUniqueViolation = (e: any) =>
+  e?.code === "P2002" || e?.meta?.cause?.includes?.("Unique") || e?.message?.includes?.("unique");
 
 @Injectable()
 export class AuthService {
@@ -58,58 +63,84 @@ export class AuthService {
     return null;
   }
 
-  async register(registerDto: RegisterDto) {
+  async register(registerDto: RegisterDto, ip?: string) {
     this.logger.log(`[REGISTER] Starting registration for email: ${registerDto.email}`);
     
     try {
-      // Check if passwords match
-      if (registerDto.password !== registerDto.passwordConfirm) {
-        this.logger.warn(`[REGISTER] Password mismatch for email: ${registerDto.email}`);
-        throw new BadRequestException('Passwords do not match');
-      }
+      // 1) Atomik: user + consents tek transaction
+      const { user } = await this.db.transaction(async (tx: any) => {
+        // Check if passwords match
+        if (registerDto.password !== registerDto.passwordConfirm) {
+          this.logger.warn(`[REGISTER] Password mismatch for email: ${registerDto.email}`);
+          throw Object.assign(new Error("PASSWORDS_DO_NOT_MATCH"), { status: 400 });
+        }
 
-      // Check if user already exists
-      const existingUser = await this.usersService.findByEmail(registerDto.email);
-      if (existingUser) {
-        this.logger.warn(`[REGISTER] User already exists: ${registerDto.email}`);
-        throw new ConflictException('Email already registered');
-      }
+        // Hash password
+        const saltRounds = Number(this.configService.get('BCRYPT_SALT_ROUNDS', 10));
+        const passwordHash = await bcrypt.hash(registerDto.password, saltRounds);
+        this.logger.debug(`[REGISTER] Password hashed for email: ${registerDto.email}`);
 
-      // Hash password
-      const saltRounds = Number(this.configService.get('BCRYPT_SALT_ROUNDS', 10));
-      const passwordHash = await bcrypt.hash(registerDto.password, saltRounds);
-      this.logger.debug(`[REGISTER] Password hashed for email: ${registerDto.email}`);
+        // Check if email verification is enabled
+        const emailVerificationEnabled = this.configService.get('ENABLE_EMAIL_VERIFICATION', 'true') === 'true';
+        
+        // Create user
+        const user = await tx.insert(users).values({
+          email: registerDto.email.toLowerCase().trim(),
+          passwordHash,
+          role: registerDto.role,
+          status: emailVerificationEnabled ? 'PENDING' : 'ACTIVE',
+          emailVerified: !emailVerificationEnabled,
+        }).returning();
 
-      // Check if email verification is enabled
-      const emailVerificationEnabled = this.configService.get('ENABLE_EMAIL_VERIFICATION', 'true') === 'true';
-      
-      // Create user
-      const user = await this.usersService.create({
-        email: registerDto.email.toLowerCase(),
-        passwordHash,
-        role: registerDto.role,
-        status: emailVerificationEnabled ? 'PENDING' : 'ACTIVE',
-        emailVerified: !emailVerificationEnabled,
+        // Zorunlu onay guard (controller'da da var ama burada da kontrol edelim)
+        if (!registerDto?.consents?.acceptedTerms || !registerDto?.consents?.acceptedPrivacy) {
+          // Nest hata fırlatmayın; transaction içindeyiz → normal Error atıp dışarıda BadRequest'e map'leriz
+          throw Object.assign(new Error("CONSENTS_REQUIRED"), { status: 400 });
+        }
+
+        await tx.insert(userConsents).values({
+          userId: user[0].id,
+          acceptedTerms: true,
+          acceptedPrivacy: true,
+          termsVersion: registerDto.consents.termsVersion,
+          privacyVersion: registerDto.consents.privacyVersion,
+          acceptedIp: ip ?? null,
+        });
+
+        return { user: user[0] };
       });
 
-      this.logger.log(`[REGISTER] User created successfully: ${user.id} | Email: ${registerDto.email} | Role: ${registerDto.role}`);
+      // 2) Yan etkiler (kritik değil) → başarısız olsa bile kullanıcıya 201 döneceğiz
+      // Bunları transaction SONRASINA al ve try/catch ile sar
+      try {
+        // await this.audit("user_registered", { userId: user.id });
+        // await this.mailer.sendWelcome(user.email) // varsa
+        this.logger.log(`[REGISTER] User registered successfully: ${user.id} | Email: ${registerDto.email} | Role: ${registerDto.role}`);
+      } catch (sideErr) {
+        this.logger.warn({ msg: "register side-effect failed", sideErr });
+        // intentionally swallow
+      }
 
-      // Record consents with version tracking
-      await this.recordUserConsents(user.id, registerDto.consents, registerDto.ipAddress);
-      this.logger.log(`[REGISTER] Consents recorded - Terms: ${registerDto.consents.acceptedTerms}, Privacy: ${registerDto.consents.acceptedPrivacy}, Versions: ${registerDto.consents.termsVersion}/${registerDto.consents.privacyVersion}`);
-
-      // Generate tokens
+      // 3) Tokenlar ve response
       const tokens = await this.issuePair(user.id, user.role);
-      
-      return { 
-        success: true, 
-        user: { id: user.id, email: user.email, role: user.role }, 
-        ...tokens 
-      };
+      return { user: { id: user.id, email: user.email, role: user.role }, ...tokens };
 
-    } catch (error) {
-      this.logger.error(`[REGISTER] Registration failed for email: ${registerDto.email}`, error.stack);
-      throw error;
+    } catch (e) {
+      // Unique email → 409
+      if (isUniqueViolation(e)) {
+        throw new ConflictException("EMAIL_TAKEN");
+      }
+      // Konsent eksikliği → 400
+      if (e?.status === 400 || e?.message === "CONSENTS_REQUIRED") {
+        throw new BadRequestException("CONSENTS_REQUIRED");
+      }
+      // Password mismatch → 400
+      if (e?.message === "PASSWORDS_DO_NOT_MATCH") {
+        throw new BadRequestException("PASSWORDS_DO_NOT_MATCH");
+      }
+      // Diğerleri → 500
+      this.logger.error({ msg: "register failed", err: e });
+      throw new InternalServerErrorException("REGISTER_FAILED");
     }
   }
 

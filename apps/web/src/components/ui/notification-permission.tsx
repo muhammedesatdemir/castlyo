@@ -55,7 +55,7 @@ export function NotificationPermission({ onPermissionChange }: NotificationPermi
         {/* Content */}
         <div className="p-6 pt-4">
           <p className="text-white/80 text-sm leading-relaxed mb-6">
-            <strong>KVKK Aydınlatma Metni ve Kullanım Şartlarını</strong> kabul etmeniz gerekmektedir.
+            <strong>Kullanım Şartları ve Gizlilik Politikasını</strong> kabul etmeniz gerekmektedir.
             <br /><br />
             Ayrıca yeni iş fırsatları ve platform güncellemeleri hakkında bildirim almak ister misiniz?
           </p>

@@ -2,6 +2,7 @@
 
 import { useRouter } from 'next/navigation'
 import { useSession } from 'next-auth/react'
+import { showRoleMismatchToast } from '@/lib/role-toast'
 import Header from '@/components/layout/Header'
 import HeroShowreel from '@/components/hero/HeroShowreel'
 import LogoMarquee from '@/components/sections/LogoMarquee'
@@ -13,55 +14,35 @@ import { UI } from '@/config/ui'
 import RoleGateCTA from '@/components/shared/RoleGateCTA'
 import ToastHandler from '@/components/shared/ToastHandler'
 
+
 export default function Home() {
   const router = useRouter()
   const { data: session, status } = useSession()
 
+
   const handleSignup = (type: "talent" | "agency") => {
-    // Role kontrolü ile güvenli yönlendirme
-    const userRole = (session?.user as any)?.role as "TALENT" | "AGENCY" | undefined;
-    const isAuthed = status === "authenticated" && !!userRole;
-    const targetRole = type === "talent" ? "TALENT" : "AGENCY";
-    
+    const userRole = (session?.user as any)?.role as "TALENT" | "AGENCY" | undefined
+    const isAuthed = status === "authenticated" && !!userRole
+    const targetRole = type === "talent" ? "TALENT" : "AGENCY"
+
     if (isAuthed && userRole !== targetRole) {
-      // Role mismatch - toast göster ve yönlendirme yapma
-      import('@/components/ui/toast').then(({ toast }) => {
-        toast({
-          type: "error",
-          title: "Rolüne uygun olmayan işlem",
-          message: userRole === "TALENT"
-            ? "Yetenek olarak kayıt oldunuz. Ajans olarak başlamak isterseniz çıkış yapıp ajans kaydı oluşturabilirsiniz."
-            : "Ajans olarak kayıt oldunuz. Yetenek olarak başlamak isterseniz çıkış yapıp yetenek kaydı oluşturabilirsiniz.",
-        });
-      });
-      return;
+      showRoleMismatchToast(userRole!)
+      return
     }
-    
-    // Güvenli - yönlendir
+
     router.push(`/onboarding/${type}`)
   }
 
   const handleStartOnboarding = (type: "talent" | "agency") => {
-    // Role kontrolü ile güvenli yönlendirme
-    const userRole = (session?.user as any)?.role as "TALENT" | "AGENCY" | undefined;
-    const isAuthed = status === "authenticated" && !!userRole;
-    const targetRole = type === "talent" ? "TALENT" : "AGENCY";
-    
+    const userRole = (session?.user as any)?.role as "TALENT" | "AGENCY" | undefined
+    const isAuthed = status === "authenticated" && !!userRole
+    const targetRole = type === "talent" ? "TALENT" : "AGENCY"
+
     if (isAuthed && userRole !== targetRole) {
-      // Role mismatch - toast göster ve yönlendirme yapma
-      import('@/components/ui/toast').then(({ toast }) => {
-        toast({
-          type: "error",
-          title: "Rolüne uygun olmayan işlem",
-          message: userRole === "TALENT"
-            ? "Yetenek olarak kayıt oldunuz. Ajans olarak başlamak isterseniz çıkış yapıp ajans kaydı oluşturabilirsiniz."
-            : "Ajans olarak kayıt oldunuz. Yetenek olarak başlamak isterseniz çıkış yapıp yetenek kaydı oluşturabilirsiniz.",
-        });
-      });
-      return;
+      showRoleMismatchToast(userRole!)
+      return
     }
-    
-    // Güvenli - yönlendir
+
     router.push(`/onboarding/${type}`)
   }
 
@@ -78,7 +59,7 @@ export default function Home() {
   if (session && UI.landingVariant === 'minimal') {
     return (
       <main className="min-h-screen bg-black text-white">
-        <Header />
+        <Header onSignup={handleSignup} />
         <div className="container mx-auto px-4 py-16">
           <div className="max-w-4xl mx-auto text-center">
             <h1 className="text-4xl font-bold mb-4">
