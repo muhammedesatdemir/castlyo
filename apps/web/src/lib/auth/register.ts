@@ -14,9 +14,8 @@ export async function registerUser(payload: {
     const { data, status } = await api.post("/api/v1/auth/register", payload);
 
     if (status === 201 || status === 200 || data?.success) {
-      // Bearer kullanıyorsan:
-      if (data.accessToken) localStorage.setItem('accessToken', data.accessToken);
-      if (data.refreshToken) localStorage.setItem('refreshToken', data.refreshToken);
+      // KRİTİK: Token'ları localStorage'a saklama - cookie tabanlı kimlik doğrulama kullan
+      // NextAuth session'ı otomatik olarak cookie'de saklanır
       return data;
     }
     

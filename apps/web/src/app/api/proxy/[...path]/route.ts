@@ -34,27 +34,13 @@ async function proxy(req: NextRequest, { params }: { params: { path: string[] } 
   // Orijinal header'ları al
   const headers = new Headers(req.headers);
   
-  // 1) Gelen authorization varsa koru
-  let auth = headers.get("authorization");
-
-  // 2) Yoksa session'dan access token'ı al ve ekle
-  if (!auth) {
-    try {
-      const session = await getServerSession(authOptions);
-      if (session && (session as any).accessToken) {
-        auth = `Bearer ${(session as any).accessToken}`;
-        console.log('[proxy] Added Authorization header from session');
-      }
-    } catch (error) {
-      console.warn('[proxy] Failed to get session:', error);
-    }
-  }
-
-  // Authorization header'ı ekle
+  // KRİTİK: Authorization header'ını asla override etme
+  // Sadece gelen header'ı logla ve koru
+  const auth = headers.get("authorization");
   if (auth) {
-    headers.set("authorization", auth);
+    console.log('[PROXY]', req.method, auth.substring(0, 40) + '...');
   } else {
-    console.warn('[proxy] No authorization token found in session or headers');
+    console.log('[PROXY]', req.method, 'No Authorization header');
   }
 
   // 3) Cookie'leri de forward et (JWT cookie authentication için)
@@ -65,7 +51,7 @@ async function proxy(req: NextRequest, { params }: { params: { path: string[] } 
   }
 
   // Problem çıkaran header'ları at
-  ['host','content-length'].forEach(h => headers.delete(h));
+  ['host','content-length','x-user-id','x_user_id'].forEach(h => headers.delete(h));
 
   try {
     const upstreamRes = await fetch(url.toString(), {

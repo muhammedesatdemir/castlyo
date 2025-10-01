@@ -10,7 +10,8 @@ import {
   Headers,
   HttpCode,
   HttpStatus,
-  BadRequestException
+  BadRequestException,
+  Res
 } from '@nestjs/common';
 import { Throttle, SkipThrottle } from '@nestjs/throttler';
 import { AuthService } from './auth.service';
@@ -39,6 +40,7 @@ export class AuthController {
     @Body() registerDto: RegisterDto,
     @Ip() ipAddress: string,
     @Headers('user-agent') userAgent: string,
+    @Res() res: any,
   ) {
     // Validate required consents
     if (!registerDto.consents?.acceptedTerms || !registerDto.consents?.acceptedPrivacy) {
@@ -47,7 +49,24 @@ export class AuthController {
 
     registerDto.ipAddress = ipAddress;
     registerDto.userAgent = userAgent;
-    return this.authService.register(registerDto, ipAddress);
+    const result = await this.authService.register(registerDto, ipAddress);
+    
+    // Set JWT cookies
+    res.cookie('accessToken', result.access_token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+    });
+    
+    res.cookie('refreshToken', result.refresh_token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      maxAge: 30 * 24 * 60 * 60 * 1000, // 30 days
+    });
+    
+    return res.json(result);
   }
 
   @Public()
@@ -62,14 +81,30 @@ export class AuthController {
   @SkipThrottle()
   @Post('login')
   @HttpCode(HttpStatus.OK)
-  async login(@Body() loginDto: LoginDto, @Ip() ipAddress: string) {
+  async login(@Body() loginDto: LoginDto, @Ip() ipAddress: string, @Res() res: any) {
     // Rate limiting için IP ve email kombinasyonu logla
     console.log(`[LOGIN_ATTEMPT] IP: ${ipAddress} | Email: ${loginDto.email} | Timestamp: ${new Date().toISOString()}`);
     console.log(`[LOGIN_ATTEMPT] LoginDto:`, loginDto);
     try {
       const result = await this.authService.login(loginDto);
       console.log(`[LOGIN_ATTEMPT] Login successful for: ${loginDto.email}`);
-      return result;
+      
+      // Set JWT cookies
+      res.cookie('accessToken', result.access_token, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'lax',
+        maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+      });
+      
+      res.cookie('refreshToken', result.refresh_token, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'lax',
+        maxAge: 30 * 24 * 60 * 60 * 1000, // 30 days
+      });
+      
+      return res.json(result);
     } catch (error) {
       console.error(`[LOGIN_ATTEMPT] Login failed for: ${loginDto.email}`, error.message);
       throw error;

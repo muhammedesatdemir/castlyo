@@ -221,13 +221,8 @@ export default function AuthPage() {
 
         logger.info('AUTH', 'Registration successful', { userId: result.user?.id, email: formData.email })
         
-        // Store tokens if available (for immediate login)
-        if (result.accessToken && result.refreshToken) {
-          // Store tokens in localStorage for immediate use
-          localStorage.setItem('accessToken', result.accessToken)
-          localStorage.setItem('refreshToken', result.refreshToken)
-          logger.info('AUTH', 'Tokens stored for immediate use')
-        }
+        // KRİTİK: Token'ları localStorage'a saklama - cookie tabanlı kimlik doğrulama kullan
+        // NextAuth session'ı otomatik olarak cookie'de saklanır
         
         // Check if email verification is required
         if (result.user?.status === 'PENDING') {

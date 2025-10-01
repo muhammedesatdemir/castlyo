@@ -60,7 +60,9 @@ export const talentProfiles = pgTable("talent_profiles", {
   resumeUrl: text("resume_url"),
   
   // API'nin beklediği ek alanlar
-  specialties: text("specialties"), // JSON string or comma-separated
+  specialties: text("specialties").array(), // PostgreSQL text[] array
+  skills: text("skills").array(), // PostgreSQL text[] array
+  languages: text("languages").array(), // PostgreSQL text[] array
   experience: text("experience"),
 
   createdAt: timestamp("created_at").notNull().defaultNow(),

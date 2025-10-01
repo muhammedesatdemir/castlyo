@@ -1,8 +1,9 @@
-import { Logger, ValidationPipe } from '@nestjs/common';
+import { Logger, ValidationPipe, BadRequestException } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 import { AppModule } from './app.module';
 import { PrismaExceptionFilter } from './common/filters/prisma-exception.filter';
+import * as cookieParser from 'cookie-parser';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule, { bufferLogs: true });
@@ -11,18 +12,26 @@ async function bootstrap() {
   // Global prefix
   app.setGlobalPrefix('api/v1');
 
+  // Cookie parser middleware
+  app.use(cookieParser());
+
   // Global exception filter
   app.useGlobalFilters(new PrismaExceptionFilter());
   
   // Global validation pipe with detailed error messages
   app.useGlobalPipes(new ValidationPipe({
     whitelist: true,
-    forbidNonWhitelisted: true,
+    forbidNonWhitelisted: false,
     transform: true,
     validationError: { target: false, value: false },
     exceptionFactory: (errors) => {
-      const messages = errors.flatMap(e => Object.values(e.constraints ?? {}));
-      return new Error(`Validation failed: ${messages.join(', ')}`);
+      console.error('[VALIDATION ERRORS]', JSON.stringify(errors, null, 2));
+      return new BadRequestException({
+        success: false,
+        error: 'VALIDATION_FAILED',
+        message: 'Invalid profile payload',
+        details: errors,
+      });
     },
   }));
 

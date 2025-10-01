@@ -1,5 +1,11 @@
 // Note: date-fns might not be available, so we'll use native Date methods
 
+// Normalize function to convert empty strings to undefined
+const norm = (v?: string | null) => {
+  const s = (v ?? '').trim();
+  return s === '' ? undefined : s;
+};
+
 // Gender mapping from Turkish to backend enum
 const genderMap: Record<string, "FEMALE" | "MALE" | "OTHER"> = {
   "Kadın": "FEMALE",
@@ -52,28 +58,58 @@ function toISODate(dateStr: string): string | undefined {
   return undefined;
 }
 
+// Convert form data to API payload format for updates
+export function toUpdatePayload(form: any) {
+  const isoBirth = toISODate(form.birthDate || form.birth || form.dateOfBirth);
+  
+  return {
+    displayName: norm(form.displayName),
+    firstName: norm(form.firstName),
+    lastName: norm(form.lastName),
+    city: norm(form.city),
+    country: norm(form.country),
+    bio: norm(form.bio),
+    headline: norm(form.headline),
+
+    height: form.height ?? undefined,
+    weight: form.weight ?? undefined,
+
+    skills: (form.skills ?? []).filter(Boolean),
+    languages: (form.languages ?? []).filter(Boolean),
+    specialties: (form.specialties ?? []).filter(Boolean),
+
+    profileImage: norm(form.profileImage),
+    resumeUrl: norm(form.resumeUrl),
+
+    birthDate: isoBirth,
+    gender: genderMap[form.gender] || undefined,
+
+    isPublic: form.isPublic ?? undefined,
+  };
+}
+
 // Convert form data to API payload format
 export function mapFormToApi(form: any) {
   const isoBirth = toISODate(form.birthDate || form.birth || form.dateOfBirth);
   
   const payload: any = {
-    firstName: form.firstName?.trim() || undefined,
-    lastName: form.lastName?.trim() || undefined,
-    displayName: `${form.firstName || ""} ${form.lastName || ""}`.trim() || undefined,
-    city: form.city?.trim() || undefined,
+    firstName: norm(form.firstName),
+    lastName: norm(form.lastName),
+    displayName: norm(`${form.firstName || ""} ${form.lastName || ""}`.trim()),
+    city: norm(form.city),
     country: "TR",
     gender: genderMap[form.gender] || undefined,
     birthDate: isoBirth,
     height: form.height ? Number(form.height) : undefined,
     weight: form.weight ? Number(form.weight) : undefined,
-    bio: form.bio?.trim() || undefined,
-    headline: form.headline?.trim() || undefined,
-    experience: form.experience?.trim() || form.exp?.trim() || undefined,
+    bio: norm(form.bio),
+    headline: norm(form.headline),
+    experience: norm(form.experience || form.exp),
     skills: (form.skills || []).map((s: string) => skillMap[s] || s).filter(Boolean),
     languages: form.languages || [],
     specialties: (form.specialties || []).map((s: string) => skillMap[s] || s).filter(Boolean),
-    profileImage: form.profileImage || form.profilePhotoUrl || undefined,
-    resumeUrl: form.cvUrl || form.resumeUrl || undefined,
+    profileImage: norm(form.profileImage || form.profilePhotoUrl),
+    resumeUrl: norm(form.cvUrl || form.resumeUrl),
   };
 
   // Remove undefined values

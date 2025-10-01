@@ -159,9 +159,10 @@ export class ProfilesController {
     @Body() profileData: UpdateTalentProfileDto,
     @Request() req
   ) {
-    const userId = req.user?.userId || req.user?.id;
-    if (!userId) throw new UnauthorizedException('Missing user id in token');
-    return this.profilesService.updateTalentProfile(userId, profileData, userId);
+    const jwtId = req.user?.id || req.user?.userId;
+    if (!jwtId) throw new UnauthorizedException('Missing user id in token');
+    console.log('[CTRL] PUT /profiles/talent/me jwtId=', jwtId, 'body.userId=', (profileData as any)?.userId);
+    return this.profilesService.updateTalentProfile(jwtId, profileData);
   }
 
   @Put('agency/me')
@@ -170,9 +171,9 @@ export class ProfilesController {
     @Body() profileData: UpdateAgencyProfileDto,
     @Request() req
   ) {
-    const userId = req.user?.userId || req.user?.id;
+    const userId = req.user?.id || req.user?.userId;
     if (!userId) throw new UnauthorizedException('Missing user id in token');
-    return this.profilesService.updateAgencyProfile(userId, profileData, userId);
+    return this.profilesService.updateAgencyProfile(userId, profileData);
   }
 
   @Put('talent/:id')
@@ -182,7 +183,7 @@ export class ProfilesController {
     @Body() profileData: UpdateTalentProfileDto,
     @Request() req
   ) {
-    return this.profilesService.updateTalentProfile(id, profileData, req.user.userId);
+    return this.profilesService.updateTalentProfileById(id, profileData, req.user.userId);
   }
 
   @Put('agency/:id')
@@ -192,7 +193,7 @@ export class ProfilesController {
     @Body() profileData: UpdateAgencyProfileDto,
     @Request() req
   ) {
-    return this.profilesService.updateAgencyProfile(id, profileData, req.user.userId);
+    return this.profilesService.updateAgencyProfileById(id, profileData, req.user.userId);
   }
 
   @Delete(':id')

@@ -7,7 +7,16 @@ import { ConfigService } from '@nestjs/config';
 export class JwtStrategy extends PassportStrategy(Strategy) {
   constructor(private configService: ConfigService) {
     super({
-      jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
+      jwtFromRequest: ExtractJwt.fromExtractors([
+        ExtractJwt.fromAuthHeaderAsBearerToken(),
+        (request) => {
+          // Extract JWT from cookies
+          if (request.cookies && request.cookies.accessToken) {
+            return request.cookies.accessToken;
+          }
+          return null;
+        }
+      ]),
       ignoreExpiration: false,
       secretOrKey: configService.get('JWT_SECRET'),
     });
@@ -15,6 +24,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
 
   async validate(payload: any) {
     // Token: { sub, email, role }
+    console.log('[JWT] payload.userId=', payload?.userId || payload?.sub);
     return { 
       id: payload.sub, 
       userId: payload.sub, // Controller'ların kullandığı field

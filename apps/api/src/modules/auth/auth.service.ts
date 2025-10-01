@@ -133,7 +133,7 @@ export class AuthService {
       }
 
       // 3) Tokenlar ve response
-      const tokens = await this.issuePair(user.id, user.role);
+      const tokens = await this.generateTokens(user);
       return { user: { id: user.id, email: user.email, role: user.role }, ...tokens };
 
     } catch (e) {

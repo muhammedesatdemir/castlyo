@@ -24,17 +24,8 @@ export const api = axios.create({
   headers: { "Content-Type": "application/json" },
 });
 
-// Add token to requests
-api.interceptors.request.use((cfg) => {
-  // Add authorization token if available
-  if (typeof window !== 'undefined') {
-    const token = localStorage.getItem('accessToken') || sessionStorage.getItem('accessToken');
-    if (token && !cfg.headers.Authorization) {
-      cfg.headers.Authorization = `Bearer ${token}`;
-    }
-  }
-  return cfg;
-});
+// KRİTİK: Authorization header'ını asla ekleme
+// Cookie tabanlı kimlik doğrulama kullan
 
 
 // Response interceptor for error handling
@@ -122,18 +113,7 @@ export const jobsApi = {
 // New lightweight fetch wrapper aligned with direct API
 export const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL ?? '/api/proxy/api/v1';
 
-function getToken() {
-  if (typeof window === 'undefined') return null;
-  try {
-    return (
-      window.localStorage.getItem('accessToken') ||
-      window.sessionStorage.getItem('accessToken') ||
-      null
-    );
-  } catch {
-    return null;
-  }
-}
+// KRİTİK: Token fonksiyonunu kaldırdık - cookie tabanlı kimlik doğrulama kullan
 
 export async function apiFetch<T>(
   path: string,
@@ -146,8 +126,7 @@ export async function apiFetch<T>(
     headers['Content-Type'] = 'application/json';
   }
 
-  const token = getToken();
-  if (token && !headers['Authorization']) headers['Authorization'] = `Bearer ${token}`;
+  // KRİTİK: Authorization header'ını asla ekleme - cookie tabanlı kimlik doğrulama kullan
 
   const res = await fetch(`${API_BASE}${path}`, {
     ...opts,

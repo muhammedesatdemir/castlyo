@@ -250,38 +250,13 @@ export class ProfilesService {
 
   async updateTalentProfile(
     userId: string, 
-    profileData: UpdateTalentProfileDto,
-    requestingUserId: string
+    profileData: UpdateTalentProfileDto
   ) {
-    // Check if user is updating their own profile
-    if (userId !== requestingUserId) {
-      throw new ForbiddenException('Cannot update another user\'s profile');
-    }
-
     try {
-      const existingProfile = await this.database.select()
-        .from(talentProfiles)
-        .where(eq(talentProfiles.userId, userId))
-        .limit(1);
-
-      // If no existing profile, create one first
-      if (!existingProfile.length) {
-        await this.database.insert(talentProfiles).values({
-          userId,
-          displayName: profileData.displayName ?? null,
-          city: profileData.city ?? null,
-          country: profileData.country ?? null,
-          firstName: profileData.firstName ?? null,
-          lastName: profileData.lastName ?? null,
-          bio: profileData.bio ?? null,
-          headline: profileData.headline ?? null,
-          heightCm: profileData.height ?? null,
-          weightKg: profileData.weight ?? null,
-          specialties: profileData.specialties ?? [],
-          experience: profileData.experience ?? null,
-        });
+      console.log('[SRV] updateTalentProfile jwtUserId=', userId, 'body.userId=', (profileData as any)?.userId);
+      if (profileData && (profileData as any).userId) {
+        delete (profileData as any).userId;
       }
-
       // Handle birthDate vs dateOfBirth field mapping
       const dataToUpdate = { ...profileData };
       // Support legacy clients that might send 'dateOfBirth' instead of 'birthDate'
@@ -290,70 +265,119 @@ export class ProfilesService {
         delete (dataToUpdate as any).dateOfBirth;
       }
 
-      // Map frontend fields to database fields
+      // Map frontend fields to database fields with proper column mapping
       const mappedData = {
+        userId, // Use only the JWT user ID
         displayName: profileData.displayName ?? null,
         firstName: profileData.firstName ?? null,
         lastName: profileData.lastName ?? null,
         city: profileData.city ?? null,
         country: profileData.country ?? null,
         bio: profileData.bio ?? null,
-        headline: profileData.headline ?? null,
-        heightCm: profileData.height ?? null,
-        weightKg: profileData.weight ?? null,
-        specialties: profileData.specialties ?? [],
         experience: profileData.experience ?? null,
-        birthDate: profileData.birthDate ?? null,
-        gender: profileData.gender ?? null,
         profileImage: profileData.profileImage ?? null,
         resumeUrl: profileData.resumeUrl ?? null,
+        birthDate: profileData.birthDate ?? null,
+        gender: profileData.gender ?? null,
+        heightCm: profileData.height ?? null,
+        weightKg: profileData.weight ?? null,
+        headline: profileData.headline ?? null,
+        specialties: profileData.specialties ?? [],
         skills: profileData.skills ?? [],
         languages: profileData.languages ?? [],
-        updatedAt: new Date()
+        updatedAt: new Date(),
       };
 
-      const updatedProfile = await this.database.update(talentProfiles)
-        .set(mappedData)
-        .where(eq(talentProfiles.userId, userId))
+      // Upsert (insert or update) - one record per user
+      const result = await this.database
+        .insert(talentProfiles)
+        .values({ ...mappedData, createdAt: new Date() })
+        .onConflictDoUpdate({
+          target: talentProfiles.userId,
+          set: mappedData,
+        })
         .returning();
 
-      return updatedProfile[0];
-    } catch (error) {
-      if (error instanceof NotFoundException || error instanceof ForbiddenException) {
-        throw error;
-      }
-      throw new BadRequestException('Invalid profile payload');
+      return result[0];
+    } catch (e) {
+      // DEBUG: Log detailed error information
+      console.error('[UPDATE TALENT ME FAILED]', {
+        message: (e as any)?.message,
+        stack: (e as any)?.stack,
+        cause: (e as any)?.cause,
+      });
+      console.error('[DB ERROR RAW]', e);
+      throw e;
     }
   }
 
   async updateAgencyProfile(
     userId: string, 
+    profileData: UpdateAgencyProfileDto
+  ) {
+    const mappedData = {
+      userId, // Use only the JWT user ID
+      ...profileData,
+      updatedAt: new Date()
+    };
+
+    // Upsert (insert or update) - one record per user
+    const result = await this.database
+      .insert(agencyProfiles)
+      .values({ ...mappedData, createdAt: new Date() })
+      .onConflictDoUpdate({
+        target: agencyProfiles.userId,
+        set: mappedData,
+      })
+      .returning();
+
+    return result[0];
+  }
+
+  async updateTalentProfileById(
+    profileId: string,
+    profileData: UpdateTalentProfileDto,
+    requestingUserId: string
+  ) {
+    // Check if user is updating their own profile
+    const existingProfile = await this.database.select()
+      .from(talentProfiles)
+      .where(eq(talentProfiles.id, profileId))
+      .limit(1);
+
+    if (!existingProfile.length) {
+      throw new NotFoundException('Talent profile not found');
+    }
+
+    if (existingProfile[0].userId !== requestingUserId) {
+      throw new ForbiddenException('Cannot update another user\'s profile');
+    }
+
+    // Use the existing updateTalentProfile method with the profile owner's userId
+    return this.updateTalentProfile(existingProfile[0].userId, profileData);
+  }
+
+  async updateAgencyProfileById(
+    profileId: string,
     profileData: UpdateAgencyProfileDto,
     requestingUserId: string
   ) {
     // Check if user is updating their own profile
-    if (userId !== requestingUserId) {
-      throw new ForbiddenException('Cannot update another user\'s profile');
-    }
-
     const existingProfile = await this.database.select()
       .from(agencyProfiles)
-      .where(eq(agencyProfiles.userId, userId))
+      .where(eq(agencyProfiles.id, profileId))
       .limit(1);
 
     if (!existingProfile.length) {
       throw new NotFoundException('Agency profile not found');
     }
 
-    const updatedProfile = await this.database.update(agencyProfiles)
-      .set({
-        ...profileData,
-        updatedAt: new Date()
-      })
-      .where(eq(agencyProfiles.userId, userId))
-      .returning();
+    if (existingProfile[0].userId !== requestingUserId) {
+      throw new ForbiddenException('Cannot update another user\'s profile');
+    }
 
-    return updatedProfile[0];
+    // Use the existing updateAgencyProfile method with the profile owner's userId
+    return this.updateAgencyProfile(existingProfile[0].userId, profileData);
   }
 
   async getMyProfile(userId: string) {
