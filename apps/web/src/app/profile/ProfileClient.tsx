@@ -5,7 +5,10 @@ import * as React from "react";
 import { useSession } from "next-auth/react";
 import type { Profile } from "./page";
 import { apiFetch } from "@/lib/api";
+// upload helpers are dynamically imported to avoid tree-shaking/SSR issues
+import { mapFormToApi } from '@/lib/profile-mapper';
 import { ProfileHeader } from "@/components/ProfileAvatar";
+import { toast } from "@/components/ui/toast";
 
 /* ---------- shared helpers ---------- */
 const SPECIALTY_OPTIONS = ["Oyunculuk", "Tiyatro", "Modellik", "Müzik", "Dans", "Dublaj"];
@@ -348,19 +351,27 @@ export default function ProfileClient({
   async function handlePhotoChange(file?: File) {
     if (!file) return;
     try {
-      const fd = new FormData();
-      fd.append("file", file);
-      const up = await fetch("/api/proxy/upload", { 
-        method: "POST", 
-        body: fd,
-        credentials: 'include'
-      });
-      if (!up.ok) throw new Error("upload failed");
-      const data = await up.json();
-      setPhotoUrl(data.url ?? photoUrl);
+      const mod: any = await import("@/lib/upload");
+      const { fileUrl } = await mod.uploadWithPresigned(file, 'avatar');
+      
+      // API already returns the full public URL
+      setPhotoUrl(fileUrl);
       setMsg("Fotoğraf yüklendi.");
-    } catch {
+      toast.success('Fotoğraf yüklendi');
+    } catch (e: any) {
+      let errorMsg = 'Bilinmeyen hata';
+      if (e?.body) {
+        try {
+          const parsed = JSON.parse(e.body);
+          errorMsg = parsed.message || parsed.error || e.body;
+        } catch {
+          errorMsg = e.body;
+        }
+      } else if (e?.message) {
+        errorMsg = e.message;
+      }
       setMsg("Fotoğraf yüklenemedi.");
+      toast.error(`Fotoğraf yüklenemedi: ${errorMsg}`);
     }
   }
   function removePhoto() {
@@ -374,23 +385,32 @@ export default function ProfileClient({
     if (!file) return;
     if (file.size > 5 * 1024 * 1024) {
       setMsg("CV yüklenemedi: Dosya boyutu 5 MB'ı aşamaz.");
+      toast.error('CV yüklenemedi', "Dosya boyutu 5 MB'ı aşamaz.");
       return;
     }
     setCvUploading(true);
     try {
-      const fd = new FormData();
-      fd.append("file", file);
-      const up = await fetch("/api/proxy/upload", { 
-        method: "POST", 
-        body: fd,
-        credentials: 'include'
-      });
-      if (!up.ok) throw new Error("upload failed");
-      const data = await up.json();
-      setCvUrl(toAbsoluteUrl(data.url) ?? null);
+      const mod: any = await import("@/lib/upload");
+      const { fileUrl } = await mod.uploadWithPresigned(file, 'cv');
+      
+      // API already returns the full public URL
+      setCvUrl(fileUrl);
       setMsg("CV yüklendi.");
-    } catch {
+      toast.success('CV yüklendi');
+    } catch (e: any) {
+      let errorMsg = 'Bilinmeyen hata';
+      if (e?.body) {
+        try {
+          const parsed = JSON.parse(e.body);
+          errorMsg = parsed.message || parsed.error || e.body;
+        } catch {
+          errorMsg = e.body;
+        }
+      } else if (e?.message) {
+        errorMsg = e.message;
+      }
       setMsg("CV yüklenemedi.");
+      toast.error(`CV yüklenemedi: ${errorMsg}`);
     } finally {
       setCvUploading(false);
     }
@@ -403,6 +423,54 @@ export default function ProfileClient({
     if (!guardian.relation) return "Yakınlık seçiniz.";
     if (guardian.phoneDigits.length !== 10) return "Veli/Vasi telefon +90 hariç 10 hane olmalı.";
     return null;
+  }
+
+  // Birleşik user+talent verisini Profile tipine dönüştür
+  function mapCombinedToProfile(input: any): Profile {
+    const data = input || {};
+    const read = (o: any, keys: string[], fallback?: any) => {
+      for (const k of keys) if (o && o[k] != null) return o[k];
+      return fallback;
+    };
+    const specialties = Array.isArray(data.specialties)
+      ? data.specialties.map((s: any) => (typeof s === 'string' ? s : s?.code || s?.label)).filter(Boolean)
+      : Array.isArray(data.professional?.specialties)
+      ? data.professional.specialties
+      : [];
+    const guardian = data.guardian || data.personal?.guardian || null;
+    return {
+      firstName: read(data, ['firstName', 'first_name'], ''),
+      lastName: read(data, ['lastName', 'last_name'], ''),
+      email: read(data, ['email'], ''),
+      phone: read(data, ['phone'], ''),
+      role: read(data, ['role'], null),
+      status: read(data, ['status'], null),
+      company: read(data, ['company'], null),
+      profilePhotoUrl: read(data, ['profilePhotoUrl', 'profileImage', 'avatarUrl', 'photoUrl', 'avatar'], null),
+      professional: {
+        specialties,
+        bio: read(data, ['bio'], ''),
+        experience: read(data, ['experience'], ''),
+        cvUrl: read(data, ['cvUrl', 'cv_url'], null),
+      },
+      personal: {
+        city: read(data, ['city', 'personal?.city' as any], ''),
+        birthDate: read(data, ['birthDate', 'birth_date' as any], null),
+        gender: read(data, ['gender', 'personal?.gender' as any], ''),
+        heightCm: read(data, ['heightCm', 'height_cm' as any], undefined),
+        weightKg: read(data, ['weightKg', 'weight_kg' as any], undefined),
+        guardian: guardian
+          ? {
+              fullName: read(guardian, ['fullName', 'name'], ''),
+              relation: read(guardian, ['relation'], ''),
+              phone: read(guardian, ['phone', 'mobile'], ''),
+              email: read(guardian, ['email'], ''),
+              consent: read(guardian, ['consent', 'consentAccepted'], false),
+              consentAccepted: undefined,
+            }
+          : null,
+      },
+    } as Profile;
   }
 
   /* kaydet */
@@ -418,29 +486,56 @@ export default function ProfileClient({
         return;
       }
 
-      // Transform frontend form data to backend schema
-      const payload = {
-        firstName: toTitleTR(form.firstName ?? ""),
-        lastName: toTitleTR(form.lastName ?? ""),
-        bio: (form.bio ?? "").trim(),
-        birthDate: form.birth ? new Date(form.birth).toISOString() : null,
-        gender: form.gender || null,
-        city: toTitleTR(form.city ?? ""),
-        height: form.height ? Number(form.height) : null,
-        weight: form.weight ? Number(form.weight) : null,
-        experience: form.exp ?? "",
+      // Validation: firstName and lastName are required
+      if (!form.firstName?.trim() || !form.lastName?.trim()) {
+        setMsg("Ad ve Soyad zorunludur.");
+        setSaving(false);
+        return;
+      }
+
+      // Use the new mapper to create properly formatted payload
+      const formData = {
+        firstName: form.firstName,
+        lastName: form.lastName,
+        city: form.city,
+        gender: form.gender,
+        birthDate: form.birth,
+        height: form.height,
+        weight: form.weight,
+        bio: form.bio,
+        experience: form.exp,
         specialties: selectedSpecs,
-        profileImage: photoUrl || null,
+        profileImage: photoUrl,
+        resumeUrl: cvUrl, // Use resumeUrl instead of cvUrl to match API
       };
 
-      // Update talent profile via API using the new /me endpoint
-      await apiFetch('/profiles/talent/me', {
-        method: 'PUT',
-        body: JSON.stringify(payload),
-      });
+      const payload = mapFormToApi(formData);
 
-      // Fetch fresh data
-      const fresh: Profile = await apiFetch('/profiles/me');
+      try {
+        await apiFetch('/profiles/talent/me', { method: 'PUT', json: payload });
+      } catch (e: any) {
+        console.error('Talent save failed:', e?.status, e?.body);
+        let errorMsg = 'Bilinmeyen hata';
+        if (e?.body) {
+          try {
+            const parsed = JSON.parse(e.body);
+            errorMsg = parsed.message || parsed.error || e.body;
+          } catch {
+            errorMsg = e.body;
+          }
+        } else if (e?.message) {
+          errorMsg = e.message;
+        }
+        toast.error(`Profil kaydedilemedi: ${errorMsg}`);
+        throw e;
+      }
+
+      // Fetch fresh data (merge users + talents)
+      const [userData, profileData] = await Promise.all([
+        apiFetch<any>('/users/me').catch(() => ({})),
+        apiFetch<any>('/profiles/me').catch(() => ({})),
+      ]);
+      const fresh: Profile = mapCombinedToProfile({ ...(profileData || {}), ...(userData || {}) });
 
       // UI rehydrate
       setSelectedSpecs(uniq(fresh.professional?.specialties));
@@ -470,10 +565,23 @@ export default function ProfileClient({
       await onDemandRefetch?.();
 
       setMsg("Profil kaydedildi.");
+      toast.success('Profil kaydedildi');
       setEditing(false);
     } catch (error) {
       console.error('Profile save error:', error);
-      setMsg(error instanceof Error ? error.message : "Kaydetme sırasında hata oluştu.");
+      let errorMsg = "Kaydetme sırasında hata oluştu.";
+      if ((error as any)?.body) {
+        try {
+          const parsed = JSON.parse((error as any).body);
+          errorMsg = parsed.message || parsed.error || (error as any).body;
+        } catch {
+          errorMsg = (error as any).body;
+        }
+      } else if ((error as any)?.message) {
+        errorMsg = (error as any).message;
+      }
+      setMsg(errorMsg);
+      toast.error(`Profil kaydedilemedi: ${errorMsg}`);
     } finally {
       setSaving(false);
     }
@@ -809,29 +917,30 @@ export default function ProfileClient({
                 />
               </label>
               {cvUrl && (
-                <>
+                <div className="mt-2">
                   <a
                     href={toAbsoluteUrl(cvUrl) ?? "#"}
                     target="_blank"
                     rel="noopener noreferrer"
                     onClick={(e) => e.stopPropagation()}
-                    className="text-sm underline"
+                    className="text-blue-600 underline text-sm"
                     download
                   >
-                    {filenameFromUrl(cvUrl) || "CV.pdf"}
+                    CV'yi görüntüle/indir
                   </a>
-                  <button
-                    type="button"
-                    className="text-sm underline"
-                    onClick={() => {
-                      setCvUrl(null);
-                      setForm((f) => ({ ...f, exp: stripCvLines(f.exp) }));
-                    }}
-                    disabled={!editing}
-                  >
-                    Kaldır
-                  </button>
-                </>
+                  {editing && (
+                    <button
+                      type="button"
+                      className="text-sm underline ml-3 text-red-600"
+                      onClick={() => {
+                        setCvUrl(null);
+                        setForm((f) => ({ ...f, exp: stripCvLines(f.exp) }));
+                      }}
+                    >
+                      Kaldır
+                    </button>
+                  )}
+                </div>
               )}
             </div>
           </div>

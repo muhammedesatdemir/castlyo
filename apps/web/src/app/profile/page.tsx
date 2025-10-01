@@ -58,10 +58,10 @@ const g = (o: any, ...keys: string[]) => {
 
 const toDateOnly = (v: any): string | null => {
   if (!v) return null;
-  // 24.04.2009 gibi TR formatını da destekle
+  // 24.04.2009 gibi TR formatını da destekle (ISO'ya çevir)
   if (typeof v === "string" && /^\d{2}\.\d{2}\.\d{4}$/.test(v)) {
     const [dd, mm, yyyy] = v.split(".");
-    return `${yyyy}-${mm}-${dd}`;
+    return `${yyyy}-${mm.padStart(2,'0')}-${dd.padStart(2,'0')}`;
   }
   const d = new Date(v);
   return Number.isNaN(d.getTime()) ? null : d.toISOString().slice(0, 10);
@@ -127,21 +127,21 @@ export default function ProfilePage() {
     try {
       setError(null);
       console.debug('[ProfilePage] Refetching profile data...');
-      // DEĞİŞİKLİK: /api/profile/me -> /api/proxy/profiles/me
-      const res = await fetch("/api/proxy/profiles/me", { 
-        cache: "no-store",
-        credentials: 'include'
-      });
+      // Fetch combined view by merging user + talent
+      const [uRes, tRes] = await Promise.all([
+        fetch("/api/proxy/api/v1/users/me", { cache: "no-store", credentials: 'include' }),
+        fetch("/api/proxy/api/v1/profiles/talent/me", { cache: "no-store", credentials: 'include' }),
+      ]);
       
-      if (!res.ok) {
+      if (!uRes.ok && !tRes.ok) {
         // 401 için özel handling
-        if (res.status === 401) {
+        if (uRes.status === 401 || tRes.status === 401) {
           router.push('/auth/login?next=/profile');
           throw new Error('Oturum açmanız gerekiyor.');
         }
         
         // Ham gövdeyi al ve parse etmeye çalış
-        const text = await res.text();
+        const text = (await uRes.text().catch(() => '')) || (await tRes.text().catch(() => ''));
         let obj: any = null;
         try { 
           obj = JSON.parse(text); 
@@ -152,12 +152,12 @@ export default function ProfilePage() {
         const msg =
           obj?.error ??
           obj?.message ??
-          (text?.trim() || `Request failed: ${res.status}`);
+          (text?.trim() || `Request failed`);
 
         throw new Error(msg);
       }
       
-      const apiResponse = await res.json();
+      const apiResponse = { ...(await (uRes.ok ? uRes.json() : Promise.resolve({}))), ...(await (tRes.ok ? tRes.json() : Promise.resolve({}))) };
       console.debug('[ProfilePage] Profile data received:', apiResponse);
       console.log('[ProfilePage] API Response structure (refetch):', {
         hasUser: !!apiResponse.user,
@@ -182,21 +182,20 @@ export default function ProfilePage() {
       try {
         setError(null);
         console.debug('[ProfilePage] Initial profile fetch...');
-        // DEĞİŞİKLİK: /api/profile/me -> /api/proxy/profiles/me
-        const res = await fetch("/api/proxy/profiles/me", { 
-          cache: "no-store",
-          credentials: 'include'
-        });
+        const [uRes, tRes] = await Promise.all([
+          fetch("/api/proxy/api/v1/users/me", { cache: "no-store", credentials: 'include' }),
+          fetch("/api/proxy/api/v1/profiles/talent/me", { cache: "no-store", credentials: 'include' }),
+        ]);
         
-        if (!res.ok) {
+        if (!uRes.ok && !tRes.ok) {
           // 401 için özel handling
-          if (res.status === 401) {
+          if (uRes.status === 401 || tRes.status === 401) {
             router.push('/auth/login?next=/profile');
             throw new Error('Oturum açmanız gerekiyor.');
           }
           
           // Ham gövdeyi al ve parse etmeye çalış
-          const text = await res.text();
+          const text = (await uRes.text().catch(() => '')) || (await tRes.text().catch(() => ''));
           let obj: any = null;
           try { 
             obj = JSON.parse(text); 
@@ -207,12 +206,12 @@ export default function ProfilePage() {
           const msg =
             obj?.error ??
             obj?.message ??
-            (text?.trim() || `Request failed: ${res.status}`);
+            (text?.trim() || `Request failed`);
 
           throw new Error(msg);
         }
         
-        const apiResponse = await res.json();
+        const apiResponse = { ...(await (uRes.ok ? uRes.json() : Promise.resolve({}))), ...(await (tRes.ok ? tRes.json() : Promise.resolve({}))) };
         console.debug('[ProfilePage] Initial profile data received:', apiResponse);
         console.log('[ProfilePage] API Response structure:', {
           hasUser: !!apiResponse.user,

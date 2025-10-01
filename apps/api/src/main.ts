@@ -14,11 +14,16 @@ async function bootstrap() {
   // Global exception filter
   app.useGlobalFilters(new PrismaExceptionFilter());
   
-  // Global validation pipe
-  app.useGlobalPipes(new ValidationPipe({ 
-    whitelist: true, 
-    transform: true, 
-    forbidNonWhitelisted: false 
+  // Global validation pipe with detailed error messages
+  app.useGlobalPipes(new ValidationPipe({
+    whitelist: true,
+    forbidNonWhitelisted: true,
+    transform: true,
+    validationError: { target: false, value: false },
+    exceptionFactory: (errors) => {
+      const messages = errors.flatMap(e => Object.values(e.constraints ?? {}));
+      return new Error(`Validation failed: ${messages.join(', ')}`);
+    },
   }));
 
   // CORS
@@ -38,7 +43,10 @@ async function bootstrap() {
     .build();
   
   const document = SwaggerModule.createDocument(app, config);
-  SwaggerModule.setup('api/docs', app, document);
+  SwaggerModule.setup('api/docs', app, document, {
+    swaggerOptions: { persistAuthorization: true },
+    useGlobalPrefix: true,
+  });
 
   // Enhanced logging for dev
   app.useLogger(['error','warn','log','debug','verbose']);

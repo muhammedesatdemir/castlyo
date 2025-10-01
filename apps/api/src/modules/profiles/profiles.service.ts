@@ -264,22 +264,56 @@ export class ProfilesService {
         .where(eq(talentProfiles.userId, userId))
         .limit(1);
 
+      // If no existing profile, create one first
       if (!existingProfile.length) {
-        throw new NotFoundException('Talent profile not found');
+        await this.database.insert(talentProfiles).values({
+          userId,
+          displayName: profileData.displayName ?? null,
+          city: profileData.city ?? null,
+          country: profileData.country ?? null,
+          firstName: profileData.firstName ?? null,
+          lastName: profileData.lastName ?? null,
+          bio: profileData.bio ?? null,
+          headline: profileData.headline ?? null,
+          heightCm: profileData.height ?? null,
+          weightKg: profileData.weight ?? null,
+          specialties: profileData.specialties ?? [],
+          experience: profileData.experience ?? null,
+        });
       }
 
       // Handle birthDate vs dateOfBirth field mapping
       const dataToUpdate = { ...profileData };
-      if (profileData.birthDate && !profileData.dateOfBirth) {
-        dataToUpdate.dateOfBirth = profileData.birthDate;
-        delete dataToUpdate.birthDate;
+      // Support legacy clients that might send 'dateOfBirth' instead of 'birthDate'
+      if ((dataToUpdate as any).dateOfBirth && !dataToUpdate.birthDate) {
+        dataToUpdate.birthDate = (dataToUpdate as any).dateOfBirth as string;
+        delete (dataToUpdate as any).dateOfBirth;
       }
 
+      // Map frontend fields to database fields
+      const mappedData = {
+        displayName: profileData.displayName ?? null,
+        firstName: profileData.firstName ?? null,
+        lastName: profileData.lastName ?? null,
+        city: profileData.city ?? null,
+        country: profileData.country ?? null,
+        bio: profileData.bio ?? null,
+        headline: profileData.headline ?? null,
+        heightCm: profileData.height ?? null,
+        weightKg: profileData.weight ?? null,
+        specialties: profileData.specialties ?? [],
+        experience: profileData.experience ?? null,
+        birthDate: profileData.birthDate ?? null,
+        gender: profileData.gender ?? null,
+        profileImage: profileData.profileImage ?? null,
+        resumeUrl: profileData.resumeUrl ?? null,
+        skills: profileData.skills ?? [],
+        languages: profileData.languages ?? [],
+        updatedAt: new Date()
+      };
+
       const updatedProfile = await this.database.update(talentProfiles)
-        .set({
-          ...dataToUpdate,
-          updatedAt: new Date()
-        })
+        .set(mappedData)
         .where(eq(talentProfiles.userId, userId))
         .returning();
 

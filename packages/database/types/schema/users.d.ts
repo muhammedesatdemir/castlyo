@@ -428,6 +428,57 @@ export declare const talentProfiles: import("drizzle-orm/pg-core").PgTableWithCo
             identity: undefined;
             generated: undefined;
         }, {}, {}>;
+        birthDate: import("drizzle-orm/pg-core").PgColumn<{
+            name: "birth_date";
+            tableName: "talent_profiles";
+            dataType: "string";
+            columnType: "PgText";
+            data: string;
+            driverParam: string;
+            notNull: false;
+            hasDefault: false;
+            isPrimaryKey: false;
+            isAutoincrement: false;
+            hasRuntimeDefault: false;
+            enumValues: [string, ...string[]];
+            baseColumn: never;
+            identity: undefined;
+            generated: undefined;
+        }, {}, {}>;
+        gender: import("drizzle-orm/pg-core").PgColumn<{
+            name: "gender";
+            tableName: "talent_profiles";
+            dataType: "string";
+            columnType: "PgEnumColumn";
+            data: "MALE" | "FEMALE" | "OTHER";
+            driverParam: string;
+            notNull: false;
+            hasDefault: false;
+            isPrimaryKey: false;
+            isAutoincrement: false;
+            hasRuntimeDefault: false;
+            enumValues: ["MALE", "FEMALE", "OTHER"];
+            baseColumn: never;
+            identity: undefined;
+            generated: undefined;
+        }, {}, {}>;
+        resumeUrl: import("drizzle-orm/pg-core").PgColumn<{
+            name: "resume_url";
+            tableName: "talent_profiles";
+            dataType: "string";
+            columnType: "PgText";
+            data: string;
+            driverParam: string;
+            notNull: false;
+            hasDefault: false;
+            isPrimaryKey: false;
+            isAutoincrement: false;
+            hasRuntimeDefault: false;
+            enumValues: [string, ...string[]];
+            baseColumn: never;
+            identity: undefined;
+            generated: undefined;
+        }, {}, {}>;
         specialties: import("drizzle-orm/pg-core").PgColumn<{
             name: "specialties";
             tableName: "talent_profiles";

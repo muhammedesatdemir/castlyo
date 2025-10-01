@@ -1,11 +1,12 @@
-import { Injectable, BadRequestException } from '@nestjs/common';
+import { Injectable, BadRequestException, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import * as AWS from 'aws-sdk';
 import { v4 as uuidv4 } from 'uuid';
 
 export interface PresignedPostData {
-  url: string;
+  uploadUrl: string;
   fields: Record<string, string>;
+  key: string;
   fileUrl: string;
 }
 
@@ -13,68 +14,75 @@ export interface PresignedPostData {
 export class UploadService {
   private s3: AWS.S3;
   private bucketName: string;
+  private cdnUrl: string;
+  private publicUrl: string;
+  private readonly log = new Logger(UploadService.name);
 
   constructor(private configService: ConfigService) {
-    // For development, we'll use local storage simulation
-    // In production, this would be configured with real S3 credentials
-    this.bucketName = this.configService.get('S3_BUCKET_NAME', 'castlyo-dev');
-    
-    // Mock S3 configuration for development
+    this.bucketName = this.configService.get<string>('S3_BUCKET', 'castlyo-dev');
+    this.cdnUrl = this.configService.get<string>('CDN_URL', 'http://localhost:9000');
+    this.publicUrl = this.configService.get<string>('S3_PUBLIC_URL', 'http://localhost:9000');
+
     this.s3 = new AWS.S3({
-      accessKeyId: this.configService.get('AWS_ACCESS_KEY_ID', 'dev-access-key'),
-      secretAccessKey: this.configService.get('AWS_SECRET_ACCESS_KEY', 'dev-secret-key'),
-      region: this.configService.get('AWS_REGION', 'eu-west-1'),
-      endpoint: this.configService.get('S3_ENDPOINT', 'http://localhost:9000'), // MinIO for local dev
-      s3ForcePathStyle: true, // For MinIO compatibility
+      accessKeyId: this.configService.get<string>('S3_ACCESS_KEY'),
+      secretAccessKey: this.configService.get<string>('S3_SECRET_KEY'),
+      region: this.configService.get<string>('S3_REGION', 'us-east-1'),
+      endpoint: this.configService.get<string>('S3_ENDPOINT'), // MinIO veya gerçek S3 endpoint
+      s3ForcePathStyle: true,                           // MinIO için şart (AWS S3'de de sorun çıkarmaz)
+      signatureVersion: 'v4',
     });
   }
 
-  generatePresignedPost(
+  async generatePresignedPost(
     fileType: string,
     fileName: string,
     folder: 'profiles' | 'portfolios' | 'documents' | 'jobs'
-  ): PresignedPostData {
-    // Validate file type
+  ): Promise<PresignedPostData> {
     this.validateFileType(fileType, folder);
 
-    // Generate unique filename
-    const fileExtension = fileName.split('.').pop();
-    const uniqueFileName = `${uuidv4()}.${fileExtension}`;
-    const key = `${folder}/${uniqueFileName}`;
+    try {
+      const ext = (fileName.split('.').pop() || 'bin').toLowerCase();
+      const key = `${folder}/${uuidv4()}.${ext}`;
 
-    // For development, return mock presigned URL
-    const mockPresignedPost = {
-      url: `${this.configService.get('CDN_URL', 'http://localhost:9000')}/${this.bucketName}`,
-      fields: {
+      const params: AWS.S3.PresignedPost.Params = {
+        Bucket: this.bucketName,
+        Expires: 60,
+        Fields: { 
+          key, 
+          'Content-Type': fileType 
+        },
+        Conditions: [
+          ['eq', '$Content-Type', fileType],
+          ['starts-with', '$key', `${folder}/`],
+          ['content-length-range', 0, 5 * 1024 * 1024],
+        ],
+      };
+
+      const { url, fields } = await this.s3.createPresignedPost(params);
+
+      // Tarayıcı public URL kullanmalı
+      const uploadUrl = `${(this.publicUrl || url).replace(/\/$/, '')}/${this.bucketName}`;
+      const fileUrl = `${this.publicUrl}/${this.bucketName}/${key}`;
+
+      // Debug logging
+      this.log.debug('Generated presigned URL:', {
+        publicUrl: this.publicUrl,
+        bucketName: this.bucketName,
         key,
-        'Content-Type': fileType,
-        bucket: this.bucketName,
-        'X-Amz-Algorithm': 'AWS4-HMAC-SHA256',
-        'X-Amz-Credential': 'dev-credential',
-        'X-Amz-Date': new Date().toISOString().replace(/[:\-]|\.\d{3}/g, ''),
-        Policy: 'mock-policy',
-        'X-Amz-Signature': 'mock-signature',
-      },
-      fileUrl: `${this.configService.get('CDN_URL', 'http://localhost:9000')}/${this.bucketName}/${key}`,
-    };
+        uploadUrl,
+        fileUrl
+      });
 
-    return mockPresignedPost;
-
-    // Production code would use:
-    // const params = {
-    //   Bucket: this.bucketName,
-    //   Key: key,
-    //   Expires: 300, // 5 minutes
-    //   Conditions: [
-    //     ['content-length-range', 0, 10485760], // 10MB max
-    //     ['starts-with', '$Content-Type', fileType.split('/')[0]],
-    //   ],
-    //   Fields: {
-    //     'Content-Type': fileType,
-    //   },
-    // };
-
-    // return this.s3.createPresignedPost(params);
+      return {
+        uploadUrl,         // örn: http://localhost:9000/castlyo-dev
+        fields,            // SDK'nın ürettiği X-Amz-* alanları
+        key,
+        fileUrl,
+      };
+    } catch (err) {
+      this.log.error('presign failed', err as any);
+      throw new BadRequestException('PRESIGN_FAILED');
+    }
   }
 
   private validateFileType(fileType: string, folder: string): void {

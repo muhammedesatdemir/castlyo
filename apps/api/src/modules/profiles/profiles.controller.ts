@@ -11,7 +11,8 @@ import {
   Request,
   HttpCode,
   HttpStatus,
-  UnauthorizedException
+  UnauthorizedException,
+  ParseUUIDPipe
 } from '@nestjs/common';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { Public } from '../auth/decorators/public.decorator';
@@ -85,15 +86,36 @@ export class ProfilesController {
     return this.profilesService.createAgencyProfile(req.user.userId, profileData);
   }
 
+  // CRITICAL: "me" endpoints MUST come before parametrized routes
+  @Get('talent/me')
+  @UseGuards(JwtAuthGuard)
+  async getMyTalentProfile(@Request() req) {
+    const userId = req?.user?.id || req?.user?.userId;
+    if (!userId) {
+      throw new UnauthorizedException('Missing user id in token');
+    }
+    return this.profilesService.getTalentProfile(userId);
+  }
+
+  @Get('agency/me')
+  @UseGuards(JwtAuthGuard)
+  async getMyAgencyProfile(@Request() req) {
+    const userId = req?.user?.id || req?.user?.userId;
+    if (!userId) {
+      throw new UnauthorizedException('Missing user id in token');
+    }
+    return this.profilesService.getAgencyProfile(userId);
+  }
+
   @Get('talent/:id')
   @UseGuards(JwtAuthGuard)
-  async getTalentProfile(@Param('id') id: string, @Request() req) {
+  async getTalentProfile(@Param('id', new ParseUUIDPipe({ version: '4' })) id: string, @Request() req) {
     return this.profilesService.getTalentProfile(id, req.user?.userId);
   }
 
   @Public()
   @Get('public/talent/:id')
-  async getPublicTalentProfile(@Param('id') id: string, @Request() req) {
+  async getPublicTalentProfile(@Param('id', new ParseUUIDPipe({ version: '4' })) id: string, @Request() req) {
     return this.profilesService.getPublicTalentProfile(id, req.user?.userId);
   }
 
@@ -127,7 +149,7 @@ export class ProfilesController {
 
   @Get('agency/:id')
   @UseGuards(JwtAuthGuard)
-  async getAgencyProfile(@Param('id') id: string, @Request() req) {
+  async getAgencyProfile(@Param('id', new ParseUUIDPipe({ version: '4' })) id: string, @Request() req) {
     return this.profilesService.getAgencyProfile(id, req.user?.userId);
   }
 
@@ -142,10 +164,21 @@ export class ProfilesController {
     return this.profilesService.updateTalentProfile(userId, profileData, userId);
   }
 
+  @Put('agency/me')
+  @UseGuards(JwtAuthGuard)
+  async updateMyAgencyProfile(
+    @Body() profileData: UpdateAgencyProfileDto,
+    @Request() req
+  ) {
+    const userId = req.user?.userId || req.user?.id;
+    if (!userId) throw new UnauthorizedException('Missing user id in token');
+    return this.profilesService.updateAgencyProfile(userId, profileData, userId);
+  }
+
   @Put('talent/:id')
   @UseGuards(JwtAuthGuard)
   async updateTalentProfile(
-    @Param('id') id: string,
+    @Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
     @Body() profileData: UpdateTalentProfileDto,
     @Request() req
   ) {
@@ -155,7 +188,7 @@ export class ProfilesController {
   @Put('agency/:id')
   @UseGuards(JwtAuthGuard)
   async updateAgencyProfile(
-    @Param('id') id: string,
+    @Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
     @Body() profileData: UpdateAgencyProfileDto,
     @Request() req
   ) {
@@ -165,7 +198,7 @@ export class ProfilesController {
   @Delete(':id')
   @UseGuards(JwtAuthGuard)
   @HttpCode(HttpStatus.NO_CONTENT)
-  async deleteProfile(@Param('id') id: string, @Request() req) {
+  async deleteProfile(@Param('id', new ParseUUIDPipe({ version: '4' })) id: string, @Request() req) {
     return this.profilesService.deleteProfile(id, req.user.userId);
   }
 

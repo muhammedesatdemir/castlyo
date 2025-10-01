@@ -213,7 +213,7 @@ function TalentOnboardingContent() {
 
   const loadProfile = async () => {
     try {
-      const res = await fetch("/api/proxy/profiles/me", { 
+      const res = await fetch("/api/proxy/api/v1/profiles/me", { 
         cache: "no-store",
         credentials: 'include'
       });
@@ -354,40 +354,38 @@ function TalentOnboardingContent() {
 
   async function upsertProfile(payload: any) {
     const headers = { "Content-Type": "application/json" };
-    const body = JSON.stringify(payload);
 
-    // 1) PATCH dene (ideal senaryo)
-    try {
-      const r = await fetch("/api/proxy/profiles/me", { 
-        method: "PATCH", 
-        headers, 
-        body,
-        credentials: 'include'
-      });
-      if (r.ok) return true;
-    } catch {
-      /* geç */
+    // 1) Kullanıcı temel bilgileri varsa önce /users/me PATCH et
+    const userPatch: Record<string, any> = {};
+    for (const k of ["firstName", "lastName", "phone", "profilePhotoUrl"]) {
+      if (payload[k] !== undefined) userPatch[k] = payload[k];
     }
-
-    // 2) PUT tam-replace ise: önce mevcut profili al, derin birleştir, sonra PUT
-    try {
-      const g = await fetch("/api/proxy/profiles/me", { 
-        cache: "no-store",
-        credentials: 'include'
-      });
-      const current = g.ok ? await g.json() : {};
-      const merged = deepMerge(current || {}, payload || {});
-      const cleaned = pickProfileShape(merged);
-      const r2 = await fetch("/api/proxy/profiles/me", {
-        method: "PUT",
+    if (Object.keys(userPatch).length) {
+      const r = await fetch("/api/proxy/api/v1/users/me", {
+        method: "PATCH",
         headers,
-        body: JSON.stringify(cleaned),
-        credentials: 'include'
+        body: JSON.stringify(userPatch),
+        credentials: 'include',
       });
-      return r2.ok;
-    } catch {
-      return false;
+      if (!r.ok) return false;
     }
+
+    // 2) Talent profil alanları varsa profile uçları üzerinden gönder
+    const talentPayload: Record<string, any> = {};
+    for (const k of ["personal", "professional"]) {
+      if (payload[k] !== undefined) talentPayload[k] = payload[k];
+    }
+    if (Object.keys(talentPayload).length) {
+      const r = await fetch('/api/proxy/api/v1/profiles/talent/me', {
+        method: 'PUT',
+        headers,
+        body: JSON.stringify(talentPayload),
+        credentials: 'include',
+      });
+      if (!r.ok) return false;
+    }
+
+    return true;
   }
 
   async function saveToServer(scope?: Scope): Promise<boolean> {
@@ -406,8 +404,7 @@ function TalentOnboardingContent() {
       if (!scope || scope === "account") {
         addIf(payload, "firstName", formData.firstName.trim());
         addIf(payload, "lastName", formData.lastName.trim());
-        const e164 = toE164TR(phoneDigits);
-        if (e164) addIf(payload, "phone", e164);
+        // phone'u şimdilik API göndermiyoruz (DTO'da yok)
         addIf(payload, "profilePhotoUrl", formData.profilePhotoUrl);
       }
 
@@ -416,8 +413,8 @@ function TalentOnboardingContent() {
         addIf(personal, "city", formData.city.trim());
         addIf(personal, "birthDate", formData.dateOfBirth);
         addIf(personal, "gender", normalizeGender(formData.gender));
-        if (formData.height) addIf(personal, "heightCm", Number(formData.height));
-        if (formData.weight) addIf(personal, "weightKg", Number(formData.weight));
+        if (formData.height) addIf(personal, "height", Number(formData.height));
+        if (formData.weight) addIf(personal, "weight", Number(formData.weight));
 
         const parentTen = parentPhoneDigits;
         if (
@@ -453,7 +450,31 @@ function TalentOnboardingContent() {
 
       if (Object.keys(payload).length === 0) return true;
 
-      const ok = await upsertProfile(payload);
+      // Use the new mapper to create properly formatted payload
+      const { mapFormToApi } = await import('@/lib/profile-mapper');
+      const mapperInput = {
+        firstName: payload.firstName,
+        lastName: payload.lastName,
+        city: payload.personal?.city,
+        gender: payload.personal?.gender,
+        birthDate: payload.personal?.birthDate,
+        height: payload.personal?.height,
+        weight: payload.personal?.weight,
+        bio: payload.professional?.bio,
+        experience: payload.professional?.experience,
+        specialties: payload.professional?.specialties,
+        profileImage: payload.profilePhotoUrl,
+        cvUrl: cvUrl,
+      };
+
+      const mappedBody = mapFormToApi(mapperInput);
+      const r = await fetch('/api/proxy/api/v1/profiles/talent/me', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(mappedBody),
+        credentials: 'include',
+      });
+      const ok = r.ok;
       if (!ok) {
         setMsg("Kaydetme hatası");
         return false;
@@ -868,16 +889,12 @@ function TalentOnboardingContent() {
                   }
                   setCvUploading(true);
                   try {
-                    const fd = new FormData();
-                    fd.append("file", f);
-                    const up = await fetch("/api/proxy/upload", { 
-        method: "POST", 
-        body: fd,
-        credentials: 'include'
-      });
-                    if (!up.ok) throw new Error("upload failed");
-                    const data = await up.json();
-                    setCvUrl(data.url ?? null);
+                    // Use presigned helper to ensure correct request format
+                    const mod = await import('@/lib/upload');
+                    const { fileUrl } = await mod.uploadWithPresigned(f, 'cv');
+                    
+                    // API already returns the full public URL
+                    setCvUrl(fileUrl);
                     setMsg("CV yüklendi.");
                   } catch {
                     setMsg("CV yüklenemedi.");

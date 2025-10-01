@@ -33,7 +33,7 @@ export class UploadController {
   @Post('presigned-url')
   @HttpCode(HttpStatus.OK)
   async generatePresignedUrl(@Body() body: GeneratePresignedUrlDto) {
-    return this.uploadService.generatePresignedPost(
+    return await this.uploadService.generatePresignedPost(
       body.fileType,
       body.fileName,
       body.folder

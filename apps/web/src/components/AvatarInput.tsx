@@ -24,16 +24,10 @@ export default function AvatarInput({ value, onChange, label = "Profil Fotoğraf
     setPreview(localUrl);
     setBusy(true);
     try {
-      const fd = new FormData();
-      fd.append("file", f);
-      const res = await fetch("/api/proxy/avatar", { 
-        method: "POST", 
-        body: fd,
-        credentials: 'include'
-      });
-      const json = await res.json();
-      if (!res.ok) throw new Error(json?.error || "upload_failed");
-      onChange(json.url as string);
+      // Use presigned upload helper aligned with /api/v1
+      const mod: any = await import("@/lib/upload");
+      const { fileUrl } = await mod.uploadAvatar(f);
+      onChange(fileUrl as string);
     } catch (err) {
       URL.revokeObjectURL(localUrl);
       setPreview(value ?? null);

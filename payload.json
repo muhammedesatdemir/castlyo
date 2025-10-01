@@ -1,0 +1,18 @@
+﻿{
+  "displayName": "Ayten Demirci",
+  "firstName": "Ayten",
+  "lastName": "Demirci",
+  "city": "Izmir",
+  "country": "TR",
+  "bio": "bilgiler...",
+  "headline": "deneyimler...",
+  "height": 170,
+  "weight": 58,
+  "skills": ["THEATER","DANCE"],
+  "languages": ["TR"],
+  "specialties": [],
+  "profileImage": "http://localhost:9000/castlyo-dev/profiles/xxxxx.png",
+  "birthDate": "2003-02-11",
+  "gender": "FEMALE",
+  "resumeUrl": "http://localhost:9000/castlyo-dev/documents/4b33bc7a-447a-4eef-b220-842c8144d505.pdf"
+}

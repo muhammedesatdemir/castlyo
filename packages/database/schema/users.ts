@@ -54,6 +54,11 @@ export const talentProfiles = pgTable("talent_profiles", {
   // Profile image
   profileImage: text("profile_image"),
   
+  // Personal info
+  birthDate: text("birth_date"), // ISO date string
+  gender: genderEnum("gender"),
+  resumeUrl: text("resume_url"),
+  
   // API'nin beklediği ek alanlar
   specialties: text("specialties"), // JSON string or comma-separated
   experience: text("experience"),

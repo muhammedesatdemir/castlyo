@@ -7,10 +7,12 @@ import {
   IsBoolean, 
   IsDateString,
   IsUrl,
+  IsInt,
   Min, 
   Max, 
   Length 
 } from 'class-validator';
+import { Gender } from '../entities/gender.enum';
 
 export class CreateTalentProfileDto {
   @IsString()
@@ -30,6 +32,11 @@ export class CreateTalentProfileDto {
   @IsString()
   @Length(0, 1000)
   bio?: string;
+
+  @IsOptional()
+  @IsString()
+  @Length(0, 200)
+  headline?: string;
 
   @IsOptional()
   @IsDateString()
@@ -87,6 +94,10 @@ export class CreateTalentProfileDto {
   profileImage?: string;
 
   @IsOptional()
+  @IsString()
+  resumeUrl?: string;
+
+  @IsOptional()
   @IsArray()
   @IsString({ each: true })
   portfolioImages?: string[];
@@ -104,16 +115,6 @@ export class CreateTalentProfileDto {
 export class UpdateTalentProfileDto {
   @IsOptional()
   @IsString()
-  @Length(2, 50)
-  firstName?: string;
-
-  @IsOptional()
-  @IsString()
-  @Length(2, 50)
-  lastName?: string;
-
-  @IsOptional()
-  @IsString()
   @Length(2, 200)
   displayName?: string;
 
@@ -121,18 +122,6 @@ export class UpdateTalentProfileDto {
   @IsString()
   @Length(0, 1000)
   bio?: string;
-
-  @IsOptional()
-  @IsDateString()
-  dateOfBirth?: string;
-
-  @IsOptional()
-  @IsDateString()
-  birthDate?: string;
-
-  @IsOptional()
-  @IsEnum(['MALE', 'FEMALE', 'OTHER'])
-  gender?: 'MALE' | 'FEMALE' | 'OTHER';
 
   @IsOptional()
   @IsString()
@@ -143,29 +132,20 @@ export class UpdateTalentProfileDto {
   country?: string;
 
   @IsOptional()
-  @IsNumber()
-  @Min(120)
-  @Max(250)
+  @IsString()
+  @Length(0, 200)
+  headline?: string;
+
+  // FE'den "height" ve "weight" geliyor; service bunları height_cm/weight_kg'ye yazar
+  @IsOptional()
+  @IsInt()
+  @Min(0)
   height?: number;
 
   @IsOptional()
-  @IsNumber()
-  @Min(30)
-  @Max(200)
+  @IsInt()
+  @Min(0)
   weight?: number;
-
-  @IsOptional()
-  @IsString()
-  eyeColor?: string;
-
-  @IsOptional()
-  @IsString()
-  hairColor?: string;
-
-  @IsOptional()
-  @IsString()
-  @Length(0, 2000)
-  experience?: string;
 
   @IsOptional()
   @IsArray()
@@ -184,7 +164,35 @@ export class UpdateTalentProfileDto {
 
   @IsOptional()
   @IsString()
+  @Length(2, 50)
+  firstName?: string;
+
+  @IsOptional()
+  @IsString()
+  @Length(2, 50)
+  lastName?: string;
+
+  @IsOptional()
+  @IsUrl()
   profileImage?: string;
+
+  // YENİ: DB ile hizaladık
+  @IsOptional()
+  @IsDateString()
+  birthDate?: string; // "2000-02-11" gibi ISO
+
+  @IsOptional()
+  @IsEnum(Gender)
+  gender?: Gender;
+
+  @IsOptional()
+  @IsUrl()
+  resumeUrl?: string;
+
+  @IsOptional()
+  @IsString()
+  @Length(0, 2000)
+  experience?: string; // tekst olarak tutuluyor
 
   @IsOptional()
   @IsArray()

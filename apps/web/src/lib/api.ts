@@ -10,28 +10,27 @@ const join = (...parts: string[]) =>
 
 const isServer = typeof window === 'undefined';
 
-// Use proxy for client-side requests, direct internal URL for server-side
-const BASE_URL = isServer
-  ? process.env.API_INTERNAL_URL ?? process.env.INTERNAL_API_URL ?? 'http://api:3001'
-  : '/api/proxy'; // <-- YENİ: Tarayıcı tarafında proxy'yi kullan
+// API base URL: force proxy usage on the client by default
+// Example env override: NEXT_PUBLIC_API_BASE_URL=/api/proxy/api/v1
+const BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL ?? '/api/proxy/api/v1';
 
-const PREFIX = isServer ? '/api/v1' : ''; // <-- YENİ: Proxy path'i zaten /api/v1 içerecek
+const PREFIX = ''; // No prefix needed, URL already includes /api/v1
 
-// Create axios instance with proper API base URL including prefix
+// Create axios instance with proper API base URL
 export const api = axios.create({
-  baseURL: isServer ? join(BASE_URL, PREFIX) : BASE_URL,
+  baseURL: BASE_URL,
   timeout: 10000,
   withCredentials: true, // Include credentials for CORS
   headers: { "Content-Type": "application/json" },
 });
 
-// DEV: İstem dışı absolute URL'leri engelle
+// Add token to requests
 api.interceptors.request.use((cfg) => {
-  // Her zaman relative path bekliyoruz
-  if (/^https?:\/\//i.test(cfg.url || "")) {
-    // localhost:3001 vb yakala
-    if (cfg.url?.includes("localhost:3001")) {
-      throw new Error("[API] Doğrudan :3001 çağrısı engellendi. /api/proxy kullanın.");
+  // Add authorization token if available
+  if (typeof window !== 'undefined') {
+    const token = localStorage.getItem('accessToken') || sessionStorage.getItem('accessToken');
+    if (token && !cfg.headers.Authorization) {
+      cfg.headers.Authorization = `Bearer ${token}`;
     }
   }
   return cfg;
@@ -54,29 +53,18 @@ api.interceptors.response.use(
 
 // API functions
 export const profileApi = {
-  // Get my profile
+  // Users
+  getMe: () => api.get('/users/me'),
+  updateMe: (data: any) => api.patch('/users/me', data),
+
+  // Talents
+  getMyTalent: () => api.get('/profiles/talent/me'),
+  createTalent: (data: any) => api.post('/profiles/talent', data),
+  updateTalent: (id: string, data: any) => api.patch(`/profiles/talent/${id}`, data),
+  
+  // Profile endpoints
   getMyProfile: () => api.get('/profiles/me'),
-  
-  // Create talent profile
-  createTalentProfile: (data: any) => api.post('/profiles/talent', data),
-  
-  // Create agency profile
-  createAgencyProfile: (data: any) => api.post('/profiles/agency', data),
-  
-  // Get talent profile by ID
-  getTalentProfile: (id: string) => api.get(`/profiles/talent/${id}`),
-  
-  // Get agency profile by ID
-  getAgencyProfile: (id: string) => api.get(`/profiles/agency/${id}`),
-  
-  // Update talent profile
-  updateTalentProfile: (id: string, data: any) => api.put(`/profiles/talent/${id}`, data),
-  
-  // Update agency profile
-  updateAgencyProfile: (id: string, data: any) => api.put(`/profiles/agency/${id}`, data),
-  
-  // Delete profile
-  deleteProfile: (id: string) => api.delete(`/profiles/${id}`),
+  updateMyTalentProfile: (data: any) => api.put('/profiles/talent/me', data),
 }
 
 export const uploadApi = {
@@ -131,32 +119,58 @@ export const jobsApi = {
   // Get my applications (talent view)
   getMyApplications: (params?: any) => api.get('/jobs/my/applications', { params }),
 }
+// New lightweight fetch wrapper aligned with direct API
+export const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL ?? '/api/proxy/api/v1';
 
-// Helper function for simple API calls through proxy
+function getToken() {
+  if (typeof window === 'undefined') return null;
+  try {
+    return (
+      window.localStorage.getItem('accessToken') ||
+      window.sessionStorage.getItem('accessToken') ||
+      null
+    );
+  } catch {
+    return null;
+  }
+}
+
 export async function apiFetch<T>(
   path: string,
-  init: RequestInit = {}
+  opts: RequestInit & { json?: any } = {}
 ): Promise<T> {
-  const url = path.startsWith('/api/proxy')
-    ? path
-    : `/api/proxy${path.startsWith('/') ? '' : '/'}${path}`;
-
-  const headers = new Headers(init.headers);
-  if (!headers.has('Accept')) headers.set('Accept', 'application/json');
-  if (init.body && !headers.has('Content-Type')) headers.set('Content-Type', 'application/json');
-
-  const res = await fetch(url, { ...init, headers });
-
-  const ct = res.headers.get('content-type') || '';
-  if (!ct.includes('application/json')) {
-    const text = await res.text(); // burada HTML'i asla UI'da göstermeyelim
-    throw new Error(`Beklenmeyen yanıt (JSON değil). Status ${res.status}.`);
+  const headers: Record<string, string> = {
+    ...(opts.headers as Record<string, string>),
+  };
+  if (opts.json !== undefined && headers['Content-Type'] == null) {
+    headers['Content-Type'] = 'application/json';
   }
 
-  const data = await res.json();
+  const token = getToken();
+  if (token && !headers['Authorization']) headers['Authorization'] = `Bearer ${token}`;
+
+  const res = await fetch(`${API_BASE}${path}`, {
+    ...opts,
+    headers,
+    body: opts.json !== undefined ? JSON.stringify(opts.json) : (opts.body as BodyInit | null | undefined),
+    credentials: opts.credentials ?? 'include',
+  });
+
   if (!res.ok) {
-    const msg = (data?.message as string) || 'İstek başarısız';
-    throw new Error(msg);
+    const text = await res.text().catch(() => '');
+    const err: any = new Error(`HTTP ${res.status}: ${text || res.statusText}`);
+    err.status = res.status;
+    err.body = text;
+    throw err;
   }
-  return data as T;
+  if (res.status === 204) return undefined as unknown as T;
+  const ct = res.headers.get('content-type') || '';
+  if (!ct.includes('application/json')) return undefined as unknown as T;
+  return (await res.json()) as T;
 }
+
+// Profile API using fetch
+export const profileApiFetch = {
+  updateMyTalentProfile: (data: any) => apiFetch('/profiles/talent/me', { method: 'PUT', json: data }),
+  getMyProfile: () => apiFetch('/profiles/me'),
+};

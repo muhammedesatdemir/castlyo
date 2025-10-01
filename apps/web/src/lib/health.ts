@@ -7,7 +7,7 @@ export async function checkApiHealth() {
   // Client tarafında daima proxy kullan
   const isBrowser = typeof window !== "undefined";
   const url = isBrowser
-    ? "/api/proxy/health"  // Proxy will automatically add /api/v1 prefix
+    ? "/api/proxy/api/v1/health"
     : `${process.env.API_INTERNAL_URL || process.env.INTERNAL_API_URL || 'http://api:3001'}/api/v1/health`; // SSR'da direkt internal
 
   try {
@@ -32,5 +32,5 @@ export async function checkApiHealth() {
 
 export function getApiDisplayUrl() {
   // UI'de gösterilecek URL - proxy'yi göster
-  return "/api/proxy/health";
+  return "/api/proxy/api/v1/health";
 }
