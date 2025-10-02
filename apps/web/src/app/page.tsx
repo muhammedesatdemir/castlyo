@@ -212,7 +212,9 @@ export default function Home() {
         </div>
       </section>
       
-      <ExploreGrid />
+      <div id="discover">
+        <ExploreGrid />
+      </div>
       
       <section id="register" data-hide-sticky className="py-20 bg-black text-white">
         <div className="mx-auto max-w-4xl px-6 lg:px-8">

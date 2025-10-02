@@ -659,7 +659,7 @@ function TalentOnboardingContent() {
     const okPub = await publishProfile();
     if (!okPub) return;
 
-    router.push(DISCOVER_ROUTE);
+    router.push('/?skill=tum#discover');
   };
 
   /* -------------------------------------------------------------- */
