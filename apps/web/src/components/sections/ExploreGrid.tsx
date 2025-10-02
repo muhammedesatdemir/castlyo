@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { motion } from 'framer-motion'
 import Image from 'next/image'
 import { useRouter, useSearchParams } from 'next/navigation'
@@ -9,12 +9,47 @@ import { ALL_OPTION, CATEGORIES, normalizeSkill, type SkillSlug } from '@/consta
 import { talentsApi } from '@/lib/api'
 
 
+// Basit tip
+type TalentCard = {
+  id: string;
+  name: string;
+  city?: string | null;
+  avatar?: string | null;
+  specialties: string[];
+  isMe?: boolean;
+  firstName?: string;
+  lastName?: string;
+  profilePicture?: string;
+  image?: string;
+  role?: string;
+  skills?: string[];
+  isNew?: boolean;
+  createdAt?: string;
+};
+
+// Specialty mapping
+const SPECIALTY_MAP: Record<string, string> = {
+  THEATER: "Tiyatro",
+  DANCE: "Dans", 
+  MUSIC: "Müzik",
+  VOICE_OVER: "Dublaj",
+  ACTING: "Oyunculuk",
+  MODELING: "Modellik"
+};
+
+const trSpecialties = (arr?: string[]) =>
+  (arr ?? []).map((s) => SPECIALTY_MAP[s] ?? s);
+
+// fallback avatar
+const FALLBACK_AVATAR = "/avatars/default-avatar.png";
+
 export default function ExploreGrid() {
   const router = useRouter()
   const params = useSearchParams()
   const [talents, setTalents] = useState<any[]>([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [meCard, setMeCard] = useState<TalentCard | null>(null)
   
   // URL'den mevcut skill parametresini oku ve normalize et
   const currentSkill = (normalizeSkill(params.get('skill') ?? '') ?? 'all') as SkillSlug | 'all'
@@ -70,6 +105,38 @@ export default function ExploreGrid() {
       setLoading(false)
     }
   }
+
+  // Fetch user's own profile card
+  useEffect(() => {
+    let alive = true;
+    (async () => {
+      try {
+        const r = await fetch("/api/proxy/api/v1/profiles/talent/me");
+        if (!r.ok) return;
+        const p = await r.json();
+        if (!alive) return;
+
+        const card: TalentCard = {
+          id: p.id,
+          name: [p.firstName, p.lastName].filter(Boolean).join(" "),
+          city: p.city ?? undefined,
+          avatar: p.profileImage || FALLBACK_AVATAR,
+          specialties: trSpecialties(p.specialties),
+          isMe: true,
+          firstName: p.firstName,
+          lastName: p.lastName,
+          profilePicture: p.profileImage,
+          role: "Yetenek"
+        };
+        setMeCard(card);
+      } catch (_) {
+        // sessizce geç
+      }
+    })();
+    return () => {
+      alive = false;
+    };
+  }, []);
 
   // URL parametresi değiştiğinde yeniden fetch et
   useEffect(() => {
@@ -170,8 +237,25 @@ export default function ExploreGrid() {
     }
   ]
 
-  // API'den gelen data varsa onu kullan, yoksa boş array (çünkü fetch'te filtreleme yapılıyor)
-  const displayTalents = talents.length > 0 ? talents : []
+  // meCard varsa başa ekle
+  const displayTalents: TalentCard[] = useMemo(() => {
+    const base = talents.length > 0 ? talents.map((m) => ({
+      id: m.id,
+      name: m.firstName ? `${m.firstName} ${m.lastName || ''}` : m.name,
+      city: m.city,
+      avatar: m.profilePicture || m.image,
+      specialties: m.skills || m.specialties || [],
+      firstName: m.firstName,
+      lastName: m.lastName,
+      profilePicture: m.profilePicture,
+      image: m.image,
+      role: m.role,
+      skills: m.skills,
+      isNew: m.isNew,
+      createdAt: m.createdAt
+    })) : [];
+    return meCard ? [meCard, ...base] : base;
+  }, [talents, meCard]);
 
   // Chip bileşeni
   const Chip = ({ slug, label }: { slug: SkillSlug | 'all'; label: string }) => {
@@ -236,7 +320,7 @@ export default function ExploreGrid() {
         <div className="mt-10 grid gap-6 md:gap-8 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
           {displayTalents.map((talent, i) => (
             <motion.article
-              key={`${talent.id || i}-${currentSkill}`}
+              key={`${talent.isMe ? "me-" : ""}${talent.id || i}-${currentSkill}`}
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: i * 0.1 }}
@@ -246,14 +330,14 @@ export default function ExploreGrid() {
             >
               <div className="relative aspect-[4/5]">
                 <Image 
-                  src={talent.profilePicture || talent.image || "/mock/talents/oyuncu1.jpg"} 
-                  alt={talent.firstName ? `${talent.firstName} ${talent.lastName || ''}` : talent.name || 'Talent'}
+                  src={talent.avatar || talent.profilePicture || talent.image || FALLBACK_AVATAR} 
+                  alt={talent.name || 'Talent'}
                   fill
                   className="object-cover"
                   unoptimized
                 />
                 {/* "Yeni" rozeti varsa */}
-                {(talent.isNew || talent.createdAt) && (
+                {(talent.isNew || talent.createdAt) && !talent.isMe && (
                   <span className={montserratDisplay.className + " absolute top-3 right-3 rounded-full bg-[#C0713A] text-white/95 text-[11px] font-semibold px-2 py-1 shadow-sm"}>
                     Yeni
                   </span>
@@ -262,9 +346,16 @@ export default function ExploreGrid() {
               
               <div className="p-4">
                 {/* İsim */}
-                <h3 className={montserratDisplay.className + " text-white text-lg md:text-xl font-bold tracking-tight"}>
-                  {talent.firstName ? `${talent.firstName} ${talent.lastName || ''}` : talent.name}
-                </h3>
+                <div className="flex items-center gap-2">
+                  <h3 className={montserratDisplay.className + " text-white text-lg md:text-xl font-bold tracking-tight"}>
+                    {talent.name}
+                  </h3>
+                  {talent.isMe && (
+                    <span className="text-xs px-2 py-0.5 rounded-full bg-emerald-600/20 text-emerald-300 border border-emerald-600/40">
+                      Ben
+                    </span>
+                  )}
+                </div>
 
                 {/* Rol • Şehir */}
                 <p className={montserratDisplay.className + " mt-1.5 text-white/80 text-[13px] md:text-sm font-medium"}>

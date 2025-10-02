@@ -8,6 +8,7 @@ import { ArrowLeft, ArrowRight, Check } from "lucide-react";
 import { AuthGuard } from "@/components/auth/AuthGuard";
 import RoleRequired from "@/components/auth/RoleRequired";
 import AvatarInput from "@/components/AvatarInput";
+import { DISCOVER_ROUTE } from "@/lib/routes";
 
 /* ------------------------------------------------------------------ */
 /* Tema / sabitler                                                     */
@@ -16,8 +17,6 @@ import AvatarInput from "@/components/AvatarInput";
 const BRAND_PRIMARY = "#962901";
 const BRAND_CREAM = "#F6E6C3";
 
-/* Adres: anasayfa içindeki Discover bölümü */
-const DISCOVER_HASH = "/#discover";
 
 const STEPS = [
   { id: 1, title: "Gizlilik Güvencesi", description: "Verileriniz nasıl korunuyor?" },
@@ -660,7 +659,7 @@ function TalentOnboardingContent() {
     const okPub = await publishProfile();
     if (!okPub) return;
 
-    router.push(DISCOVER_HASH);
+    router.push(DISCOVER_ROUTE);
   };
 
   /* -------------------------------------------------------------- */
@@ -981,11 +980,16 @@ function TalentOnboardingContent() {
         </div>
         <h3 className="text-xl font-semibold">Harika! Başvurun hazır.</h3>
         <p className="opacity-80">
-          “Yetenekleri ve Fırsatları Keşfet” bölümüne giderek size uygun projelere göz atabilirsiniz.
+          "Yetenekleri ve Fırsatları Keşfet" bölümüne giderek size uygun projelere göz atabilirsiniz.
         </p>
         <div className="pt-2">
-          <Button className="text-white" style={{ backgroundColor: BRAND_PRIMARY }} onClick={handleSubmit}>
-            Keşfet’e Git
+          <Button 
+            className="text-white" 
+            style={{ backgroundColor: BRAND_PRIMARY }} 
+            onClick={handleSubmit}
+            disabled={saving}
+          >
+            {saving ? "Yönlendiriliyor..." : "Bitir ve Keşfet'e Git"}
           </Button>
         </div>
       </div>
@@ -1096,17 +1100,6 @@ function TalentOnboardingContent() {
               </div>
             )}
 
-            {currentStep === 5 && (
-              <div className="mt-8">
-                <Button
-                  onClick={handleSubmit}
-                  className="text-white"
-                  style={{ backgroundColor: BRAND_PRIMARY }}
-                >
-                  Bitir
-                </Button>
-              </div>
-            )}
 
             {msg && (
               <div className="mt-3 text-sm" style={{ color: BRAND_CREAM }}>
