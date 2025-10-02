@@ -625,6 +625,40 @@ export declare const talentProfiles: import("drizzle-orm/pg-core").PgTableWithCo
             identity: undefined;
             generated: undefined;
         }, {}, {}>;
+        isPublic: import("drizzle-orm/pg-core").PgColumn<{
+            name: "is_public";
+            tableName: "talent_profiles";
+            dataType: "boolean";
+            columnType: "PgBoolean";
+            data: boolean;
+            driverParam: boolean;
+            notNull: true;
+            hasDefault: true;
+            isPrimaryKey: false;
+            isAutoincrement: false;
+            hasRuntimeDefault: false;
+            enumValues: undefined;
+            baseColumn: never;
+            identity: undefined;
+            generated: undefined;
+        }, {}, {}>;
+        publishedAt: import("drizzle-orm/pg-core").PgColumn<{
+            name: "published_at";
+            tableName: "talent_profiles";
+            dataType: "date";
+            columnType: "PgTimestamp";
+            data: Date;
+            driverParam: string;
+            notNull: false;
+            hasDefault: false;
+            isPrimaryKey: false;
+            isAutoincrement: false;
+            hasRuntimeDefault: false;
+            enumValues: undefined;
+            baseColumn: never;
+            identity: undefined;
+            generated: undefined;
+        }, {}, {}>;
         createdAt: import("drizzle-orm/pg-core").PgColumn<{
             name: "created_at";
             tableName: "talent_profiles";

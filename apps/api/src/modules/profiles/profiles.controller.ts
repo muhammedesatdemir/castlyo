@@ -141,13 +141,26 @@ export class ProfilesController {
   async getTalents(
     @Query('page') page: string = '1',
     @Query('limit') limit: string = '12',
-    @Query('skills') skills?: string
+    @Query('offset') offset?: string,
+    @Query('skills') skills?: string,
+    @Query('specialties') specialties?: string,
+    @Query('city') city?: string,
+    @Query('order') order?: string
   ) {
-    return this.profilesService.getPublicTalents(
-      parseInt(page),
+    // Support both page-based and offset-based pagination
+    const pageNum = offset ? Math.floor(parseInt(offset) / parseInt(limit)) + 1 : parseInt(page);
+    
+    // Use specialties or skills parameter
+    const skillsArray = specialties ? specialties.split(',') : (skills ? skills.split(',') : undefined);
+    
+    const result = await this.profilesService.getPublicTalents(
+      pageNum,
       parseInt(limit),
-      skills ? skills.split(',') : undefined
+      skillsArray
     );
+    
+    // Return in array format for frontend compatibility
+    return result.hits;
   }
 
   @Get('agency/:id')

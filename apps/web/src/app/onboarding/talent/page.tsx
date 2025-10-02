@@ -237,6 +237,14 @@ function TalentOnboardingContent() {
       if (profileRes.ok) {
         const profileRaw = await profileRes.json();
         profileData = profileRaw && typeof profileRaw === 'object' && !Array.isArray(profileRaw) ? profileRaw : {};
+      } else if (profileRes.status === 404) {
+        // Profil henüz oluşturulmamış - bu normal, onboarding sırasında beklenen durum
+        console.debug('[TalentOnboarding] Profile not found (404) - user has no profile yet, will create during onboarding');
+        profileData = {};
+      } else if (!profileRes.ok) {
+        // Gerçek hata durumu
+        console.error('[TalentOnboarding] Profile fetch error:', profileRes.status, profileRes.statusText);
+        profileData = {};
       }
 
       // Merge user and profile data with proper priority

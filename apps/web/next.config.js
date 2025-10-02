@@ -1,7 +1,11 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   images: {
-    domains: ['localhost', 'castlyo.com'],
+    remotePatterns: [
+      { protocol: 'http', hostname: 'localhost', port: '9000', pathname: '/**' },
+      { protocol: 'http', hostname: '127.0.0.1', port: '9000', pathname: '/**' },
+      { protocol: 'https', hostname: 'castlyo.com', pathname: '/**' },
+    ],
   },
   async redirects() {
     return [

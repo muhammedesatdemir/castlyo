@@ -136,10 +136,19 @@ export default function ProfilePage() {
 
       const user = uRes.ok ? await uRes.json() : {};
       let profileRaw: any = {};
+      
+      // 404'u "profil yok" olarak ele al - hata değil
       if (pRes.ok) {
-        // API returns {} when not found; normalize
         const p = await pRes.json();
         profileRaw = p && typeof p === 'object' && !Array.isArray(p) ? p : {};
+      } else if (pRes.status === 404) {
+        // Profil henüz oluşturulmamış - bu normal
+        console.debug('[ProfilePage] Profile not found (404) - user has no profile yet');
+        profileRaw = {};
+      } else if (!pRes.ok) {
+        // Gerçek hata durumu
+        console.error('[ProfilePage] Profile fetch error:', pRes.status, pRes.statusText);
+        profileRaw = {};
       }
 
       const hasProfile = Object.keys(profileRaw).length > 0;
@@ -149,6 +158,7 @@ export default function ProfilePage() {
         hasProfile,
         userKeys: Object.keys(user || {}),
         profileKeys: Object.keys(profileRaw || {}),
+        profileStatus: pRes.status,
       });
 
       // Map API → UI (safe defaults)
@@ -176,10 +186,19 @@ export default function ProfilePage() {
 
         const user = uRes.ok ? await uRes.json() : {};
         let profileRaw: any = {};
+        
+        // 404'u "profil yok" olarak ele al - hata değil
         if (pRes.ok) {
-          // API returns {} when not found; normalize
           const p = await pRes.json();
           profileRaw = p && typeof p === 'object' && !Array.isArray(p) ? p : {};
+        } else if (pRes.status === 404) {
+          // Profil henüz oluşturulmamış - bu normal
+          console.debug('[ProfilePage] Profile not found (404) - user has no profile yet');
+          profileRaw = {};
+        } else if (!pRes.ok) {
+          // Gerçek hata durumu
+          console.error('[ProfilePage] Profile fetch error:', pRes.status, pRes.statusText);
+          profileRaw = {};
         }
 
         const hasProfile = Object.keys(profileRaw).length > 0;
@@ -189,6 +208,7 @@ export default function ProfilePage() {
           hasProfile,
           userKeys: Object.keys(user || {}),
           profileKeys: Object.keys(profileRaw || {}),
+          profileStatus: pRes.status,
         });
 
         // Merge user and profile data with proper priority

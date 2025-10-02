@@ -65,6 +65,10 @@ export const talentProfiles = pgTable("talent_profiles", {
   languages: text("languages").array(), // PostgreSQL text[] array
   experience: text("experience"),
 
+  // Publish status for discovery
+  isPublic: boolean("is_public").notNull().default(false),
+  publishedAt: timestamp("published_at"),
+
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });

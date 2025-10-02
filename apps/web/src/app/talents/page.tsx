@@ -5,18 +5,7 @@ import useSWRInfinite from 'swr/infinite';
 import { useMemo } from 'react';
 import Image from 'next/image';
 import { montserratDisplay } from '@/lib/fonts';
-
-type TalentCard = {
-  id: string;
-  firstName: string;
-  lastName: string;
-  city: string | null;
-  profileImage: string | null;
-  specialties: string[];
-  createdAt?: string;
-  updatedAt?: string;
-  isMe?: boolean;
-};
+import { toCard, normalizeList, type TalentCard } from '@/utils/talent-mapper';
 
 // Specialty mapping
 const SPECIALTY_MAP: Record<string, string> = {
@@ -33,11 +22,11 @@ const trSpecialties = (arr?: string[]) =>
 
 const PAGE_SIZE = 12;
 
-// Feature flag: Backend endpoint hazır olana kadar liste isteği yapma
-const ENABLE_INDEX = process.env.NEXT_PUBLIC_TALENTS_INDEX_API === 'true';
+// Talents index artık her zaman aktif
+const ENABLE_INDEX = true;
 
 const getKey = (index: number) =>
-  ENABLE_INDEX ? `/api/proxy/api/v1/talents?limit=${PAGE_SIZE}&offset=${index * PAGE_SIZE}&order=-updated_at` : null;
+  ENABLE_INDEX ? `/api/proxy/api/v1/profiles/talents?limit=${PAGE_SIZE}&offset=${index * PAGE_SIZE}&order=-updated_at` : null;
 
 function sortByNewest(a: TalentCard, b: TalentCard) {
   const ak = new Date(a.updatedAt ?? a.createdAt ?? 0).getTime();
@@ -52,10 +41,20 @@ function dedupeById(list: TalentCard[]) {
 }
 
 export default function TalentsPage() {
-  const { data, size, setSize, isValidating, error } = useSWRInfinite<TalentCard[] | null>(getKey, fetcher, {
+  const { data: rawData, size, setSize, isValidating, error } = useSWRInfinite<any>(getKey, fetcher, {
     shouldRetryOnError: false,
     revalidateOnFocus: false
   });
+  
+  // Raw data'yı mapper ile işle
+  const data = useMemo(() => {
+    if (!rawData) return [];
+    return rawData.map((page: any) => {
+      if (!page) return null;
+      return normalizeList(page).map(toCard).filter(c => c.name || c.imageUrl);
+    });
+  }, [rawData]);
+  
   const flat = useMemo(() => dedupeById((data ?? []).filter((page): page is TalentCard[] => page !== null).flat()).sort(sortByNewest), [data]);
   const isEmpty = (data?.[0]?.length ?? 0) === 0;
   const isReachingEnd =

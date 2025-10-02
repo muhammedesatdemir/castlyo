@@ -135,6 +135,11 @@ export async function apiFetch<T>(
     credentials: opts.credentials ?? 'include',
   });
 
+  // 404'u "profil yok" olarak ele al - hata fırlatma
+  if (res.status === 404) {
+    return null as T;
+  }
+  
   if (!res.ok) {
     const text = await res.text().catch(() => '');
     const err: any = new Error(`HTTP ${res.status}: ${text || res.statusText}`);

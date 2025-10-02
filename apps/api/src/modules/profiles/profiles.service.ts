@@ -311,6 +311,8 @@ export class ProfilesService {
         country:       src.country        ?? profileData.country,
         skills:        src.skills         ?? profileData.skills,
         languages:     src.languages      ?? profileData.languages,
+        isPublic:      src.is_public      ?? profileData.isPublic,
+        publishedAt:   (src.is_public ?? profileData.isPublic) ? new Date() : undefined,
         updatedAt:     new Date(),
       });
 
@@ -340,6 +342,8 @@ export class ProfilesService {
       if (mappedData.specialties !== undefined) updateSet.specialties = sql`EXCLUDED.specialties`;
       if (mappedData.skills !== undefined) updateSet.skills = sql`EXCLUDED.skills`;
       if (mappedData.languages !== undefined) updateSet.languages = sql`EXCLUDED.languages`;
+      if (mappedData.isPublic !== undefined) updateSet.isPublic = sql`EXCLUDED.is_public`;
+      if (mappedData.publishedAt !== undefined) updateSet.publishedAt = sql`EXCLUDED.published_at`;
 
       const result = await this.database
         .insert(talentProfiles)
@@ -593,6 +597,7 @@ export class ProfilesService {
       lastName: talentProfiles.lastName,
       displayName: talentProfiles.displayName,
       bio: talentProfiles.bio,
+      headline: talentProfiles.headline,
       city: talentProfiles.city,
       country: talentProfiles.country,
       heightCm: talentProfiles.heightCm,
@@ -600,30 +605,46 @@ export class ProfilesService {
       specialties: talentProfiles.specialties,
       experience: talentProfiles.experience,
       profileImage: talentProfiles.profileImage,
+      publishedAt: talentProfiles.publishedAt,
       createdAt: talentProfiles.createdAt,
       updatedAt: talentProfiles.updatedAt,
     })
     .from(talentProfiles)
+    // .where(eq(talentProfiles.isPublic, true)) // Only published profiles - geçici olarak kapatıldı
+    .orderBy(sql`${talentProfiles.publishedAt} DESC NULLS LAST, ${talentProfiles.updatedAt} DESC`) // Recent published first
     .limit(limit)
     .offset(offset);
 
     // Add skills filter if provided
     if (skills && skills.length > 0) {
-      // Note: This is a simplified filter. For complex filtering, consider using a proper search engine
-      // For now, we'll just return all profiles since isPublic column doesn't exist
-      // TODO: Implement proper skills filtering when needed
+      // Filter by specialties array overlap
+      query = query.where(
+        sql`${talentProfiles.specialties} && ${skills}` // PostgreSQL array overlap operator
+      );
     }
 
     const talents = await query;
-    const totalCount = await this.database.select({ count: talentProfiles.id })
+    
+    // Count total published profiles (with same filters)
+    let countQuery = this.database.select({ count: sql`count(*)` })
       .from(talentProfiles);
+      // .where(eq(talentProfiles.isPublic, true)); // geçici olarak kapatıldı
+    
+    if (skills && skills.length > 0) {
+      countQuery = countQuery.where(
+        sql`${talentProfiles.specialties} && ${skills}`
+      );
+    }
+    
+    const totalResult = await countQuery;
+    const totalHits = Number(totalResult[0]?.count || 0);
 
     return {
       hits: talents,
-      totalHits: totalCount.length,
+      totalHits,
       page,
       limit,
-      totalPages: Math.ceil(totalCount.length / limit),
+      totalPages: Math.ceil(totalHits / limit),
     };
   }
 }

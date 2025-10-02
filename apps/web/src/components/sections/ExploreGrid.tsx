@@ -8,20 +8,21 @@ import Image from 'next/image';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { montserratDisplay } from '@/lib/fonts';
 import { ALL_OPTION, CATEGORIES, normalizeSkill, type SkillSlug } from '@/constants/categories';
+import { normalizeList, toCard } from '@/utils/talent-mapper';
+import React from 'react';
 
-type TalentCard = {
-  id: string;
-  firstName: string;
-  lastName: string;
-  city: string | null;
-  profileImage: string | null;
-  specialties: string[];     // backend enumlar: THEATER, DANCE, MUSIC, VOICE_OVER...
-  createdAt?: string;
-  updatedAt?: string;
-  isMe?: boolean;
+// URL'deki skill paramı TR -> kod eşleşmesi
+const SKILL_CODE_BY_SLUG: Record<string, string[]> = {
+  tum: [], // hepsi
+  tiyatro: ['THEATRE', 'ACTING'],   // tiyatroda oynayanlar da görülsün istiyorsan ACTING'i ekle
+  oyunculuk: ['ACTING'],
+  modellik: ['MODELING'],
+  dans: ['DANCE'],
+  dublaj: ['VOICE_OVER'],
+  muzik: ['MUSIC'],
 };
 
-// Specialty mapping
+// Specialty mapping for display
 const SPECIALTY_MAP: Record<string, string> = {
   THEATER: "Tiyatro",
   DANCE: "Dans", 
@@ -88,66 +89,96 @@ export default function ExploreGrid() {
   const router = useRouter();
   const params = useSearchParams();
   
-  // Feature flag: Backend endpoint hazır olana kadar liste isteği yapma
-  const ENABLE_INDEX = process.env.NEXT_PUBLIC_TALENTS_INDEX_API === 'true';
-  const LIST_URL = '/api/proxy/api/v1/talents?limit=12&order=-updated_at';
+  // Discover artık her zaman aktif - tüm yayınlanmış profilleri göster
+  const ENABLE_INDEX = true; // Her zaman aktif
+  const LIST_URL = '/api/proxy/api/v1/profiles/talents?limit=12&order=-updated_at';
   
-  // ❶ Tüm yetenekleri çekmeye çalış (flag açıksa)
-  const { data: allTalents, error } = useSWR<TalentCard[] | null>(
-    ENABLE_INDEX ? LIST_URL : null, // FLAG: null => hiç istek atılmaz
+  // ❶ Tüm yayınlanmış yetenekleri çek
+  const { data: rawTalents, error } = useSWR<any>(
+    LIST_URL,
     fetcher,
     { shouldRetryOnError: false, revalidateOnFocus: false }
   );
 
-  // ❂ Me (kendim) fallback — backend list endpoint hazır değilse en azından kendi kartımı göstereyim
-  const { data: me } = useSWR<TalentCard>(
+
+  // API response'u normalize et ve kart formatına çevir
+  const slug = (params.get('skill') || 'tum')
+    .toString()
+    .toLocaleLowerCase('tr')
+    .replace(/\s+/g, '-');
+  
+  const serverList = normalizeList(rawTalents);
+  const cards = serverList.map(toCard);
+
+  // ✅ TEK filtre kaynağı: normalize edilmiş uzmanlık KODLARI
+  const filteredByCode = React.useMemo(() => {
+    const want = SKILL_CODE_BY_SLUG[slug] || [];
+    if (!want.length) return cards;
+    return cards.filter(c => c.specialtyCodes?.some(code => want.includes(code)));
+  }, [cards, slug]);
+
+  // Boş kartları ayıkla (görseli veya adı olanlar)
+  const allTalents: TalentCard[] = filteredByCode.filter(c => c.name || c.imageUrl);
+
+  // ❂ Me (kendim) - sadece kendi kartımı işaretlemek için
+  const { data: rawMe } = useSWR<any>(
     '/api/proxy/api/v1/profiles/talent/me',
-    fetcher
+    fetcher,
+    { 
+      shouldRetryOnError: (err) => err?.status !== 404, // 404'te retry yapma
+      revalidateOnFocus: false 
+    }
   );
 
-  // URL'den mevcut skill parametresini oku ve normalize et
-  const currentSkill = (normalizeSkill(params.get('skill') ?? '') ?? 'all') as SkillSlug | 'all';
+  // Me verisini de mapper ile işle
+  const me: TalentCard | null = rawMe ? toCard(rawMe) : null;
 
-  const setSkill = (slug: SkillSlug | 'all') => {
+  // URL'den mevcut skill parametresini oku
+  const currentSkill = slug;
+
+  const setSkill = (newSlug: string) => {
     const sp = new URLSearchParams(params.toString());
-    if (slug === 'all') {
+    if (newSlug === 'tum') {
       sp.delete('skill');
     } else {
-      sp.set('skill', slug);
+      sp.set('skill', newSlug);
     }
     router.push(`/?${sp.toString()}#discover`, { scroll: false });
   };
 
-  // ❸ Kaynakları birleştir (me + server), duplicate'leri kaldır, en yeni üste
-  const serverCards = ENABLE_INDEX && Array.isArray(allTalents) ? allTalents : [];
-  let merged: TalentCard[] = [];
-  
+  // Kendi kartımı işaretle
+  let merged: TalentCard[] = allTalents;
   if (me && me.id) {
-    const meWithFlag = { ...me, isMe: true };
-    merged = dedupeById([meWithFlag, ...serverCards]);
-  } else {
-    merged = serverCards;
+    merged = allTalents.map(card => 
+      card.id === me.id ? { ...card, isMe: true } : card
+    );
   }
-  merged = merged.sort(sortByNewest);
 
-  // Apply filtering
-  const filtered = currentSkill === 'all' 
-    ? merged 
-    : merged.filter(card => 
-        mapSpecialtiesToSlugs(card.specialties || []).includes(currentSkill)
-      );
+  // ❹ Ekrandaki 12'yi sınırla  
+  const limited = merged.slice(0, 12);
 
-  // ❹ Ekrandaki 12'yi sınırla
-  const limited = filtered.slice(0, 12);
-
-  const isLoading = !error && !me && (ENABLE_INDEX ? !allTalents : false);
+  const isLoading = !error && !rawTalents;
   
-  // "Tümünü Gör" butonu sadece index açıksa ve 12+ kayıt varsa
-  const total = ENABLE_INDEX ? filtered.length : (me ? 1 : 0);
-  const hasMore = ENABLE_INDEX && total > 12;
+  // "Tümünü Gör" butonu 12+ kayıt varsa
+  const total = merged.length;
+  const hasMore = total > 12;
+
+  // Helper function to get chip label
+  const chipLabel = (slug: string) => {
+    const labels: Record<string, string> = {
+      tum: 'Tümü',
+      tiyatro: 'Tiyatro',
+      oyunculuk: 'Oyuncu',
+      modellik: 'Model',
+      dans: 'Dansçı',
+      dublaj: 'Dublaj Sanatçısı',
+      muzik: 'Müzisyen',
+    };
+    return labels[slug] || 'Seçim';
+  };
 
   // Chip bileşeni
-  const Chip = ({ slug, label }: { slug: SkillSlug | 'all'; label: string }) => {
+  const Chip = ({ slug, label }: { slug: string; label: string }) => {
     const selected = currentSkill === slug;
     return (
         <button
@@ -179,7 +210,7 @@ export default function ExploreGrid() {
 
           {/* Filtre pill'leri */}
           <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
-            <Chip slug={'all'} label={ALL_OPTION.label} />
+            <Chip slug={'tum'} label={ALL_OPTION.label} />
             {CATEGORIES.map(category => (
               <Chip key={category.slug} slug={category.slug} label={category.filterLabel} />
             ))}
@@ -210,14 +241,17 @@ export default function ExploreGrid() {
 
           {/* Filtre pill'leri */}
           <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
-            <Chip slug={'all'} label={ALL_OPTION.label} />
+            <Chip slug={'tum'} label={ALL_OPTION.label} />
             {CATEGORIES.map(category => (
               <Chip key={category.slug} slug={category.slug} label={category.filterLabel} />
             ))}
           </div>
 
           <div className="mt-10 rounded-xl border border-neutral-800 p-6 text-neutral-300 text-center">
-            Henüz keşfedilecek bir profil yok.
+            {currentSkill === 'tum' 
+              ? "Henüz yayınlanmış profil yok. İlk sen ol!" 
+              : `${chipLabel(currentSkill)} alanında henüz yayınlanmış profil yok.`
+            }
           </div>
         </div>
       </section>
@@ -265,8 +299,8 @@ export default function ExploreGrid() {
               >
                 <div className="relative aspect-[4/5]">
                   <Image 
-                    src={t.profileImage ?? '/images/placeholder-profile.png'} 
-                    alt={`${t.firstName} ${t.lastName}`}
+                    src={t.imageUrl ?? t.profileImage ?? '/images/avatar-placeholder.png'} 
+                    alt={t.name}
                     fill
                     className="object-cover"
                     unoptimized
@@ -277,7 +311,7 @@ export default function ExploreGrid() {
                   {/* İsim */}
                   <div className="flex items-center gap-2">
                     <h3 className={montserratDisplay.className + " text-white text-lg md:text-xl font-bold tracking-tight"}>
-                      {t.firstName} {t.lastName}
+                      {t.name}
                     </h3>
                     {t.isMe && (
                       <span className="text-xs px-2 py-0.5 rounded-full bg-emerald-600/20 text-emerald-300 border border-emerald-600/40">
@@ -293,7 +327,7 @@ export default function ExploreGrid() {
                   
                   {/* Etiketler */}
                   <div className="profile-tags mt-2.5 flex flex-wrap gap-2">
-                    {trSpecialties(t.specialties ?? []).slice(0, 3).map((sp, idx) => (
+                    {t.tags.slice(0, 3).map((sp, idx) => (
                       <span
                         key={`${sp}-${idx}`}
                         className={montserratDisplay.className + " text-[11px] font-semibold px-2 py-1 rounded-md bg-white/8 text-white/85"}
