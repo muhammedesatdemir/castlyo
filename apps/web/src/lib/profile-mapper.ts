@@ -29,6 +29,16 @@ const skillMap: Record<string, string> = {
   "Muzik": "MUSIC"
 };
 
+// Reverse mapping from enum codes to Turkish labels
+const reverseSkillMap: Record<string, string> = {
+  "ACTING": "Oyunculuk",
+  "THEATER": "Tiyatro",
+  "DANCE": "Dans",
+  "MODELING": "Modellik",
+  "VOICE_OVER": "Dublaj",
+  "MUSIC": "Müzik"
+};
+
 // Convert Turkish date format (dd.mm.yyyy) to ISO (yyyy-mm-dd)
 function toISODate(dateStr: string): string | undefined {
   if (!dateStr) return undefined;
@@ -109,13 +119,23 @@ export function mapFormToApi(form: any) {
     languages: form.languages || [],
     specialties: (form.specialties || []).map((s: string) => skillMap[s] || s).filter(Boolean),
     profileImage: norm(form.profileImage || form.profilePhotoUrl),
-    resumeUrl: norm(form.cvUrl || form.resumeUrl),
+    resumeUrl: norm(form.resumeUrl),
   };
 
   // Remove undefined values
   return Object.fromEntries(
     Object.entries(payload).filter(([_, value]) => value !== undefined)
   );
+}
+
+// Convert API response specialties to Turkish labels for UI display
+export function mapApiSpecialtiesToUI(specialties: string[]): string[] {
+  return (specialties || []).map(s => reverseSkillMap[s] || s).filter(Boolean);
+}
+
+// Convert UI specialties to API enum values
+export function mapUISpecialtiesToApi(specialties: string[]): string[] {
+  return (specialties || []).map(s => skillMap[s] || s).filter(Boolean);
 }
 
 // Helper to create public URL from S3 key

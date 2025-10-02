@@ -6,7 +6,11 @@ import { useSession } from "next-auth/react";
 import type { Profile } from "./page";
 import { apiFetch } from "@/lib/api";
 // upload helpers are dynamically imported to avoid tree-shaking/SSR issues
-import { mapFormToApi } from '@/lib/profile-mapper';
+import { profileFormUiToApi } from '@/lib/mappers/profile';
+import { toE164TR, splitE164TR } from '@/utils/phone';
+// Gender utilities removed - using direct API enum values
+import { ddmmyyyyToISO, isoToDDMMYYYY } from '@/utils/date';
+import { toInt } from '@/utils/num';
 import { ProfileHeader } from "@/components/ProfileAvatar";
 import { toast } from "@/components/ui/toast";
 
@@ -30,12 +34,8 @@ const formatTRPhone = (raw10: string) => {
   if (d.length > 8) p.push(d.slice(8, 10));
   return p.join(" ");
 };
-const normalizeGender = (g?: string): "MALE" | "FEMALE" | "" => {
-  const v = (g ?? "").toString().trim().toLowerCase();
-  if (["erkek", "e", "m", "male", "man", "bay"].includes(v)) return "MALE";
-  if (["kadın", "kadin", "k", "f", "female", "woman", "bayan"].includes(v)) return "FEMALE";
-  return (g as any) === "MALE" || (g as any) === "FEMALE" ? (g as any) : "";
-};
+
+// Convert Turkish phone digits to E.164 format (using imported function)
 const toAbsoluteUrl = (u?: string | null) => {
   if (!u) return null;
   try {
@@ -165,6 +165,23 @@ const UField = React.memo(function UField({
 });
 
 /* ---------- tipler ---------- */
+type ApiGender = 'MALE' | 'FEMALE';
+
+type Form = {
+  firstName: string;
+  lastName: string;
+  city: string;
+  gender?: ApiGender;
+  birthDate?: string;          // 'YYYY-MM-DD' (ISO-10)
+  heightCm?: string;
+  weightKg?: string;
+  phoneDigits: string;
+  bio: string;
+  experience: string;
+  resumeUrl: string | null;
+  cvRemoved: boolean;
+};
+
 type GuardianState = {
   fullName: string;
   relation: "Anne" | "Baba" | "Vasi" | "Diğer" | "";
@@ -200,13 +217,15 @@ export default function ProfileClient({
       firstName: defaults.firstName,
       lastName: defaults.lastName,
       city: defaults.city,
-      gender: defaults.gender,
-      birth: defaults.birth,
-      height: defaults.height ? String(defaults.height) : "",
-      weight: defaults.weight ? String(defaults.weight) : "",
+      gender: defaults.gender as ApiGender | undefined,
+      birthDate: defaults.birth || undefined,
+      heightCm: defaults.height ? String(defaults.height) : undefined,
+      weightKg: defaults.weight ? String(defaults.weight) : undefined,
       phoneDigits: digits(defaults.phoneFmt).slice(-10),
       bio: defaults.bio,
-      exp: defaults.exp,
+      experience: defaults.exp,
+      resumeUrl: cvUrl,
+      cvRemoved: false,
     });
     setPhotoUrl(initialProfile.profilePhotoUrl ?? null);
   };
@@ -268,7 +287,7 @@ export default function ProfileClient({
       lastName: toTitleTR(initialProfile.lastName ?? ""),
       email: initialProfile.email ?? "",
       city: toTitleTR(initialProfile.personal?.city ?? ""),
-      gender: normalizeGender(initialProfile.personal?.gender),
+      gender: initialProfile.personal?.gender as 'MALE' | 'FEMALE' | undefined,
       birth: initialProfile.personal?.birthDate ?? "",
       height: initialProfile.personal?.heightCm ?? "",
       weight: initialProfile.personal?.weightKg ?? "",
@@ -280,17 +299,19 @@ export default function ProfileClient({
   );
 
   /* ---------- form (tek kaynak, controlled) ---------- */
-  const [form, setForm] = React.useState({
+  const [form, setForm] = React.useState<Form>({
     firstName: defaults.firstName,
     lastName: defaults.lastName,
     city: defaults.city,
-    gender: defaults.gender,
-    birth: defaults.birth,
-    height: defaults.height ? String(defaults.height) : "",
-    weight: defaults.weight ? String(defaults.weight) : "",
+    gender: defaults.gender as ApiGender | undefined,
+    birthDate: defaults.birth || undefined,
+    heightCm: defaults.height ? String(defaults.height) : undefined,
+    weightKg: defaults.weight ? String(defaults.weight) : undefined,
     phoneDigits: digits(defaults.phoneFmt).slice(-10),
     bio: defaults.bio,
-    exp: defaults.exp,
+    experience: defaults.exp,
+    resumeUrl: cvUrl,
+    cvRemoved: false,
   });
 
   // defaults değişirse (ör. rehydrate) formu bir kez senkronla
@@ -311,13 +332,15 @@ export default function ProfileClient({
       firstName: toTitleTR(defaults.firstName),
       lastName: toTitleTR(defaults.lastName),
       city: toTitleTR(defaults.city),
-      gender: defaults.gender,
-      birth: defaults.birth,
-      height: defaults.height ? String(defaults.height) : "",
-      weight: defaults.weight ? String(defaults.weight) : "",
+      gender: defaults.gender as ApiGender | undefined,
+      birthDate: defaults.birth || undefined,
+      heightCm: defaults.height ? String(defaults.height) : undefined,
+      weightKg: defaults.weight ? String(defaults.weight) : undefined,
       phoneDigits: digits(defaults.phoneFmt).slice(-10),
       bio: defaults.bio,
-      exp: defaults.exp,
+      experience: defaults.exp,
+      resumeUrl: cvUrl,
+      cvRemoved: false,
     });
     
     // Specialty chips'leri de güncelle
@@ -334,6 +357,24 @@ export default function ProfileClient({
       setSelectedSpecs(specialties);
     }
   }, [defaults, initialProfile]);
+
+  // Update form when initialProfile changes (after refetch)
+  React.useEffect(() => {
+    if (initialProfile) {
+      console.debug('[ProfileClient] Initial profile changed, updating form:', {
+        gender: initialProfile.personal?.gender,
+        birthDate: initialProfile.personal?.birthDate,
+      });
+      
+      setForm(f => ({
+        ...f,
+        gender: initialProfile.personal?.gender as ApiGender | undefined,
+        birthDate: initialProfile.personal?.birthDate || undefined,
+        heightCm: initialProfile.personal?.heightCm?.toString() ?? undefined,
+        weightKg: initialProfile.personal?.weightKg?.toString() ?? undefined,
+      }));
+    }
+  }, [initialProfile]);
 
   /* başlık bilgileri (gereksiz bağımlılık yok) */
   const displayName = React.useMemo(() => {
@@ -395,6 +436,7 @@ export default function ProfileClient({
       
       // API already returns the full public URL
       setCvUrl(fileUrl);
+      setForm(prev => ({ ...prev, resumeUrl: fileUrl, cvRemoved: false }));
       setMsg("CV yüklendi.");
       toast.success('CV yüklendi');
     } catch (e: any) {
@@ -428,44 +470,41 @@ export default function ProfileClient({
   // Birleşik user+talent verisini Profile tipine dönüştür
   function mapCombinedToProfile(input: any): Profile {
     const data = input || {};
-    const read = (o: any, keys: string[], fallback?: any) => {
-      for (const k of keys) if (o && o[k] != null) return o[k];
-      return fallback;
-    };
-    const specialties = Array.isArray(data.specialties)
-      ? data.specialties.map((s: any) => (typeof s === 'string' ? s : s?.code || s?.label)).filter(Boolean)
-      : Array.isArray(data.professional?.specialties)
-      ? data.professional.specialties
-      : [];
+    
+    // Use the new mapper to convert API data to UI format
+    const { apiToUi } = require('@/lib/mappers/profile');
+    const uiData = apiToUi(data);
+    
     const guardian = data.guardian || data.personal?.guardian || null;
+    
     return {
-      firstName: read(data, ['firstName', 'first_name'], ''),
-      lastName: read(data, ['lastName', 'last_name'], ''),
-      email: read(data, ['email'], ''),
-      phone: read(data, ['phone'], ''),
-      role: read(data, ['role'], null),
-      status: read(data, ['status'], null),
-      company: read(data, ['company'], null),
-      profilePhotoUrl: read(data, ['profilePhotoUrl', 'profileImage', 'avatarUrl', 'photoUrl', 'avatar'], null),
+      firstName: uiData.firstName || '',
+      lastName: uiData.lastName || '',
+      email: uiData.email || data.email || '',
+      phone: uiData.phone || '',
+      role: data.role || null,
+      status: data.status || null,
+      company: data.company || null,
+      profilePhotoUrl: uiData.profilePhotoUrl || null,
       professional: {
-        specialties,
-        bio: read(data, ['bio'], ''),
-        experience: read(data, ['experience'], ''),
-        cvUrl: read(data, ['cvUrl', 'cv_url'], null),
+        specialties: uiData.specialties || [],
+        bio: uiData.bio || '',
+        experience: uiData.experience || '',
+        cvUrl: uiData.cvUrl || null,
       },
       personal: {
-        city: read(data, ['city', 'personal?.city' as any], ''),
-        birthDate: read(data, ['birthDate', 'birth_date' as any], null),
-        gender: read(data, ['gender', 'personal?.gender' as any], ''),
-        heightCm: read(data, ['heightCm', 'height_cm' as any], undefined),
-        weightKg: read(data, ['weightKg', 'weight_kg' as any], undefined),
+        city: uiData.city || '',
+        birthDate: uiData.birthDate || null,
+        gender: uiData.gender === 'male' ? 'MALE' : uiData.gender === 'female' ? 'FEMALE' : uiData.gender === 'other' ? 'OTHER' : '', // Convert UI format to form format
+        heightCm: uiData.heightCm || undefined,
+        weightKg: uiData.weightKg || undefined,
         guardian: guardian
           ? {
-              fullName: read(guardian, ['fullName', 'name'], ''),
-              relation: read(guardian, ['relation'], ''),
-              phone: read(guardian, ['phone', 'mobile'], ''),
-              email: read(guardian, ['email'], ''),
-              consent: read(guardian, ['consent', 'consentAccepted'], false),
+              fullName: guardian.fullName || guardian.name || '',
+              relation: guardian.relation || '',
+              phone: guardian.phone || guardian.mobile || '',
+              email: guardian.email || '',
+              consent: guardian.consent || guardian.consentAccepted || false,
               consentAccepted: undefined,
             }
           : null,
@@ -493,80 +532,75 @@ export default function ProfileClient({
         return;
       }
 
-      // Use the new mapper to create properly formatted payload
-      const formData = {
-        firstName: form.firstName,
-        lastName: form.lastName,
-        city: form.city,
-        gender: form.gender,
-        birthDate: form.birth,
-        height: form.height,
-        weight: form.weight,
-        bio: form.bio,
-        experience: form.exp,
-        specialties: selectedSpecs,
-        profileImage: photoUrl,
-        resumeUrl: cvUrl, // Use resumeUrl instead of cvUrl to match API
+      // Helper function to clean undefined values
+      const clean = <T extends Record<string, any>>(obj: T): Partial<T> => {
+        const o: any = {};
+        Object.entries(obj).forEach(([k, v]) => {
+          if (v === '' || v === undefined || v === null) return;
+          o[k] = v;
+        });
+        return o;
       };
 
-      const payload = mapFormToApi(formData);
+      // Helper function to convert phone to E.164
+      const toE164TRLocal = (cc: string, digits: string) => {
+        const d = (digits ?? '').replace(/\D/g,'');
+        if (!d) return undefined;
+        return `${cc}${d}`;
+      };
 
-      try {
-        await apiFetch('/profiles/talent/me', { method: 'PUT', json: payload });
-      } catch (e: any) {
-        console.error('Talent save failed:', e?.status, e?.body);
-        let errorMsg = 'Bilinmeyen hata';
-        if (e?.body) {
-          try {
-            const parsed = JSON.parse(e.body);
-            errorMsg = parsed.message || parsed.error || e.body;
-          } catch {
-            errorMsg = e.body;
-          }
-        } else if (e?.message) {
-          errorMsg = e.message;
-        }
-        toast.error(`Profil kaydedilemedi: ${errorMsg}`);
-        throw e;
-      }
+      // Use the new profile-specific mapper to create properly formatted payload
+      const mapperInput = {
+        firstName: form.firstName?.trim(),
+        lastName: form.lastName?.trim(),
+        city: form.city?.trim(),
+        birthDate: form.birthDate, // Already in YYYY-MM-DD format
+        gender: form.gender, // Keep as MALE/FEMALE (API format)
+        height: form.heightCm, // Pass as height, mapper will convert to height_cm
+        weight: form.weightKg, // Pass as weight, mapper will convert to weight_kg
+        bio: form.bio?.trim(),
+        experience: form.experience?.trim(),
+        specialties: selectedSpecs?.length ? selectedSpecs : [],
+        profilePhotoUrl: photoUrl,
+        cvUrl: form.resumeUrl,
+      };
 
-      // Fetch fresh data (merge users + talents)
-      const [userData, profileData] = await Promise.all([
-        apiFetch<any>('/users/me').catch(() => ({})),
-        apiFetch<any>('/profiles/me').catch(() => ({})),
-      ]);
-      const fresh: Profile = mapCombinedToProfile({ ...(profileData || {}), ...(userData || {}) });
+      const profilePayload = profileFormUiToApi(mapperInput);
 
-      // UI rehydrate
-      setSelectedSpecs(uniq(fresh.professional?.specialties));
-      const freshCv =
-        fresh.professional?.cvUrl ??
-        extractAnyUrl(fresh.professional?.experience) ??
-        null;
-      setCvUrl(toAbsoluteUrl(freshCv));
-      setPhotoUrl(fresh.profilePhotoUrl ?? null);
-      setStatus(fresh.status ?? "Aktif");
-
-      const fg = fresh.personal?.guardian ?? null;
-      setGuardian({
-        fullName: (fg?.fullName as any) ?? "",
-        relation: (fg?.relation as any) ?? "",
-        phoneDigits: digits((fg?.phone as any) ?? "").slice(-10),
-        email: (fg?.email as any) ?? "",
-        consent:
-          typeof fg?.consent === "boolean"
-            ? (fg?.consent as boolean)
-            : typeof (fg as any)?.consentAccepted === "boolean"
-            ? ((fg as any)?.consentAccepted as boolean)
-            : undefined,
+      // Phone payload (user data)
+      const phonePayload = clean({
+        phone: toE164TR(form.phoneDigits),                      // "+90555..." veya undefined
       });
 
-      onSaved?.(fresh);
-      await onDemandRefetch?.();
+      console.log('[ProfileSave] Profile payload', profilePayload);
+      console.log('[ProfileSave] Phone payload', phonePayload);
 
-      setMsg("Profil kaydedildi.");
+      // 1) Save profile data using PATCH for partial updates
+      const profileRes = await fetch('/api/proxy/api/v1/profiles/talent/me', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify(profilePayload),
+      });
+
+      if (!profileRes.ok) {
+        const text = await profileRes.text();
+        throw new Error(`Profile save failed: ${profileRes.status} ${text}`);
+      }
+
+      // 2) Save phone data (if provided)
+      if (phonePayload.phone) {
+        const phoneRes = await apiFetch('/users/me', {
+          method: 'PUT',
+          json: phonePayload,
+        });
+      }
+
+      // 3) Refetch data and show success
+      await onDemandRefetch?.();
       toast.success('Profil kaydedildi');
       setEditing(false);
+      setMsg("Profil kaydedildi.");
     } catch (error) {
       console.error('Profile save error:', error);
       let errorMsg = "Kaydetme sırasında hata oluştu.";
@@ -717,17 +751,16 @@ export default function ProfileClient({
               <div className="text-sm font-medium text-slate-700 mb-1">Cinsiyet</div>
               <select
                 ref={genderRef}
-                value={form.gender}
-                onChange={(e) => {
-                  const val = e.currentTarget.value as "MALE" | "FEMALE" | "";
-                  setForm((f) => ({ ...f, gender: val }));
-                }}
+                value={form.gender ?? ''}
+                onChange={(e) =>
+                  setForm(f => ({ ...f, gender: (e.target.value || undefined) as ApiGender | undefined }))
+                }
                 disabled={!editing}
                 className={`w-full rounded-lg px-3 py-2 ring-1 bg-white ${
                   editing ? "ring-neutral-300 focus:outline-none focus:ring-2" : "ring-neutral-200/70"
                 }`}
               >
-                <option value=""></option>
+                <option value="">Seçin</option>
                 <option value="MALE">Erkek</option>
                 <option value="FEMALE">Kadın</option>
               </select>
@@ -738,32 +771,32 @@ export default function ProfileClient({
               inputRef={birthRef}
               disabled={!editing}
               type="date"
-              value={form.birth}
+              value={form.birthDate ?? ''}
               onValueChange={(v) => {
-                setForm((f) => ({ ...f, birth: v }));
+                setForm(f => ({ ...f, birthDate: v || undefined }));
                 setIsMinor(isMinorByDate(v));
               }}
-              description="gg.aa.yyyy biçiminde giriniz."
+              description="Doğum tarihinizi seçiniz."
             />
             <UField
               label="Boy (cm)"
               inputRef={heightRef}
               disabled={!editing}
               type="number"
-              value={form.height}
-              onValueChange={(v) => setForm((f) => ({ ...f, height: v.replace(/\D+/g, "") }))}
-              min={0}
-              max={300}
+              value={form.heightCm ?? ''}
+              onValueChange={(v) => setForm((f) => ({ ...f, heightCm: v.replace(/\D+/g, "") }))}
+              min={100}
+              max={250}
             />
             <UField
               label="Kilo (kg)"
               inputRef={weightRef}
               disabled={!editing}
               type="number"
-              value={form.weight}
-              onValueChange={(v) => setForm((f) => ({ ...f, weight: v.replace(/\D+/g, "") }))}
-              min={0}
-              max={400}
+              value={form.weightKg ?? ''}
+              onValueChange={(v) => setForm((f) => ({ ...f, weightKg: v.replace(/\D+/g, "") }))}
+              min={20}
+              max={250}
             />
           </div>
 
@@ -892,11 +925,11 @@ export default function ProfileClient({
             <div className="text-sm font-medium text-slate-700 mb-1">Deneyim</div>
             <textarea
               disabled={!editing}
-              value={form.exp}
+              value={form.experience}
               placeholder=" "
               onChange={(e) => {
                 const val = e.currentTarget.value; // event pooling'e takılmamak için önce al
-                setForm((f) => ({ ...f, exp: val }));
+                setForm((f) => ({ ...f, experience: val }));
               }}
               className={`w-full rounded-lg px-3 py-2 ring-1 bg-white min-h-[80px] ${
                 editing ? "ring-neutral-300 focus:outline-none focus:ring-2" : "ring-neutral-200/70"
@@ -916,10 +949,10 @@ export default function ProfileClient({
                   onChange={(e) => handleCvSelect(e.target.files?.[0] ?? undefined)}
                 />
               </label>
-              {cvUrl && (
+              {form.resumeUrl && (
                 <div className="mt-2">
                   <a
-                    href={toAbsoluteUrl(cvUrl) ?? "#"}
+                    href={toAbsoluteUrl(form.resumeUrl) ?? "#"}
                     target="_blank"
                     rel="noopener noreferrer"
                     onClick={(e) => e.stopPropagation()}
@@ -934,7 +967,7 @@ export default function ProfileClient({
                       className="text-sm underline ml-3 text-red-600"
                       onClick={() => {
                         setCvUrl(null);
-                        setForm((f) => ({ ...f, exp: stripCvLines(f.exp) }));
+                        setForm((f) => ({ ...f, resumeUrl: null, cvRemoved: true, experience: stripCvLines(f.experience) }));
                       }}
                     >
                       Kaldır

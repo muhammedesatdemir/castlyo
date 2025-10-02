@@ -1,6 +1,7 @@
-import { Controller, Get, UseGuards, Request, Logger, Patch, Body, UnauthorizedException } from '@nestjs/common';
+import { Controller, Get, UseGuards, Request, Logger, Patch, Body, UnauthorizedException, Put } from '@nestjs/common';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { UsersService } from './users.service';
+import { UpdateUserDto } from './dto/update-user.dto';
 
 @Controller('users')
 @UseGuards(JwtAuthGuard) // Tüm endpoint'ler için auth zorunlu
@@ -37,6 +38,27 @@ export class UsersController {
     const userId = req.user?.sub ?? req.user?.userId ?? req.user?.id;
     this.logger.log(`[GET /users/profile] User: ${userId}`);
     return req.user;
+  }
+
+  @Put('me')
+  async updateMe(@Request() req, @Body() body: UpdateUserDto) {
+    const userId = req.user?.sub ?? req.user?.userId ?? req.user?.id;
+    
+    if (!userId) {
+      throw new UnauthorizedException('Invalid token payload');
+    }
+    
+    this.logger.log(`[PUT /users/me] User: ${userId}`);
+    
+    try {
+      const result = await this.usersService.updateMe(userId, body);
+      this.logger.log(`[PUT /users/me] Success for user: ${userId}`);
+      
+      return result;
+    } catch (error) {
+      this.logger.error(`[PUT /users/me] Error for user ${userId}:`, error.stack);
+      throw error;
+    }
   }
 
   @Patch('onboarding-complete')

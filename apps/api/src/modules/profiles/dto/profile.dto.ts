@@ -12,18 +12,18 @@ import {
   Max, 
   Length 
 } from 'class-validator';
-import { Transform } from 'class-transformer';
-import { Gender } from '../entities/gender.enum';
+import { Transform, Type, Expose } from 'class-transformer';
+
+// ---- types ----
+export type ApiGender = 'MALE' | 'FEMALE';
 
 // ---- transformation helpers ----
-const GENDER_MAP: Record<string, Gender> = {
-  Kadın: Gender.FEMALE,
-  Kadin: Gender.FEMALE,
-  Female: Gender.FEMALE,
-  Erkek: Gender.MALE,
-  Male: Gender.MALE,
-  'Belirtmek istemiyorum': Gender.OTHER,
-  Other: Gender.OTHER,
+const GENDER_MAP: Record<string, ApiGender> = {
+  Kadın: 'FEMALE',
+  Kadin: 'FEMALE',
+  Female: 'FEMALE',
+  Erkek: 'MALE',
+  Male: 'MALE',
 };
 
 function toIsoBirthDate(v: any): any {
@@ -41,7 +41,7 @@ function toEnumGender(v: any): any {
   if (!v) return v;
   if (typeof v === 'string' && GENDER_MAP[v] != null) return GENDER_MAP[v];
   const upper = String(v).toUpperCase();
-  if (upper === 'FEMALE' || upper === 'MALE' || upper === 'OTHER') return upper as Gender;
+  if (upper === 'FEMALE' || upper === 'MALE') return upper as 'MALE' | 'FEMALE';
   return v;
 }
 
@@ -89,8 +89,8 @@ export class CreateTalentProfileDto {
   @IsDateString()
   dateOfBirth?: string;
 
-  @IsEnum(['MALE', 'FEMALE', 'OTHER'])
-  gender: 'MALE' | 'FEMALE' | 'OTHER';
+  @IsEnum(['MALE', 'FEMALE'])
+  gender: 'MALE' | 'FEMALE';
 
   @IsString()
   city: string;
@@ -213,6 +213,21 @@ export class UpdateTalentProfileDto {
   @Max(250)
   weight?: number;
 
+  // Direct heightCm and weightKg fields for API consistency
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(100)
+  @Max(250)
+  heightCm?: number;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(20)
+  @Max(250)
+  weightKg?: number;
+
   @IsOptional()
   @Transform(({ value }) => toStringArray(value))
   @IsArray()
@@ -235,12 +250,14 @@ export class UpdateTalentProfileDto {
   @Transform(({ value }) => String(value ?? '').trim() || undefined)
   @IsString()
   @Length(2, 50)
+  @Expose({ name: 'first_name' })
   firstName?: string;
 
   @IsOptional()
   @Transform(({ value }) => String(value ?? '').trim() || undefined)
   @IsString()
   @Length(2, 50)
+  @Expose({ name: 'last_name' })
   lastName?: string;
 
   @IsOptional()
@@ -254,15 +271,49 @@ export class UpdateTalentProfileDto {
   @IsDateString({}, { message: 'birthDate must be ISO (YYYY-MM-DD)' })
   birthDate?: string; // "2000-02-11" gibi ISO
 
+  // Snake_case alias for API consistency
+  @IsOptional()
+  @Transform(({ value }) => toIsoBirthDate(value))
+  @IsDateString({}, { message: 'birth_date must be ISO (YYYY-MM-DD)' })
+  @Expose({ name: 'birth_date' })
+  birth_date?: string;
+
   @IsOptional()
   @Transform(({ value }) => toEnumGender(value))
-  @IsEnum(Gender, { message: 'gender must be one of FEMALE | MALE | OTHER' })
-  gender?: Gender;
+  @IsEnum(['MALE', 'FEMALE'], { message: 'gender must be one of MALE | FEMALE' })
+  gender?: ApiGender;
+
+  // Snake_case aliases for height and weight
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(100)
+  @Max(250)
+  @Expose({ name: 'height_cm' })
+  height_cm?: number;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(20)
+  @Max(250)
+  @Expose({ name: 'weight_kg' })
+  weight_kg?: number;
 
   @IsOptional()
   @Transform(({ value }) => (value === '' ? undefined : String(value)))
   @IsString({ message: 'resumeUrl must be a string URL-like' })
+  @Expose({ name: 'resume_url' })
   resumeUrl?: string;
+
+  // Handle legacy cv_url field - map it to resumeUrl
+  @IsOptional()
+  @Transform(({ value }) => (value === '' ? undefined : String(value)))
+  @IsString({ message: 'cv_url must be a string URL-like' })
+  @Expose({ name: 'cv_url' })
+  set cvUrl(value: string | undefined) {
+    if (value) this.resumeUrl = value;
+  }
 
   @IsOptional()
   @Transform(({ value }) => toStringArray(value))

@@ -46,7 +46,7 @@ api.interceptors.response.use(
 export const profileApi = {
   // Users
   getMe: () => api.get('/users/me'),
-  updateMe: (data: any) => api.patch('/users/me', data),
+  updateMe: (data: any) => api.put('/users/me', data),
 
   // Talents
   getMyTalent: () => api.get('/profiles/talent/me'),

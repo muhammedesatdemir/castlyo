@@ -3,17 +3,20 @@ import {
   Get, 
   Post, 
   Put, 
+  Patch,
   Delete,
   Body, 
   Param, 
   Query,
   UseGuards, 
   Request,
+  Req,
   HttpCode,
   HttpStatus,
   UnauthorizedException,
   ParseUUIDPipe
 } from '@nestjs/common';
+import { Request as ExpressRequest } from 'express';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { Public } from '../auth/decorators/public.decorator';
 import { ProfilesService } from './profiles.service';
@@ -163,6 +166,20 @@ export class ProfilesController {
     if (!jwtId) throw new UnauthorizedException('Missing user id in token');
     console.log('[CTRL] PUT /profiles/talent/me jwtId=', jwtId, 'body.userId=', (profileData as any)?.userId);
     return this.profilesService.updateTalentProfile(jwtId, profileData);
+  }
+
+  @Patch('talent/me')
+  @UseGuards(JwtAuthGuard)
+  async patchMyTalentProfile(
+    @Req() req: ExpressRequest,
+    @Body() profileData: UpdateTalentProfileDto
+  ) {
+    const jwtId = (req as any).user?.id || (req as any).user?.userId;
+    if (!jwtId) throw new UnauthorizedException('Missing user id in token');
+    console.log('[CTRL] PATCH /profiles/talent/me jwtId=', jwtId, 'payload=', JSON.stringify(profileData, null, 2));
+    console.log('[CTRL] PATCH /profiles/talent/me raw body=', JSON.stringify(req.body, null, 2));
+    // Pass both DTO (camelCase) and raw body (snake_case) to service
+    return this.profilesService.updateTalentProfile(jwtId, profileData, req.body);
   }
 
   @Put('agency/me')

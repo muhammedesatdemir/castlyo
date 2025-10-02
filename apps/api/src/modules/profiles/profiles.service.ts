@@ -5,7 +5,7 @@ import {
   ForbiddenException, 
   BadRequestException 
 } from '@nestjs/common';
-import { eq, and } from 'drizzle-orm';
+import { eq, and, sql } from 'drizzle-orm';
 // DATABASE_CONNECTION import removed - using 'DRIZZLE' directly
 import { 
   users, 
@@ -128,8 +128,14 @@ export class ProfilesService {
       return this.sanitizeTalentProfile(talentProfile, user);
     }
 
-    return {
+    // Format birthDate to ISO string if it's a Date object
+    const formattedProfile = {
       ...talentProfile,
+      birthDate: talentProfile.birthDate 
+        ? (talentProfile.birthDate instanceof Date 
+           ? talentProfile.birthDate.toISOString().slice(0, 10) 
+           : String(talentProfile.birthDate).slice(0, 10))
+        : null,
       user: {
         id: user.id,
         email: user.email,
@@ -140,6 +146,8 @@ export class ProfilesService {
         phoneVerified: user.phoneVerified,
       }
     };
+
+    return formattedProfile;
   }
 
   /**
@@ -211,6 +219,13 @@ export class ProfilesService {
       experience: talentProfile.experience,
       specialties: talentProfile.specialties,
       profileImage: talentProfile.profileImage,
+      birthDate: talentProfile.birthDate 
+        ? (talentProfile.birthDate instanceof Date 
+           ? talentProfile.birthDate.toISOString().slice(0, 10) 
+           : String(talentProfile.birthDate).slice(0, 10))
+        : null,
+      gender: talentProfile.gender,
+      resumeUrl: talentProfile.resumeUrl,
       createdAt: talentProfile.createdAt,
       updatedAt: talentProfile.updatedAt,
       user: {
@@ -250,51 +265,88 @@ export class ProfilesService {
 
   async updateTalentProfile(
     userId: string, 
-    profileData: UpdateTalentProfileDto
+    profileData: UpdateTalentProfileDto,
+    raw?: any
   ) {
     try {
-      console.log('[SRV] updateTalentProfile jwtUserId=', userId, 'body.userId=', (profileData as any)?.userId);
-      if (profileData && (profileData as any).userId) {
-        delete (profileData as any).userId;
-      }
-      // Handle birthDate vs dateOfBirth field mapping
-      const dataToUpdate = { ...profileData };
-      // Support legacy clients that might send 'dateOfBirth' instead of 'birthDate'
-      if ((dataToUpdate as any).dateOfBirth && !dataToUpdate.birthDate) {
-        dataToUpdate.birthDate = (dataToUpdate as any).dateOfBirth as string;
-        delete (dataToUpdate as any).dateOfBirth;
+      console.log('[SRV] updateTalentProfile jwtUserId=', userId, 'dto=', JSON.stringify(profileData, null, 2));
+      console.log('[SRV] updateTalentProfile raw=', JSON.stringify(raw, null, 2));
+      
+      // Helper functions
+      const toNum = (v: any) =>
+        v === '' || v === null || v === undefined ? undefined : Number(v);
+
+      const isEmpty = (v: any) =>
+        v === undefined || v === null || (typeof v === 'string' && v.trim() === '');
+
+      function removeUndefined<T extends Record<string, any>>(obj: T): T {
+        const out: any = {};
+        Object.keys(obj).forEach((k) => {
+          const v = (obj as any)[k];
+          if (!isEmpty(v)) out[k] = v;
+        });
+        return out;
       }
 
-      // Map frontend fields to database fields with proper column mapping
-      const mappedData = {
+      // Merge raw (snake_case) and dto (camelCase) - raw takes precedence for snake_case fields
+      const src = { ...(raw ?? {}), ...(profileData as any) };
+
+      // Normalize data: snake_case takes precedence, fallback to camelCase
+      const mappedData = removeUndefined({
         userId, // Use only the JWT user ID
-        displayName: profileData.displayName ?? null,
-        firstName: profileData.firstName ?? null,
-        lastName: profileData.lastName ?? null,
-        city: profileData.city ?? null,
-        country: profileData.country ?? null,
-        bio: profileData.bio ?? null,
-        experience: profileData.experience ?? null,
-        profileImage: profileData.profileImage ?? null,
-        resumeUrl: profileData.resumeUrl ?? null,
-        birthDate: profileData.birthDate ?? null,
-        gender: profileData.gender ?? null,
-        heightCm: profileData.height ?? null,
-        weightKg: profileData.weight ?? null,
-        headline: profileData.headline ?? null,
-        specialties: profileData.specialties ?? [],
-        skills: profileData.skills ?? [],
-        languages: profileData.languages ?? [],
-        updatedAt: new Date(),
-      };
+        firstName:     src.first_name     ?? profileData.firstName,
+        lastName:      src.last_name      ?? profileData.lastName,
+        city:          src.city           ?? profileData.city,
+        birthDate:     src.birth_date     ?? profileData.birthDate,
+        gender:        src.gender         ?? profileData.gender,
+        heightCm:      toNum(src.height_cm ?? profileData.heightCm ?? src.height ?? profileData.height),
+        weightKg:      toNum(src.weight_kg ?? profileData.weightKg ?? src.weight ?? profileData.weight),
+        bio:           src.bio            ?? profileData.bio,
+        experience:    src.experience     ?? profileData.experience,
+        specialties:   src.specialties    ?? profileData.specialties,
+        resumeUrl:     (src.resume_url ?? profileData.resumeUrl) || null,
+        profileImage:  src.profile_image  ?? profileData.profileImage ?? src.profilePhotoUrl,
+        displayName:   src.display_name   ?? profileData.displayName,
+        headline:      src.headline       ?? profileData.headline,
+        country:       src.country        ?? profileData.country,
+        skills:        src.skills         ?? profileData.skills,
+        languages:     src.languages      ?? profileData.languages,
+        updatedAt:     new Date(),
+      });
+
+      console.log('[SRV] normalized mappedData =', JSON.stringify(mappedData, null, 2));
 
       // Upsert (insert or update) - one record per user
+      // Build update set object with only defined fields
+      const updateSet: Record<string, any> = {
+        updatedAt: sql`EXCLUDED.updated_at`,
+      };
+      
+      // Only include fields that are defined in the update
+      if (mappedData.displayName !== undefined) updateSet.displayName = sql`EXCLUDED.display_name`;
+      if (mappedData.firstName !== undefined) updateSet.firstName = sql`EXCLUDED.first_name`;
+      if (mappedData.lastName !== undefined) updateSet.lastName = sql`EXCLUDED.last_name`;
+      if (mappedData.city !== undefined) updateSet.city = sql`EXCLUDED.city`;
+      if (mappedData.country !== undefined) updateSet.country = sql`EXCLUDED.country`;
+      if (mappedData.bio !== undefined) updateSet.bio = sql`EXCLUDED.bio`;
+      if (mappedData.experience !== undefined) updateSet.experience = sql`EXCLUDED.experience`;
+      if (mappedData.profileImage !== undefined) updateSet.profileImage = sql`EXCLUDED.profile_image`;
+      if (mappedData.resumeUrl !== undefined) updateSet.resumeUrl = sql`EXCLUDED.resume_url`;
+      if (mappedData.birthDate !== undefined) updateSet.birthDate = sql`EXCLUDED.birth_date`;
+      if (mappedData.gender !== undefined) updateSet.gender = sql`EXCLUDED.gender`;
+      if (mappedData.heightCm !== undefined) updateSet.heightCm = sql`EXCLUDED.height_cm`;
+      if (mappedData.weightKg !== undefined) updateSet.weightKg = sql`EXCLUDED.weight_kg`;
+      if (mappedData.headline !== undefined) updateSet.headline = sql`EXCLUDED.headline`;
+      if (mappedData.specialties !== undefined) updateSet.specialties = sql`EXCLUDED.specialties`;
+      if (mappedData.skills !== undefined) updateSet.skills = sql`EXCLUDED.skills`;
+      if (mappedData.languages !== undefined) updateSet.languages = sql`EXCLUDED.languages`;
+
       const result = await this.database
         .insert(talentProfiles)
         .values({ ...mappedData, createdAt: new Date() })
         .onConflictDoUpdate({
           target: talentProfiles.userId,
-          set: mappedData,
+          set: updateSet,
         })
         .returning();
 
@@ -422,6 +474,8 @@ export class ProfilesService {
             email: userData.email ?? '',
             role: userData.role,
             status: userData.status,
+            birthDate: talentProfile.birthDate ? talentProfile.birthDate.toISOString().slice(0,10) : null,
+            gender: talentProfile.gender,
             createdAt: talentProfile.createdAt,
             updatedAt: talentProfile.updatedAt,
           };

@@ -40,7 +40,7 @@ type FormData = {
 
   // Step 3 - Personal
   dateOfBirth: string; // YYYY-MM-DD
-  gender: "" | "MALE" | "FEMALE";
+  gender: "" | "MALE" | "FEMALE" | "OTHER";
   city: string;
   height: string;
   weight: string;
@@ -213,70 +213,122 @@ function TalentOnboardingContent() {
 
   const loadProfile = async () => {
     try {
-      const res = await fetch("/api/proxy/api/v1/profiles/me", { 
-        cache: "no-store",
-        credentials: 'include'
-      });
-      if (!res.ok) {
-        // 401 için özel handling
-        if (res.status === 401) {
-          router.push('/auth/login?next=/onboarding/talent');
-          throw new Error('Oturum açmanız gerekiyor.');
-        }
-        
-        // Ham gövdeyi al ve parse etmeye çalış
-        const text = await res.text();
-        let obj: any = null;
-        try { 
-          obj = JSON.parse(text); 
-        } catch (_) { 
-          // JSON değilse yoksay
-        }
+      // Fetch both user and profile data to get complete information
+      const [userRes, profileRes] = await Promise.all([
+        fetch("/api/proxy/api/v1/users/me", { 
+          cache: "no-store",
+          credentials: 'include'
+        }),
+        fetch("/api/proxy/api/v1/profiles/talent/me", { 
+          cache: "no-store",
+          credentials: 'include'
+        })
+      ]);
 
-        const msg =
-          obj?.error ??
-          obj?.message ??
-          (text?.trim() || `Request failed: ${res.status}`);
-
-        throw new Error(msg);
+      if (!userRes.ok && userRes.status === 401) {
+        router.push('/auth/login?next=/onboarding/talent');
+        throw new Error('Oturum açmanız gerekiyor.');
       }
-      const p = await res.json();
 
-      const userTen = onlyLocal10(p.phone ?? "").slice(0, 10);
+      // Get user data (for basic info like name, email, phone)
+      const userData = userRes.ok ? await userRes.json() : {};
+      
+      // Get profile data (for personal/professional info)
+      let profileData = {};
+      if (profileRes.ok) {
+        const profileRaw = await profileRes.json();
+        profileData = profileRaw && typeof profileRaw === 'object' && !Array.isArray(profileRaw) ? profileRaw : {};
+      }
+
+      // Merge user and profile data with proper priority
+      const combinedData = {
+        // User data takes priority for identity fields
+        first_name: (userData as any)?.first_name || (profileData as any)?.first_name || '',
+        last_name: (userData as any)?.last_name || (profileData as any)?.last_name || '',
+        email: (userData as any)?.email || (profileData as any)?.email || '',
+        phone: (userData as any)?.phone || (profileData as any)?.phone || '',
+        // Profile data takes priority for personal/professional fields
+        ...profileData,
+        // Ensure user identity fields are not overwritten by empty profile values
+        ...((userData as any)?.first_name && { first_name: (userData as any).first_name }),
+        ...((userData as any)?.last_name && { last_name: (userData as any).last_name }),
+        ...((userData as any)?.email && { email: (userData as any).email }),
+        ...((userData as any)?.phone && { phone: (userData as any).phone }),
+      };
+
+      // Use the new mapper to convert API data to UI format
+      const { apiToUi } = await import('@/lib/mappers/profile');
+      const uiData = apiToUi(combinedData);
+
+      console.log("[ONBOARDING] Combined API data:", combinedData);
+      console.log("[ONBOARDING] Mapped UI data:", uiData);
+
+      // Format phone numbers for UI display
+      const userTen = onlyLocal10(uiData.phone ?? "").slice(0, 10);
       const phoneFmt = userTen ? `+90 ${formatTRPhoneBlocks(userTen)}` : "";
 
-      const gObj = p?.personal?.guardian ?? null;
+      // Handle guardian data if exists
+      const gObj = combinedData?.guardian ?? null;
       const gPhoneTen = onlyLocal10(gObj?.phone ?? "").slice(0, 10);
       const gPhoneFmt = gPhoneTen ? `+90 ${formatTRPhoneBlocks(gPhoneTen)}` : "";
       const gConsent = !!(gObj?.consent ?? gObj?.consentAccepted);
 
-      const rawGender = p?.personal?.gender ?? p?.gender ?? "";
-
-      setFormData((prev) => ({
-        ...prev,
-        firstName: p.firstName ?? "",
-        lastName: p.lastName ?? "",
+      // Map UI data to form structure with proper gender conversion
+      const newFormData = {
+        // Step 2 - Account (from user data primarily)
+        firstName: uiData.firstName || "",
+        lastName: uiData.lastName || "",
         phone: phoneFmt,
-        profilePhotoUrl: p.profilePhotoUrl ?? null,
-        dateOfBirth: p.personal?.birthDate ?? "",
-        gender: normalizeGender(rawGender),
-        city: p.personal?.city ?? "",
-        height: p.personal?.heightCm ? String(p.personal.heightCm) : "",
-        weight: p.personal?.weightKg ? String(p.personal.weightKg) : "",
-        parentName: gObj?.fullName ?? "",
+        profilePhotoUrl: uiData.profilePhotoUrl || null,
+        
+        // Step 3 - Personal (from profile data primarily)
+        dateOfBirth: uiData.birthDate || "", // Already in YYYY-MM-DD format
+        gender: uiData.gender === 'male' ? 'MALE' : uiData.gender === 'female' ? 'FEMALE' : uiData.gender === 'other' ? 'OTHER' : "" as FormData["gender"], // Convert UI format to form format
+        city: uiData.city || "",
+        height: uiData.heightCm ? String(uiData.heightCm) : "",
+        weight: uiData.weightKg ? String(uiData.weightKg) : "",
+        eyeColor: "",
+        hairColor: "",
+        
+        // Guardian data
+        parentName: gObj?.fullName ?? gObj?.name ?? "",
         parentPhone: gPhoneFmt,
         guardianRelation: (gObj?.relation as any) ?? "",
         guardianEmail: gObj?.email ?? "",
         guardianConsent: gConsent,
-        bio: p.professional?.bio ?? "",
-        experience: stripCvLines(p.professional?.experience ?? ""),
-        specialties: Array.isArray(p.professional?.specialties) ? p.professional.specialties : [],
+        
+        // Step 4 - Professional
+        bio: uiData.bio || "",
+        experience: stripCvLines(uiData.experience || ""),
+        skills: [],
+        languages: [],
+        specialties: Array.isArray(uiData.specialties) ? uiData.specialties : [],
+      };
+
+      setFormData((prev) => ({
+        ...prev,
+        ...newFormData
       }));
 
-      const m = (p.professional?.experience ?? "").match(/(https?:\/\/\S+\.pdf)/i);
-      setCvUrl(m?.[1] ?? p.professional?.cvUrl ?? null);
-    } catch {
-      // sessiz
+      // Extract CV URL from experience or direct field
+      const m = (uiData.experience ?? "").match(/(https?:\/\/\S+\.pdf)/i);
+      setCvUrl(m?.[1] ?? uiData.cvUrl ?? null);
+
+      console.log("[ONBOARDING] Loaded profile data:", {
+        firstName: newFormData.firstName,
+        lastName: newFormData.lastName,
+        phone: newFormData.phone,
+        city: newFormData.city,
+        birthDate: newFormData.dateOfBirth,
+        gender: newFormData.gender,
+        heightCm: newFormData.height,
+        weightKg: newFormData.weight,
+        bio: newFormData.bio,
+        specialties: newFormData.specialties
+      });
+    } catch (error) {
+      console.error("[ONBOARDING] Profile load error:", error);
+      // Hata durumunda boş form ile devam et
     } finally {
       setLoading(false);
     }
@@ -399,23 +451,38 @@ function TalentOnboardingContent() {
     }
 
     try {
-      const payload: Record<string, any> = {};
+      // Use the new mapper to create properly formatted payload
+      const { uiToApiStep } = await import('@/lib/mappers/profile');
+      
+      // Prepare form data for mapper
+      const mapperInput = {
+        firstName: formData.firstName.trim(),
+        lastName: formData.lastName.trim(),
+        phone: toE164TR(phoneDigits), // Convert phone to E.164 format
+        profilePhotoUrl: formData.profilePhotoUrl,
+        city: formData.city.trim(),
+        birthDate: formData.dateOfBirth, // Already in YYYY-MM-DD format
+        gender: formData.gender === 'MALE' ? 'male' : formData.gender === 'FEMALE' ? 'female' : formData.gender === 'OTHER' ? 'other' : null, // Convert form format to UI format for mapper
+        heightCm: formData.height ? Number(formData.height) : null,
+        weightKg: formData.weight ? Number(formData.weight) : null,
+        bio: formData.bio.trim(),
+        experience: experienceToSave.trim(),
+        specialties: formData.specialties,
+        cvUrl: cvUrl,
+      };
 
+      console.log("[ONBOARDING] Mapper input:", mapperInput);
+
+      let apiPayload: any = {};
+      
       if (!scope || scope === "account") {
-        addIf(payload, "firstName", formData.firstName.trim());
-        addIf(payload, "lastName", formData.lastName.trim());
-        // phone'u şimdilik API göndermiyoruz (DTO'da yok)
-        addIf(payload, "profilePhotoUrl", formData.profilePhotoUrl);
+        apiPayload = { ...apiPayload, ...uiToApiStep(mapperInput, 'account') };
       }
 
       if (!scope || scope === "personal") {
-        const personal: Record<string, any> = {};
-        addIf(personal, "city", formData.city.trim());
-        addIf(personal, "birthDate", formData.dateOfBirth);
-        addIf(personal, "gender", normalizeGender(formData.gender));
-        if (formData.height) addIf(personal, "height", Number(formData.height));
-        if (formData.weight) addIf(personal, "weight", Number(formData.weight));
-
+        apiPayload = { ...apiPayload, ...uiToApiStep(mapperInput, 'personal') };
+        
+        // Handle guardian data for minors
         const parentTen = parentPhoneDigits;
         if (
           isMinor ||
@@ -426,62 +493,47 @@ function TalentOnboardingContent() {
           formData.guardianConsent
         ) {
           const guardian: Record<string, any> = {};
-          addIf(guardian, "fullName", formData.parentName.trim());
-          addIf(guardian, "relation", formData.guardianRelation);
-          if (parentTen) addIf(guardian, "phone", toE164TR(parentTen));
-          addIf(guardian, "email", formData.guardianEmail.trim());
+          if (formData.parentName.trim()) guardian.fullName = formData.parentName.trim();
+          if (formData.guardianRelation) guardian.relation = formData.guardianRelation;
+          if (parentTen) guardian.phone = toE164TR(parentTen);
+          if (formData.guardianEmail.trim()) guardian.email = formData.guardianEmail.trim();
           if (formData.guardianConsent) {
             guardian.consent = true;
             guardian.consentAccepted = true;
           }
-          addIf(personal, "guardian", guardian);
+          if (Object.keys(guardian).length) {
+            apiPayload.guardian = guardian;
+          }
         }
-
-        if (Object.keys(personal).length) payload.personal = personal;
       }
 
       if (!scope || scope === "professional") {
-        const professional: Record<string, any> = {};
-        addIf(professional, "bio", formData.bio.trim());
-        addIf(professional, "experience", experienceToSave.trim());
-        addIf(professional, "specialties", formData.specialties);
-        if (Object.keys(professional).length) payload.professional = professional;
+        apiPayload = { ...apiPayload, ...uiToApiStep(mapperInput, 'professional') };
       }
 
-      if (Object.keys(payload).length === 0) return true;
+      if (Object.keys(apiPayload).length === 0) return true;
 
-      // Use the new mapper to create properly formatted payload
-      const { mapFormToApi } = await import('@/lib/profile-mapper');
-      const mapperInput = {
-        firstName: payload.firstName,
-        lastName: payload.lastName,
-        city: payload.personal?.city,
-        gender: payload.personal?.gender,
-        birthDate: payload.personal?.birthDate,
-        height: payload.personal?.height,
-        weight: payload.personal?.weight,
-        bio: payload.professional?.bio,
-        experience: payload.professional?.experience,
-        specialties: payload.professional?.specialties,
-        profileImage: payload.profilePhotoUrl,
-        cvUrl: cvUrl,
-      };
+      console.log('[ONBOARDING] Sending payload:', JSON.stringify(apiPayload, null, 2));
 
-      const mappedBody = mapFormToApi(mapperInput);
+      // Use PATCH method for partial updates
       const r = await fetch('/api/proxy/api/v1/profiles/talent/me', {
-        method: 'PUT',
+        method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(mappedBody),
+        body: JSON.stringify(apiPayload),
         credentials: 'include',
       });
-      const ok = r.ok;
-      if (!ok) {
-        setMsg("Kaydetme hatası");
+      
+      if (!r.ok) {
+        const errorText = await r.text();
+        console.error('[ONBOARDING] Save error:', r.status, errorText);
+        setMsg(`Kaydetme hatası (${r.status})`);
         return false;
       }
+      
       setMsg("Kaydedildi");
       return true;
-    } catch {
+    } catch (error) {
+      console.error('[ONBOARDING] Save exception:', error);
       setMsg("Kaydetme hatası");
       return false;
     } finally {
@@ -503,7 +555,7 @@ function TalentOnboardingContent() {
 
     if (currentStep === 3) {
       if (!formData.dateOfBirth) return "Doğum tarihi zorunludur.";
-      if (!["MALE", "FEMALE"].includes(formData.gender)) return "Cinsiyet seçiniz.";
+      if (!["MALE", "FEMALE", "OTHER"].includes(formData.gender)) return "Cinsiyet seçiniz.";
       if (!formData.city.trim()) return "Şehir zorunludur.";
       if (!/^\d+$/.test(formData.height) || Number(formData.height) <= 0)
         return "Boy (cm) sadece sayı olmalıdır.";
@@ -584,9 +636,18 @@ function TalentOnboardingContent() {
     }
     // Onboarding complete başarısızsa uyarı ver ama akışı durdurma
     try {
-      const c = await fetch("/api/proxy/onboarding/talent/complete", { method: "POST" });
-      if (!c.ok) setMsg("Onboarding servisi yanıtsız (devam ediliyor).");
-    } catch {
+      const c = await fetch("/api/proxy/api/v1/users/onboarding-complete", { 
+        method: "PATCH",
+        credentials: 'include'
+      });
+      if (!c.ok) {
+        console.warn("Onboarding complete failed:", c.status, await c.text());
+        setMsg("Onboarding servisi yanıtsız (devam ediliyor).");
+      } else {
+        console.log("Onboarding completed successfully");
+      }
+    } catch (error) {
+      console.error("Onboarding complete error:", error);
       setMsg("Onboarding servisine erişilemedi (devam ediliyor).");
     }
     return true;
@@ -705,6 +766,7 @@ function TalentOnboardingContent() {
             <option value="">Seçiniz</option>
             <option value="MALE">Erkek</option>
             <option value="FEMALE">Kadın</option>
+            <option value="OTHER">Diğer</option>
           </select>
         </div>
 

@@ -2,6 +2,7 @@ import { Injectable, Inject, Logger, NotFoundException } from '@nestjs/common';
 import { DRIZZLE } from '@/config/database.module';
 import { eq } from 'drizzle-orm';
 import { users } from '@castlyo/database';
+import { UpdateUserDto } from './dto/update-user.dto';
 
 @Injectable()
 export class UsersService {
@@ -12,6 +13,7 @@ export class UsersService {
   private baseCols = {
     id: users.id, 
     email: users.email, 
+    phone: users.phone,
     role: users.role,
     status: users.status, 
     emailVerified: users.emailVerified,
@@ -72,15 +74,26 @@ export class UsersService {
   async getMe(userId: string) {
     this.logger.debug(`[getMe] Getting user profile: ${userId}`);
     
-    const user = await this.findById(userId);
-    if (!user) {
+    const user = await this.db.select({
+      id: users.id,
+      email: users.email,
+      phone: users.phone,
+      role: users.role,
+      status: users.status,
+      emailVerified: users.emailVerified,
+      createdAt: users.createdAt,
+      updatedAt: users.updatedAt,
+    })
+    .from(users)
+    .where(eq(users.id, userId))
+    .limit(1);
+    
+    if (!user.length) {
       this.logger.warn(`[getMe] User not found: ${userId}`);
       throw new NotFoundException('User not found');
     }
     
-    // Güvenli alanlar - password hash'i çıkar
-    const { passwordHash, ...safeUser } = user as any;
-    return safeUser;
+    return user[0];
   }
 
   async create(payload: { 
@@ -99,6 +112,43 @@ export class UsersService {
     }).returning(this.baseCols);
 
     return row;
+  }
+
+  async updateMe(userId: string, dto: UpdateUserDto) {
+    this.logger.log(`[updateMe] Updating user: ${userId}`);
+    
+    // Helper function to clean undefined values
+    function clean<T extends Record<string, any>>(obj: T) {
+      const o: any = {};
+      Object.entries(obj).forEach(([k, v]) => {
+        if (v === undefined) return;
+        o[k] = v;
+      });
+      return o;
+    }
+
+    const updateData = clean({
+      phone: dto.phone,
+      updatedAt: new Date(),
+    });
+
+    if (Object.keys(updateData).length === 1) { // Only updatedAt
+      this.logger.log(`[updateMe] No fields to update for user: ${userId}`);
+      return { success: true };
+    }
+
+    const result = await this.db
+      .update(users)
+      .set(updateData)
+      .where(eq(users.id, userId))
+      .returning();
+
+    if (result.length === 0) {
+      throw new NotFoundException('User not found');
+    }
+
+    this.logger.log(`[updateMe] Success for user: ${userId}`);
+    return { success: true };
   }
 
   async completeOnboarding(userId: string) {

@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import ProfileClient from "./ProfileClient";
+import { mapApiSpecialtiesToUI } from "@/lib/profile-mapper";
 
 /** Sunucudan dönen profil tipi — ProfileClient de bunu kullanır */
 export type Profile = {
@@ -77,7 +78,7 @@ function mapApiToProfile(api: any): Profile {
   // specialties hem ["ACTING"] hem [{code:"ACTING"}] hem ["Oyunculuk"] gelebilir
   const rawSpecs = data.specialties ?? [];
   const specialties = Array.isArray(rawSpecs)
-    ? rawSpecs.map((s: any) => (typeof s === "string" ? s : s?.code ?? s?.label)).filter(Boolean)
+    ? mapApiSpecialtiesToUI(rawSpecs.map((s: any) => (typeof s === "string" ? s : s?.code ?? s?.label)).filter(Boolean))
     : [];
 
   return {
@@ -100,7 +101,7 @@ function mapApiToProfile(api: any): Profile {
     personal: {
       city: data.city ?? "",
       birthDate: toDateOnly(data.birthDate ?? data.birth_date),
-      gender: data.gender ?? "",
+      gender: data.gender ?? "",  // Keep API format (MALE/FEMALE) for ProfileClient
       heightCm: num(data.heightCm ?? data.height_cm) ?? undefined,
       weightKg: num(data.weightKg ?? data.weight_kg) ?? undefined,
       guardian: data.guardian
@@ -127,46 +128,31 @@ export default function ProfilePage() {
     try {
       setError(null);
       console.debug('[ProfilePage] Refetching profile data...');
-      // Fetch combined view by merging user + talent
-      const [uRes, tRes] = await Promise.all([
-        fetch("/api/proxy/api/v1/users/me", { cache: "no-store", credentials: 'include' }),
-        fetch("/api/proxy/api/v1/profiles/talent/me", { cache: "no-store", credentials: 'include' }),
+      
+      const [uRes, pRes] = await Promise.all([
+        fetch('/api/proxy/api/v1/users/me', { credentials: 'include' }),
+        fetch('/api/proxy/api/v1/profiles/talent/me', { credentials: 'include' }),
       ]);
-      
-      if (!uRes.ok && !tRes.ok) {
-        // 401 için özel handling
-        if (uRes.status === 401 || tRes.status === 401) {
-          router.push('/auth/login?next=/profile');
-          throw new Error('Oturum açmanız gerekiyor.');
-        }
-        
-        // Ham gövdeyi al ve parse etmeye çalış
-        const text = (await uRes.text().catch(() => '')) || (await tRes.text().catch(() => ''));
-        let obj: any = null;
-        try { 
-          obj = JSON.parse(text); 
-        } catch (_) { 
-          // JSON değilse yoksay
-        }
 
-        const msg =
-          obj?.error ??
-          obj?.message ??
-          (text?.trim() || `Request failed`);
-
-        throw new Error(msg);
+      const user = uRes.ok ? await uRes.json() : {};
+      let profileRaw: any = {};
+      if (pRes.ok) {
+        // API returns {} when not found; normalize
+        const p = await pRes.json();
+        profileRaw = p && typeof p === 'object' && !Array.isArray(p) ? p : {};
       }
-      
-      const apiResponse = { ...(await (uRes.ok ? uRes.json() : Promise.resolve({}))), ...(await (tRes.ok ? tRes.json() : Promise.resolve({}))) };
-      console.debug('[ProfilePage] Profile data received:', apiResponse);
-      console.log('[ProfilePage] API Response structure (refetch):', {
-        hasUser: !!apiResponse.user,
-        hasProfile: !!apiResponse.profile,
-        userKeys: apiResponse.user ? Object.keys(apiResponse.user) : [],
-        profileKeys: apiResponse.profile ? Object.keys(apiResponse.profile) : []
+
+      const hasProfile = Object.keys(profileRaw).length > 0;
+
+      console.info('[ProfilePage] API Response structure (refetch)', {
+        hasUser: !!user?.id,
+        hasProfile,
+        userKeys: Object.keys(user || {}),
+        profileKeys: Object.keys(profileRaw || {}),
       });
-      
-      // API response'u Profile formatına dönüştür
+
+      // Map API → UI (safe defaults)
+      const apiResponse = { ...user, ...profileRaw };
       const p: Profile = mapApiToProfile(apiResponse);
       
       setData(p);
@@ -182,46 +168,48 @@ export default function ProfilePage() {
       try {
         setError(null);
         console.debug('[ProfilePage] Initial profile fetch...');
-        const [uRes, tRes] = await Promise.all([
-          fetch("/api/proxy/api/v1/users/me", { cache: "no-store", credentials: 'include' }),
-          fetch("/api/proxy/api/v1/profiles/talent/me", { cache: "no-store", credentials: 'include' }),
+        
+        const [uRes, pRes] = await Promise.all([
+          fetch('/api/proxy/api/v1/users/me', { credentials: 'include' }),
+          fetch('/api/proxy/api/v1/profiles/talent/me', { credentials: 'include' }),
         ]);
-        
-        if (!uRes.ok && !tRes.ok) {
-          // 401 için özel handling
-          if (uRes.status === 401 || tRes.status === 401) {
-            router.push('/auth/login?next=/profile');
-            throw new Error('Oturum açmanız gerekiyor.');
-          }
-          
-          // Ham gövdeyi al ve parse etmeye çalış
-          const text = (await uRes.text().catch(() => '')) || (await tRes.text().catch(() => ''));
-          let obj: any = null;
-          try { 
-            obj = JSON.parse(text); 
-          } catch (_) { 
-            // JSON değilse yoksay
-          }
 
-          const msg =
-            obj?.error ??
-            obj?.message ??
-            (text?.trim() || `Request failed`);
-
-          throw new Error(msg);
+        const user = uRes.ok ? await uRes.json() : {};
+        let profileRaw: any = {};
+        if (pRes.ok) {
+          // API returns {} when not found; normalize
+          const p = await pRes.json();
+          profileRaw = p && typeof p === 'object' && !Array.isArray(p) ? p : {};
         }
-        
-        const apiResponse = { ...(await (uRes.ok ? uRes.json() : Promise.resolve({}))), ...(await (tRes.ok ? tRes.json() : Promise.resolve({}))) };
-        console.debug('[ProfilePage] Initial profile data received:', apiResponse);
-        console.log('[ProfilePage] API Response structure:', {
-          hasUser: !!apiResponse.user,
-          hasProfile: !!apiResponse.profile,
-          userKeys: apiResponse.user ? Object.keys(apiResponse.user) : [],
-          profileKeys: apiResponse.profile ? Object.keys(apiResponse.profile) : []
+
+        const hasProfile = Object.keys(profileRaw).length > 0;
+
+        console.info('[ProfilePage] API Response structure', {
+          hasUser: !!user?.id,
+          hasProfile,
+          userKeys: Object.keys(user || {}),
+          profileKeys: Object.keys(profileRaw || {}),
         });
-        
-        // API response'u Profile formatına dönüştür
-        const p: Profile = mapApiToProfile(apiResponse);
+
+        // Merge user and profile data with proper priority
+        // Profile data should take priority for personal/professional fields, but not overwrite with empty values
+        const combinedData = {
+          // Start with profile data as base
+          ...profileRaw,
+          // User data takes priority for identity fields (always use user data if available)
+          ...(user?.first_name && { first_name: user.first_name }),
+          ...(user?.last_name && { last_name: user.last_name }),
+          ...(user?.email && { email: user.email }),
+          ...(user?.phone && { phone: user.phone }),
+          // For other fields, use user data as fallback only if profile data is empty
+          first_name: profileRaw?.first_name || user?.first_name || '',
+          last_name: profileRaw?.last_name || user?.last_name || '',
+          email: profileRaw?.email || user?.email || '',
+          phone: profileRaw?.phone || user?.phone || '',
+        };
+
+        // Map API → UI (safe defaults)
+        const p: Profile = mapApiToProfile(combinedData);
         
         if (alive) setData(p);
       } catch (error) {
