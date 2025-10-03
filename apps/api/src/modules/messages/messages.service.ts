@@ -36,7 +36,7 @@ export class MessagesService {
 
   async createMessageThread(userId: string, threadData: CreateMessageThreadDto) {
     // Get user details
-    const user = await this.db.select()
+    const user = await this.db.select({ id: users.id, role: users.role, email: users.email })
       .from(users)
       .where(eq(users.id, userId))
       .limit(1);
@@ -46,7 +46,7 @@ export class MessagesService {
     }
 
     // Get participant details
-    const participant = await this.db.select()
+    const participant = await this.db.select({ id: users.id, role: users.role, email: users.email })
       .from(users)
       .where(eq(users.id, threadData.participantId))
       .limit(1);
@@ -73,22 +73,22 @@ export class MessagesService {
     }
 
     // Resolve agency/talent profile IDs for both sides
-    const currentAgencyProfile = await this.db.select()
+    const currentAgencyProfile = await this.db.select({ id: agencyProfiles.id, userId: agencyProfiles.userId })
       .from(agencyProfiles)
       .where(eq(agencyProfiles.userId, userId))
       .limit(1);
 
-    const currentTalentProfile = await this.db.select()
+    const currentTalentProfile = await this.db.select({ id: talentProfiles.id, userId: talentProfiles.userId })
       .from(talentProfiles)
       .where(eq(talentProfiles.userId, userId))
       .limit(1);
 
-    const participantAgencyProfile = await this.db.select()
+    const participantAgencyProfile = await this.db.select({ id: agencyProfiles.id, userId: agencyProfiles.userId })
       .from(agencyProfiles)
       .where(eq(agencyProfiles.userId, threadData.participantId))
       .limit(1);
 
-    const participantTalentProfile = await this.db.select()
+    const participantTalentProfile = await this.db.select({ id: talentProfiles.id, userId: talentProfiles.userId })
       .from(talentProfiles)
       .where(eq(talentProfiles.userId, threadData.participantId))
       .limit(1);
@@ -101,7 +101,7 @@ export class MessagesService {
     }
 
     // Check if thread already exists between these participants
-    const existingThread = await this.db.select()
+    const existingThread = await this.db.select({ id: messageThreads.id, agencyId: messageThreads.agencyId, talentId: messageThreads.talentId })
       .from(messageThreads)
       .where(
         and(
@@ -141,7 +141,7 @@ export class MessagesService {
 
   async sendMessage(userId: string, messageData: SendMessageDto) {
     // Verify thread exists and user has access
-    const thread = await this.db.select()
+    const thread = await this.db.select({ id: messageThreads.id, agencyId: messageThreads.agencyId, talentId: messageThreads.talentId, agencyUnreadCount: messageThreads.agencyUnreadCount, talentUnreadCount: messageThreads.talentUnreadCount })
       .from(messageThreads)
       .where(eq(messageThreads.id, messageData.threadId))
       .limit(1);
@@ -150,15 +150,15 @@ export class MessagesService {
       throw new NotFoundException('Message thread not found');
     }
 
-    const threadData = thread[0];
+    const threadData: any = thread[0];
 
     // Verify user is part of the thread by matching their profile
-    const userAgencyProfile = await this.db.select()
+    const userAgencyProfile = await this.db.select({ id: agencyProfiles.id, userId: agencyProfiles.userId })
       .from(agencyProfiles)
       .where(eq(agencyProfiles.userId, userId))
       .limit(1);
 
-    const userTalentProfile = await this.db.select()
+    const userTalentProfile = await this.db.select({ id: talentProfiles.id, userId: talentProfiles.userId })
       .from(talentProfiles)
       .where(eq(talentProfiles.userId, userId))
       .limit(1);
@@ -232,7 +232,7 @@ export class MessagesService {
 
   async getThreadMessages(userId: string, threadId: string, page = 1, limit = 50) {
     // Verify user has access to thread
-    const thread = await this.db.select()
+    const thread = await this.db.select({ id: messageThreads.id, agencyId: messageThreads.agencyId, talentId: messageThreads.talentId, archivedByAgency: messageThreads.archivedByAgency, archivedByTalent: messageThreads.archivedByTalent })
       .from(messageThreads)
       .where(eq(messageThreads.id, threadId))
       .limit(1);
@@ -243,12 +243,12 @@ export class MessagesService {
 
     const threadData = thread[0];
 
-    const userAgencyProfile = await this.db.select()
+    const userAgencyProfile = await this.db.select({ id: agencyProfiles.id, userId: agencyProfiles.userId })
       .from(agencyProfiles)
       .where(eq(agencyProfiles.userId, userId))
       .limit(1);
 
-    const userTalentProfile = await this.db.select()
+    const userTalentProfile = await this.db.select({ id: talentProfiles.id, userId: talentProfiles.userId })
       .from(talentProfiles)
       .where(eq(talentProfiles.userId, userId))
       .limit(1);
@@ -292,7 +292,7 @@ export class MessagesService {
   }
 
   async markThreadAsRead(userId: string, threadId: string) {
-    const thread = await this.db.select()
+    const thread = await this.db.select({ id: messageThreads.id, agencyId: messageThreads.agencyId, talentId: messageThreads.talentId, archivedByAgency: messageThreads.archivedByAgency as any, archivedByTalent: messageThreads.archivedByTalent as any })
       .from(messageThreads)
       .where(eq(messageThreads.id, threadId))
       .limit(1);
@@ -304,12 +304,12 @@ export class MessagesService {
     const threadData = thread[0];
 
     // Determine which side the user is on
-    const userAgencyProfile = await this.db.select()
+    const userAgencyProfile = await this.db.select({ id: agencyProfiles.id, userId: agencyProfiles.userId })
       .from(agencyProfiles)
       .where(eq(agencyProfiles.userId, userId))
       .limit(1);
 
-    const userTalentProfile = await this.db.select()
+    const userTalentProfile = await this.db.select({ id: talentProfiles.id, userId: talentProfiles.userId })
       .from(talentProfiles)
       .where(eq(talentProfiles.userId, userId))
       .limit(1);
@@ -331,17 +331,17 @@ export class MessagesService {
 
   async getUnreadCount(userId: string): Promise<number> {
     // Sum unread counts for the user based on their profile side
-    const agencyProfile = await this.db.select().from(agencyProfiles).where(eq(agencyProfiles.userId, userId)).limit(1);
-    const talentProfile = await this.db.select().from(talentProfiles).where(eq(talentProfiles.userId, userId)).limit(1);
+    const agencyProfile = await this.db.select({ id: agencyProfiles.id, userId: agencyProfiles.userId }).from(agencyProfiles).where(eq(agencyProfiles.userId, userId)).limit(1);
+    const talentProfile = await this.db.select({ id: talentProfiles.id, userId: talentProfiles.userId }).from(talentProfiles).where(eq(talentProfiles.userId, userId)).limit(1);
 
     let totalUnread = 0;
 
     if (agencyProfile.length > 0) {
-      const agencyThreads = await this.db.select().from(messageThreads).where(eq(messageThreads.agencyId, agencyProfile[0].id));
+      const agencyThreads = await this.db.select({ id: messageThreads.id, agencyUnreadCount: messageThreads.agencyUnreadCount }).from(messageThreads).where(eq(messageThreads.agencyId, agencyProfile[0].id));
       totalUnread += agencyThreads.reduce((sum, t: any) => sum + (t.agencyUnreadCount ?? 0), 0);
     }
     if (talentProfile.length > 0) {
-      const talentThreads = await this.db.select().from(messageThreads).where(eq(messageThreads.talentId, talentProfile[0].id));
+      const talentThreads = await this.db.select({ id: messageThreads.id, talentUnreadCount: messageThreads.talentUnreadCount }).from(messageThreads).where(eq(messageThreads.talentId, talentProfile[0].id));
       totalUnread += talentThreads.reduce((sum, t: any) => sum + (t.talentUnreadCount ?? 0), 0);
     }
 
@@ -350,7 +350,7 @@ export class MessagesService {
 
   async deleteThread(userId: string, threadId: string) {
     // Verify thread exists and user has access
-    const thread = await this.db.select()
+    const thread = await this.db.select({ id: messageThreads.id, agencyId: messageThreads.agencyId, talentId: messageThreads.talentId, archivedByAgency: messageThreads.archivedByAgency, archivedByTalent: messageThreads.archivedByTalent })
       .from(messageThreads)
       .where(eq(messageThreads.id, threadId))
       .limit(1);
@@ -362,8 +362,8 @@ export class MessagesService {
     const threadData = thread[0];
 
     // Determine side by profiles
-    const userAgencyProfile = await this.db.select().from(agencyProfiles).where(eq(agencyProfiles.userId, userId)).limit(1);
-    const userTalentProfile = await this.db.select().from(talentProfiles).where(eq(talentProfiles.userId, userId)).limit(1);
+    const userAgencyProfile = await this.db.select({ id: agencyProfiles.id, userId: agencyProfiles.userId }).from(agencyProfiles).where(eq(agencyProfiles.userId, userId)).limit(1);
+    const userTalentProfile = await this.db.select({ id: talentProfiles.id, userId: talentProfiles.userId }).from(talentProfiles).where(eq(talentProfiles.userId, userId)).limit(1);
 
     const isAgencySide = userAgencyProfile.length > 0 && userAgencyProfile[0].id === threadData.agencyId;
     const isTalentSide = userTalentProfile.length > 0 && userTalentProfile[0].id === threadData.talentId;

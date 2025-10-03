@@ -55,7 +55,7 @@ export class ContactPermissionsService {
     }
 
     // Check if permission request already exists
-    const existingRequest = await this.db.select()
+    const existingRequest = await this.db.select({ id: contactPermissions.id, status: contactPermissions.status })
       .from(contactPermissions)
       .where(eq(contactPermissions.applicationId, requestData.jobApplicationId))
       .limit(1);
@@ -87,7 +87,7 @@ export class ContactPermissionsService {
     responseData: RespondToContactRequestDto
   ) {
     // Get permission request
-    const permissionRequest = await this.db.select()
+    const permissionRequest = await this.db.select({ id: contactPermissions.id, status: contactPermissions.status, agencyId: contactPermissions.agencyId, talentId: contactPermissions.talentId })
       .from(contactPermissions)
       .where(eq(contactPermissions.id, requestId))
       .limit(1);
@@ -213,7 +213,7 @@ export class ContactPermissionsService {
     permissionType: string[];
     expiresAt?: Date;
   }> {
-    const permission = await this.db.select()
+    const permission = await this.db.select({ id: contactPermissions.id, status: contactPermissions.status, agencyId: contactPermissions.agencyId, talentId: contactPermissions.talentId })
       .from(contactPermissions)
       .where(
         and(
@@ -235,11 +235,8 @@ export class ContactPermissionsService {
     //   return { hasPermission: false, permissionType: [] };
     // }
 
-    const permissionTypes = [];
-    // if (perm.allowEmail) permissionTypes.push('email');
-    // if (perm.allowPhone) permissionTypes.push('phone');
-    // if (perm.allowMessaging) permissionTypes.push('messaging');
-    if (perm.granted) permissionTypes.push('contact'); // Use granted field instead
+    const permissionTypes: string[] = [];
+    if ((perm as any).granted) permissionTypes.push('contact');
 
     return {
       hasPermission: true,

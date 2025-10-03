@@ -15,36 +15,50 @@ import {
   Filter,
   Briefcase
 } from 'lucide-react'
-import { jobsApi } from '@/lib/api'
 import { JOB_CATEGORIES, JOB_TALENT_TYPES, TURKISH_CITIES } from '@/lib/constants'
 import Link from 'next/link'
 
-interface JobPost {
-  id: string
-  title: string
-  description: string
-  category: string
-  talentType: string
-  location: string
-  budgetMin?: number
-  budgetMax?: number
-  currency: string
-  applicationDeadline: string
-  isUrgent: boolean
-  isFeatured: boolean
-  views: number
-  applicationCount: number
-  publishedAt: string
-  images: string[]
-  agency: {
-    companyName: string
-    logo?: string
-    isVerified: boolean
-  }
+// Normalized Job type for UI (includes optional fields used in UI)
+type Job = {
+  id: string;
+  agencyId: string;
+  title: string;
+  description: string;
+  jobType: string;
+  city?: string;
+  status: string;
+  expiresAt?: string; // applicationDeadline yerine
+  publishedAt?: string;
+  createdAt: string;
+  updatedAt: string;
+  budgetRange?: string;
+  ageMin?: number;
+  ageMax?: number;
+  maxApplications?: number;
+  // Optional UI fields for backward compatibility
+  category?: string;
+  talentType?: string;
+  location?: string;
+  budgetMin?: number;
+  budgetMax?: number;
+  currency?: string;
+  isUrgent?: boolean;
+  isFeatured?: boolean;
+  views?: number;
+  applicationCount?: number;
+  images?: string[];
+  agency?: {
+    companyName: string;
+    logo?: string;
+    isVerified: boolean;
+  };
 }
 
+type JobsResponse = { data: Job[]; meta?: { page: number; limit: number; total: number } }
+
 export default function JobsPage() {
-  const [jobs, setJobs] = useState<JobPost[]>([])
+  const [jobs, setJobs] = useState<Job[]>([])
+  const [meta, setMeta] = useState<JobsResponse["meta"] | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [searchTerm, setSearchTerm] = useState('')
@@ -65,25 +79,20 @@ export default function JobsPage() {
     try {
       setLoading(true)
       setError(null)
-      
-      const params = {
-        search: searchTerm || undefined,
-        ...filters,
-        isUrgent: filters.isUrgent || undefined,
-        isFeatured: filters.isFeatured || undefined
-      }
 
-      // Remove empty values
-      Object.keys(params).forEach(key => {
-        if (params[key] === '' || params[key] === false) {
-          delete params[key]
-        }
-      })
+      const res = await fetch('/api/proxy/api/v1/jobs')
+      const json: unknown = await res.json()
 
-      const response = await jobsApi.getJobPosts(params)
-      setJobs(response.data)
+      const arr: Job[] = Array.isArray(json)
+        ? (json as Job[])
+        : Array.isArray((json as JobsResponse)?.data)
+        ? (json as JobsResponse).data
+        : []
+
+      setJobs(arr)
+      setMeta((json as JobsResponse)?.meta ?? null)
     } catch (err: any) {
-      setError(err.response?.data?.message || 'İlanlar yüklenirken hata oluştu')
+      setError(err?.message || 'İlanlar yüklenirken hata oluştu')
     } finally {
       setLoading(false)
     }
@@ -323,8 +332,8 @@ export default function JobsPage() {
                       </Link>
                     </CardTitle>
                     <div className="text-sm text-gray-600">
-                      {job.agency.companyName}
-                      {job.agency.isVerified && (
+                      {job.agency?.companyName}
+                      {job.agency?.isVerified && (
                         <Badge className="ml-2 text-xs bg-green-100 text-green-800">
                           Doğrulanmış
                         </Badge>
@@ -347,7 +356,7 @@ export default function JobsPage() {
                   
                   <div className="flex items-center gap-2">
                     <Calendar className="h-4 w-4" />
-                    <span>{getTimeLeft(job.applicationDeadline)}</span>
+                    <span>{job.expiresAt ? getTimeLeft(job.expiresAt) : 'Tarih belirtilmemiş'}</span>
                   </div>
                   
                   {(job.budgetMin || job.budgetMax) && (

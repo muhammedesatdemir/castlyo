@@ -81,7 +81,7 @@ export class PaymentsService {
 
   async createCheckoutSession(userId: string, checkoutData: CreateCheckoutSessionDto) {
     // Get user
-    const user = await this.db.select()
+    const user = await this.db.select({ id: users.id, email: users.email, role: users.role })
       .from(users)
       .where(eq(users.id, userId))
       .limit(1);
@@ -91,7 +91,7 @@ export class PaymentsService {
     }
 
     // Get subscription plan
-    const plan = await this.db.select()
+    const plan = await this.db.select({ id: subscriptionPlans.id, isActive: subscriptionPlans.isActive, planType: subscriptionPlans.planType, priceCents: subscriptionPlans.priceCents, currency: subscriptionPlans.currency })
       .from(subscriptionPlans)
       .where(eq(subscriptionPlans.id, checkoutData.planId))
       .limit(1);
@@ -153,7 +153,7 @@ export class PaymentsService {
     }
 
     // Find transaction
-    const transaction = await this.db.select()
+    const transaction = await this.db.select({ id: paymentTransactions.id, providerTransactionId: paymentTransactions.providerTransactionId, userId: paymentTransactions.userId, amount: paymentTransactions.amount as any, currency: paymentTransactions.currency })
       .from(paymentTransactions)
       .where(eq(paymentTransactions.providerTransactionId, webhookData.paymentId))
       .limit(1);
@@ -213,7 +213,7 @@ export class PaymentsService {
   }
 
   async getTransactionDetails(transactionId: string, userId: string) {
-    const transaction = await this.db.select()
+    const transaction = await this.db.select({ id: paymentTransactions.id, userId: paymentTransactions.userId })
       .from(paymentTransactions)
       .where(eq(paymentTransactions.id, transactionId))
       .limit(1);
@@ -236,7 +236,7 @@ export class PaymentsService {
       throw new BadRequestException('Mock payments only available in development');
     }
 
-    const transaction = await this.db.select()
+    const transaction = await this.db.select({ id: paymentTransactions.id, status: paymentTransactions.status, providerTransactionId: paymentTransactions.providerTransactionId, userId: paymentTransactions.userId, amount: paymentTransactions.amount as any, currency: paymentTransactions.currency })
       .from(paymentTransactions)
       .where(eq(paymentTransactions.id, transactionId))
       .limit(1);

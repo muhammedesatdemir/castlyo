@@ -85,7 +85,13 @@ export class DebugController {
       
       // Check for the specific user from logs
       const specificUser = await this.usersService.findByEmail('suleymanyakuboglu@gmail.com');
-      const specificUserProfile = specificUser ? await this.db.select()
+      const specificUserProfile = specificUser ? await this.db.select({
+        id: talentProfiles.id,
+        userId: talentProfiles.userId,
+        firstName: talentProfiles.firstName,
+        lastName: talentProfiles.lastName,
+        displayName: talentProfiles.displayName,
+      })
         .from(talentProfiles)
         .where(eq(talentProfiles.userId, specificUser.id)) : null;
       

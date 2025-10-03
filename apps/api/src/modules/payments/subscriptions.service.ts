@@ -30,7 +30,7 @@ export class SubscriptionsService {
       ));
     }
 
-    const plans = await this.db.select()
+    const plans = await this.db.select({ id: subscriptionPlans.id, audience: subscriptionPlans.audience, priceCents: subscriptionPlans.priceCents, isActive: subscriptionPlans.isActive, durationDays: subscriptionPlans.durationDays, planType: subscriptionPlans.planType })
       .from(subscriptionPlans)
       .where(and(...whereConditions))
       .orderBy(subscriptionPlans.priceCents);
@@ -76,7 +76,7 @@ export class SubscriptionsService {
 
   async activateSubscription(userId: string, planId: string) {
     // Get plan details
-    const plan = await this.db.select()
+    const plan = await this.db.select({ id: subscriptionPlans.id, durationDays: subscriptionPlans.durationDays })
       .from(subscriptionPlans)
       .where(eq(subscriptionPlans.id, planId))
       .limit(1);
@@ -124,7 +124,7 @@ export class SubscriptionsService {
 
   async cancelSubscription(userId: string, subscriptionId: string) {
     // Verify subscription belongs to user
-    const subscription = await this.db.select()
+    const subscription = await this.db.select({ id: userSubscriptions.id, userId: userSubscriptions.userId, status: userSubscriptions.status })
       .from(userSubscriptions)
       .where(
         and(
@@ -156,7 +156,7 @@ export class SubscriptionsService {
   }
 
   async renewSubscription(subscriptionId: string) {
-    const subscription = await this.db.select()
+    const subscription = await this.db.select({ id: userSubscriptions.id })
       .from(userSubscriptions)
       .leftJoin(subscriptionPlans, eq(userSubscriptions.planId, subscriptionPlans.id))
       .where(eq(userSubscriptions.id, subscriptionId))
@@ -252,7 +252,7 @@ export class SubscriptionsService {
   }
 
   async getUserEntitlements(userId: string) {
-    const entitlements = await this.db.select()
+    const entitlements = await this.db.select({ id: userEntitlements.id, entitlementType: userEntitlements.entitlementType, balance: userEntitlements.balance, totalAllocated: userEntitlements.totalAllocated })
       .from(userEntitlements)
       .where(eq(userEntitlements.userId, userId));
 
@@ -264,7 +264,7 @@ export class SubscriptionsService {
     remaining: number;
     total: number;
   }> {
-    const entitlement = await this.db.select()
+    const entitlement = await this.db.select({ id: userEntitlements.id, entitlementType: userEntitlements.entitlementType, balance: userEntitlements.balance, totalAllocated: userEntitlements.totalAllocated })
       .from(userEntitlements)
       .where(
         and(
