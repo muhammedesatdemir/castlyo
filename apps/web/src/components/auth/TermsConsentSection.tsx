@@ -21,8 +21,8 @@ export default function TermsConsentSection() {
           'ni okudum ve kabul ediyorum. <span className="text-red-500">*</span>
         </span>
       </label>
-      {errors?.consents?.acceptedTerms && (
-        <p className="text-xs text-red-500">Bu alan zorunludur.</p>
+      {(errors?.consents as any)?.acceptedTerms && (
+        <p className="text-xs text-red-500">Bu alan zorunludur.</p>      
       )}
 
       <label className="flex items-start gap-3">
@@ -39,8 +39,8 @@ export default function TermsConsentSection() {
           'nı okudum ve kabul ediyorum. <span className="text-red-500">*</span>
         </span>
       </label>
-      {errors?.consents?.acceptedPrivacy && (
-        <p className="text-xs text-red-500">Bu alan zorunludur.</p>
+      {(errors?.consents as any)?.acceptedPrivacy && (
+        <p className="text-xs text-red-500">Bu alan zorunludur.</p>      
       )}
     </div>
   );

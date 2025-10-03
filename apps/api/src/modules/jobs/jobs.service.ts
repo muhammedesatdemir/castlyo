@@ -5,7 +5,7 @@ import {
   ForbiddenException, 
   BadRequestException 
 } from '@nestjs/common';
-import { eq, and, desc, sql, ilike, or } from 'drizzle-orm';
+import { eq, and, desc, sql, ilike, or, count } from 'drizzle-orm';
 // DATABASE_CONNECTION import removed - using 'DRIZZLE' directly
 import { 
   users,
@@ -23,14 +23,25 @@ import {
   CreateJobApplicationDto,
   UpdateJobApplicationDto
 } from './dto/job.dto';
+import { JobsQueryDto } from './dto/jobs-query.dto';
 import type { Database } from '@castlyo/database';
 
-interface JobSearchFilters {
-  category?: string; // maps to jobType
-  location?: string; // matches city
-  ageMin?: number;
-  ageMax?: number;
-  search?: string;
+// ISO date conversion helper
+function toIso(x?: string | Date | null) {
+  if (!x) return null;
+  if (x instanceof Date) return x.toISOString();
+  
+  const str = String(x);
+  // Handle PostgreSQL timestamp format: "2025-10-23 13:55:06.736651+00"
+  if (str.includes(' ')) {
+    const isoString = str.replace(' ', 'T').replace(/\+00$/, 'Z');
+    const dateObj = new Date(isoString);
+    return isNaN(dateObj.getTime()) ? null : dateObj.toISOString();
+  }
+  
+  // Handle other formats
+  const dateObj = new Date(str);
+  return isNaN(dateObj.getTime()) ? null : dateObj.toISOString();
 }
 
 // Canonical safe selection aligned with actual DB schema
@@ -42,7 +53,7 @@ const jobPostSelectBase = {
   jobType: jobPosts.jobType,
   city: jobPosts.city,
   status: jobPosts.status,
-  expiresAt: sql`"job_posts"."expires_at"`,
+  expiresAt: jobPosts.applicationDeadline, // Map applicationDeadline to expiresAt for API compatibility
   publishedAt: jobPosts.publishedAt,
   createdAt: jobPosts.createdAt,
   updatedAt: jobPosts.updatedAt,
@@ -139,30 +150,68 @@ export class JobsService {
     return updatedJobPost[0];
   }
 
-  async getJobPosts(filters: JobSearchFilters, page = 1, limit = 20) {
-    const safePage = Math.max(1, page ?? 1);
-    const safeLimit = Math.min(50, Math.max(1, limit ?? 20));
-    const offset = (safePage - 1) * safeLimit;
+  async getJobPosts({ q, city, jobType, status, page = 1, limit = 20 }: JobsQueryDto) {
+    const offset = (page - 1) * limit;
 
-    const fields = jobPostSelectBase;
+    const conditions = [];
+    
+    if (q) {
+      conditions.push(or(
+        ilike(jobPosts.title, `%${q}%`),
+        ilike(jobPosts.description, `%${q}%`)
+      ));
+    }
+    
+    if (city) {
+      conditions.push(ilike(jobPosts.city, `%${city}%`));
+    }
+    
+    if (jobType) {
+      conditions.push(eq(jobPosts.jobType, jobType as any));
+    }
+    
+    if (status) {
+      conditions.push(eq(jobPosts.status, status as any));
+    }
+    
+    const where = conditions.length > 0 ? and(...conditions) : undefined;
 
-    const rows = await this.db
-      .select(fields)
+    const [rows, [{ total }]] = await Promise.all([
+      this.db.select({
+        id: jobPosts.id,
+        agencyId: jobPosts.agencyId,
+        title: jobPosts.title,
+        description: jobPosts.description,
+        jobType: jobPosts.jobType,
+        city: jobPosts.city,
+        status: jobPosts.status,
+        // DB alanın adı applicationDeadline ise, expiresAt diye map'le:
+        expiresAt: jobPosts.applicationDeadline,
+        publishedAt: jobPosts.publishedAt,
+        createdAt: jobPosts.createdAt,
+        updatedAt: jobPosts.updatedAt,
+        budgetRange: sql`"job_posts"."budget_range"`,
+        ageMin: sql`"job_posts"."age_min"`,
+        ageMax: sql`"job_posts"."age_max"`,
+        maxApplications: sql`"job_posts"."max_applications"`,
+      })
       .from(jobPosts)
-      .orderBy(desc(jobPosts.createdAt))
-      .limit(safeLimit)
-      .offset(offset);
+      .where(where)
+      .orderBy(desc(jobPosts.publishedAt))
+      .limit(limit)
+      .offset(offset),
+      this.db.select({ total: count() }).from(jobPosts).where(where),
+    ]);
 
-    const totalArr = await this.db
-      .select({ count: sql`count(*)` })
-      .from(jobPosts);
+    const data = rows.map((r) => ({
+      ...r,
+      expiresAt: toIso(r.expiresAt),
+      publishedAt: toIso(r.publishedAt),
+      createdAt: toIso(r.createdAt),
+      updatedAt: toIso(r.updatedAt),
+    }));
 
-    const total = Number(totalArr[0]?.count || 0);
-
-    return {
-      data: rows,
-      meta: { page: safePage, limit: safeLimit, total },
-    };
+    return { data, meta: { page, limit, total } };
   }
 
   async getJobPost(jobId: string, viewerId?: string) {

@@ -29,9 +29,8 @@ const getKey = (index: number) =>
   ENABLE_INDEX ? `/api/proxy/api/v1/profiles/talents?limit=${PAGE_SIZE}&offset=${index * PAGE_SIZE}&order=-updated_at` : null;
 
 function sortByNewest(a: TalentCard, b: TalentCard) {
-  const ak = new Date(a.updatedAt ?? a.createdAt ?? 0).getTime();
-  const bk = new Date(b.updatedAt ?? b.createdAt ?? 0).getTime();
-  return bk - ak;
+  // Since TalentCard doesn't have timestamps, sort by name for consistency
+  return a.name.localeCompare(b.name);
 }
 
 function dedupeById(list: TalentCard[]) {
@@ -104,7 +103,7 @@ export default function TalentsPage() {
                 <div className="aspect-[4/3] bg-neutral-800 relative">
                   <Image
                     alt={`${t.firstName} ${t.lastName}`}
-                    src={t.profileImage ?? '/images/placeholder-profile.png'}
+                    src={t.imageUrl ?? '/images/placeholder-profile.png'}
                     fill
                     className="object-cover"
                     unoptimized
@@ -125,7 +124,7 @@ export default function TalentsPage() {
                     {t.city ? `Yetenek · ${t.city}` : 'Yetenek'}
                   </p>
                   <div className="flex flex-wrap gap-2 mt-3">
-                    {trSpecialties(t.specialties ?? []).slice(0, 3).map((sp, idx) => (
+                    {t.tags.slice(0, 3).map((sp, idx) => (
                       <span key={`${sp}-${idx}`} className="text-xs px-2 py-0.5 rounded-full bg-neutral-800 text-neutral-300">
                         {sp}
                       </span>

@@ -1,6 +1,5 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
-import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
 import { APP_GUARD, Reflector } from '@nestjs/core';
 import { DatabaseModule } from './config/database.module';
 // import { DbModule } from '../../packages/database/db.module'; // Artık kullanmıyoruz
@@ -27,24 +26,6 @@ import { FEATURES } from './config/features';
       envFilePath: ['.env', 'apps/api/.env', 'dev.env'],
       // Varsayılanlar (PORT, JWT vs.) için ignoreEnvFile:false kalsın
     }),
-    ThrottlerModule.forRootAsync({
-      imports: [ConfigModule],
-      inject: [ConfigService],
-      useFactory: (configService: ConfigService) => ({
-        throttlers: [
-          {
-            name: 'default',
-            ttl: 60 * 1000, // 60 seconds
-            limit: 200, // Much higher for dev
-          },
-          {
-            name: 'auth',
-            ttl: 60 * 1000, // 1 minute instead of 15
-            limit: 100, // Much higher for dev
-          }
-        ],
-      }),
-    }),
     DatabaseModule,
     DebugModule,
     HealthModule,
@@ -61,10 +42,6 @@ import { FEATURES } from './config/features';
     // ...(FEATURES.ADV_PERMISSIONS ? [ConsentModule] : []), // Temporarily disabled for auth fix
   ],
   providers: [
-    {
-      provide: APP_GUARD,
-      useClass: ThrottlerGuard,
-    },
     {
       provide: APP_GUARD,
       useClass: GlobalJwtAuthGuard,

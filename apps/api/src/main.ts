@@ -9,6 +9,9 @@ async function bootstrap() {
   const app = await NestFactory.create(AppModule, { bufferLogs: true });
   const logger = new Logger('Bootstrap');
 
+  // Trust proxy for real IP detection (fixes rate limiting behind proxy)
+  (app as any).set('trust proxy', 1);
+
   // Global prefix
   app.setGlobalPrefix('api/v1');
 

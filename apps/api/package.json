@@ -34,8 +34,9 @@
     "coverageDirectory": "../coverage",
     "testEnvironment": "node",
     "moduleNameMapper": {
-      "^@castlyo/database$": "../../packages/database/index.ts",
-      "^@castlyo/types(.*)$": "../../packages/types$1"
+      "^@/(.*)$": "<rootDir>/$1",
+      "^@castlyo/database$": "<rootDir>/../../../packages/database/index.ts",
+      "^@castlyo/types(.*)$": "<rootDir>/../../../packages/types$1"
     }
   },
   "dependencies": {

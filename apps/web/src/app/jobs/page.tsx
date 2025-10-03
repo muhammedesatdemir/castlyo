@@ -1,149 +1,54 @@
 'use client'
 
-import { useState, useEffect } from 'react'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { useState } from 'react'
+import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Badge } from '@/components/ui/badge'
 import { 
   Search, 
-  MapPin, 
-  Calendar, 
-  DollarSign, 
-  Eye,
-  Users,
   Filter,
-  Briefcase
+  Briefcase,
+  Plus
 } from 'lucide-react'
 import { JOB_CATEGORIES, JOB_TALENT_TYPES, TURKISH_CITIES } from '@/lib/constants'
+import { useJobs } from '@/hooks/useJobs'
+import { useUserFlags } from '@/hooks/useUserFlags'
+import { JobCard } from '@/components/jobs/JobCard'
+import { JobsPagination } from '@/components/jobs/JobsPagination'
+import { JobsSkeleton } from '@/components/jobs/JobsSkeleton'
 import Link from 'next/link'
 
-// Normalized Job type for UI (includes optional fields used in UI)
-type Job = {
-  id: string;
-  agencyId: string;
-  title: string;
-  description: string;
-  jobType: string;
-  city?: string;
-  status: string;
-  expiresAt?: string; // applicationDeadline yerine
-  publishedAt?: string;
-  createdAt: string;
-  updatedAt: string;
-  budgetRange?: string;
-  ageMin?: number;
-  ageMax?: number;
-  maxApplications?: number;
-  // Optional UI fields for backward compatibility
-  category?: string;
-  talentType?: string;
-  location?: string;
-  budgetMin?: number;
-  budgetMax?: number;
-  currency?: string;
-  isUrgent?: boolean;
-  isFeatured?: boolean;
-  views?: number;
-  applicationCount?: number;
-  images?: string[];
-  agency?: {
-    companyName: string;
-    logo?: string;
-    isVerified: boolean;
-  };
-}
-
-type JobsResponse = { data: Job[]; meta?: { page: number; limit: number; total: number } }
-
 export default function JobsPage() {
-  const [jobs, setJobs] = useState<Job[]>([])
-  const [meta, setMeta] = useState<JobsResponse["meta"] | null>(null)
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
-  const [searchTerm, setSearchTerm] = useState('')
-  const [filters, setFilters] = useState({
-    category: '',
-    talentType: '',
-    location: '',
-    isUrgent: false,
-    isFeatured: false
-  })
+  const { jobs, meta, loading, error, currentParams, updateParams, clearFilters } = useJobs()
+  const { userFlags, isVisitor, canPostJobs } = useUserFlags()
   const [showFilters, setShowFilters] = useState(false)
-
-  useEffect(() => {
-    fetchJobs()
-  }, [filters])
-
-  const fetchJobs = async () => {
-    try {
-      setLoading(true)
-      setError(null)
-
-      const res = await fetch('/api/proxy/api/v1/jobs')
-      const json: unknown = await res.json()
-
-      const arr: Job[] = Array.isArray(json)
-        ? (json as Job[])
-        : Array.isArray((json as JobsResponse)?.data)
-        ? (json as JobsResponse).data
-        : []
-
-      setJobs(arr)
-      setMeta((json as JobsResponse)?.meta ?? null)
-    } catch (err: any) {
-      setError(err?.message || 'İlanlar yüklenirken hata oluştu')
-    } finally {
-      setLoading(false)
-    }
-  }
+  const [searchTerm, setSearchTerm] = useState(currentParams.q || '')
 
   const handleSearch = () => {
-    fetchJobs()
+    updateParams({ q: searchTerm })
   }
 
   const handleFilterChange = (key: string, value: any) => {
-    setFilters(prev => ({
-      ...prev,
-      [key]: value
-    }))
+    updateParams({ [key]: value })
   }
 
-  const clearFilters = () => {
-    setFilters({
-      category: '',
-      talentType: '',
-      location: '',
-      isUrgent: false,
-      isFeatured: false
-    })
-    setSearchTerm('')
+  const handlePageChange = (page: number) => {
+    updateParams({ page })
   }
 
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('tr-TR')
-  }
-
-  const getTimeLeft = (deadline: string) => {
-    const now = new Date()
-    const deadlineDate = new Date(deadline)
-    const diffTime = deadlineDate.getTime() - now.getTime()
-    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24))
-    
-    if (diffDays < 0) return 'Süresi dolmuş'
-    if (diffDays === 0) return 'Bugün sona eriyor'
-    if (diffDays === 1) return 'Yarın sona eriyor'
-    return `${diffDays} gün kaldı`
-  }
+  const totalPages = meta ? Math.ceil(meta.total / meta.limit) : 1
 
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50 py-8">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-brand-primary mx-auto"></div>
-            <p className="mt-2 text-gray-600">İlanlar yükleniyor...</p>
+          <div className="mb-8">
+            <h1 className="text-3xl font-bold text-gray-900 mb-2">İş İlanları</h1>
+            <p className="text-lg text-gray-600">
+              Size uygun casting ve proje fırsatlarını keşfedin
+            </p>
           </div>
+          <JobsSkeleton />
         </div>
       </div>
     )
@@ -154,10 +59,22 @@ export default function JobsPage() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Header */}
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">İş İlanları</h1>
-          <p className="text-lg text-gray-600">
-            Size uygun casting ve proje fırsatlarını keşfedin
-          </p>
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-3xl font-bold text-gray-900 mb-2">İş İlanları</h1>
+              <p className="text-lg text-gray-600">
+                Size uygun casting ve proje fırsatlarını keşfedin
+              </p>
+            </div>
+            {canPostJobs && (
+              <Link href="/jobs/new">
+                <Button className="flex items-center gap-2">
+                  <Plus className="h-4 w-4" />
+                  İlan Ver
+                </Button>
+              </Link>
+            )}
+          </div>
         </div>
 
         {/* Search & Filters */}
@@ -189,7 +106,7 @@ export default function JobsPage() {
                   <Filter className="h-4 w-4" />
                   Filtrele
                 </Button>
-                {(Object.values(filters).some(Boolean) || searchTerm) && (
+                {(Object.values(currentParams).some(Boolean) || searchTerm) && (
                   <Button variant="outline" onClick={clearFilters}>
                     Temizle
                   </Button>
@@ -204,8 +121,8 @@ export default function JobsPage() {
                     Kategori
                   </label>
                   <select
-                    value={filters.category}
-                    onChange={(e) => handleFilterChange('category', e.target.value)}
+                    value={currentParams.jobType || ''}
+                    onChange={(e) => handleFilterChange('jobType', e.target.value)}
                     className="w-full px-3 py-2 border border-gray-300 rounded-md"
                   >
                     <option value="">Tümü</option>
@@ -222,8 +139,8 @@ export default function JobsPage() {
                     Yetenek Türü
                   </label>
                   <select
-                    value={filters.talentType}
-                    onChange={(e) => handleFilterChange('talentType', e.target.value)}
+                    value={currentParams.jobType || ''}
+                    onChange={(e) => handleFilterChange('jobType', e.target.value)}
                     className="w-full px-3 py-2 border border-gray-300 rounded-md"
                   >
                     <option value="">Tümü</option>
@@ -240,8 +157,8 @@ export default function JobsPage() {
                     Şehir
                   </label>
                   <select
-                    value={filters.location}
-                    onChange={(e) => handleFilterChange('location', e.target.value)}
+                    value={currentParams.city || ''}
+                    onChange={(e) => handleFilterChange('city', e.target.value)}
                     className="w-full px-3 py-2 border border-gray-300 rounded-md"
                   >
                     <option value="">Tümü</option>
@@ -253,28 +170,19 @@ export default function JobsPage() {
                   </select>
                 </div>
 
-                <div className="flex items-center">
-                  <label className="flex items-center">
-                    <input
-                      type="checkbox"
-                      checked={filters.isUrgent}
-                      onChange={(e) => handleFilterChange('isUrgent', e.target.checked)}
-                      className="rounded border-gray-300 mr-2"
-                    />
-                    <span className="text-sm text-gray-700">Acil</span>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Durum
                   </label>
-                </div>
-
-                <div className="flex items-center">
-                  <label className="flex items-center">
-                    <input
-                      type="checkbox"
-                      checked={filters.isFeatured}
-                      onChange={(e) => handleFilterChange('isFeatured', e.target.checked)}
-                      className="rounded border-gray-300 mr-2"
-                    />
-                    <span className="text-sm text-gray-700">Öne Çıkan</span>
-                  </label>
+                  <select
+                    value={currentParams.status || ''}
+                    onChange={(e) => handleFilterChange('status', e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                  >
+                    <option value="">Tümü</option>
+                    <option value="OPEN">Açık</option>
+                    <option value="CLOSED">Kapalı</option>
+                  </select>
                 </div>
               </div>
             )}
@@ -307,95 +215,21 @@ export default function JobsPage() {
         {/* Job Cards */}
         <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
           {jobs.map((job) => (
-            <Card key={job.id} className="hover:shadow-lg transition-shadow">
-              <CardHeader>
-                <div className="flex items-start justify-between">
-                  <div className="flex-1">
-                    <div className="flex items-center gap-2 mb-2">
-                      {job.isFeatured && (
-                        <Badge className="bg-yellow-100 text-yellow-800">
-                          Öne Çıkan
-                        </Badge>
-                      )}
-                      {job.isUrgent && (
-                        <Badge variant="destructive">
-                          Acil
-                        </Badge>
-                      )}
-                    </div>
-                    <CardTitle className="text-lg leading-tight mb-2">
-                      <Link 
-                        href={`/jobs/${job.id}`}
-                        className="hover:text-brand-primary transition-colors"
-                      >
-                        {job.title}
-                      </Link>
-                    </CardTitle>
-                    <div className="text-sm text-gray-600">
-                      {job.agency?.companyName}
-                      {job.agency?.isVerified && (
-                        <Badge className="ml-2 text-xs bg-green-100 text-green-800">
-                          Doğrulanmış
-                        </Badge>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              </CardHeader>
-              
-              <CardContent>
-                <p className="text-gray-700 text-sm mb-4 line-clamp-3">
-                  {job.description.substring(0, 150)}...
-                </p>
-
-                <div className="space-y-2 text-sm text-gray-600 mb-4">
-                  <div className="flex items-center gap-2">
-                    <MapPin className="h-4 w-4" />
-                    <span>{job.location}</span>
-                  </div>
-                  
-                  <div className="flex items-center gap-2">
-                    <Calendar className="h-4 w-4" />
-                    <span>{job.expiresAt ? getTimeLeft(job.expiresAt) : 'Tarih belirtilmemiş'}</span>
-                  </div>
-                  
-                  {(job.budgetMin || job.budgetMax) && (
-                    <div className="flex items-center gap-2">
-                      <DollarSign className="h-4 w-4" />
-                      <span>
-                        {job.budgetMin && job.budgetMax
-                          ? `${job.budgetMin}-${job.budgetMax} ${job.currency}`
-                          : job.budgetMin
-                          ? `${job.budgetMin}+ ${job.currency}`
-                          : `${job.budgetMax} ${job.currency}'ye kadar`
-                        }
-                      </span>
-                    </div>
-                  )}
-                </div>
-
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-4 text-xs text-gray-500">
-                    <div className="flex items-center gap-1">
-                      <Eye className="h-3 w-3" />
-                      <span>{job.views}</span>
-                    </div>
-                    <div className="flex items-center gap-1">
-                      <Users className="h-3 w-3" />
-                      <span>{job.applicationCount} başvuru</span>
-                    </div>
-                  </div>
-                  
-                  <Link href={`/jobs/${job.id}`}>
-                    <Button size="sm">
-                      Detayları Gör
-                    </Button>
-                  </Link>
-                </div>
-              </CardContent>
-            </Card>
+            <JobCard 
+              key={job.id} 
+              job={job} 
+              userFlags={userFlags}
+              isVisitor={isVisitor}
+            />
           ))}
         </div>
+
+        {/* Pagination */}
+        <JobsPagination
+          currentPage={currentParams.page || 1}
+          totalPages={totalPages}
+          onPageChange={handlePageChange}
+        />
       </div>
     </div>
   )

@@ -10,8 +10,11 @@ import {
   UseGuards, 
   Request,
   HttpCode,
-  HttpStatus
+  HttpStatus,
+  ValidationPipe,
+  Logger
 } from '@nestjs/common';
+import { ApiTags, ApiOperation, ApiQuery, ApiResponse } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { Public } from '../auth/decorators/public.decorator';
 import { JobsService } from './jobs.service';
@@ -21,48 +24,85 @@ import {
   CreateJobApplicationDto,
   UpdateJobApplicationDto
 } from './dto/job.dto';
+import { JobsQueryDto } from './dto/jobs-query.dto';
 
+@ApiTags('jobs')
 @Controller('jobs')
 export class JobsController {
+  private readonly logger = new Logger(JobsController.name);
+
   constructor(private readonly jobsService: JobsService) {}
 
   // Public endpoints
   @Public()
   @Get()
+  @ApiOperation({ 
+    summary: 'Get job posts with filtering',
+    description: 'Retrieve job posts with optional filtering by search query, city, job type, and status. All date fields are returned in ISO 8601 format.'
+  })
+  @ApiQuery({ name: 'page', required: false, type: Number, description: 'Page number (default: 1)', example: 1 })
+  @ApiQuery({ name: 'limit', required: false, type: Number, description: 'Items per page (default: 20, max: 50)', example: 20 })
+  @ApiQuery({ name: 'q', required: false, type: String, description: 'Search query for title or description', example: 'Dizi' })
+  @ApiQuery({ name: 'city', required: false, type: String, description: 'Filter by city (case-insensitive)', example: 'İzmir' })
+  @ApiQuery({ 
+    name: 'jobType', 
+    required: false, 
+    type: String, 
+    description: 'Filter by job type', 
+    enum: ['FULL_TIME', 'PART_TIME', 'CONTRACT', 'INTERN', 'FILM', 'TV', 'TV_SERIES', 'COMMERCIAL', 'THEATER', 'MUSIC_VIDEO', 'DOCUMENTARY', 'SHORT_FILM', 'OTHER'],
+    example: 'FILM'
+  })
+  @ApiQuery({ 
+    name: 'status', 
+    required: false, 
+    type: String, 
+    description: 'Filter by job status', 
+    enum: ['DRAFT', 'PUBLISHED', 'CLOSED', 'OPEN'],
+    example: 'PUBLISHED'
+  })
+  @ApiResponse({ 
+    status: 200, 
+    description: 'Job posts retrieved successfully',
+    schema: {
+      type: 'object',
+      properties: {
+        data: {
+          type: 'array',
+          items: {
+            type: 'object',
+            properties: {
+              id: { type: 'string' },
+              title: { type: 'string' },
+              description: { type: 'string' },
+              jobType: { type: 'string' },
+              city: { type: 'string' },
+              status: { type: 'string' },
+              expiresAt: { type: 'string', format: 'date-time' },
+              publishedAt: { type: 'string', format: 'date-time' },
+              createdAt: { type: 'string', format: 'date-time' },
+              updatedAt: { type: 'string', format: 'date-time' }
+            }
+          }
+        },
+        meta: {
+          type: 'object',
+          properties: {
+            page: { type: 'number' },
+            limit: { type: 'number' },
+            total: { type: 'number' }
+          }
+        }
+      }
+    }
+  })
   async getJobPosts(
-    @Query('page') page: string = '1',
-    @Query('limit') limit: string = '20',
-    @Query('category') category?: string,
-    @Query('talentType') talentType?: string,
-    @Query('location') location?: string,
-    @Query('budgetMin') budgetMin?: string,
-    @Query('budgetMax') budgetMax?: string,
-    @Query('ageMin') ageMin?: string,
-    @Query('ageMax') ageMax?: string,
-    @Query('gender') gender?: string,
-    @Query('languages') languages?: string,
-    @Query('skills') skills?: string,
-    @Query('isUrgent') isUrgent?: string,
-    @Query('isFeatured') isFeatured?: string,
-    @Query('search') search?: string,
+    @Query(new ValidationPipe({ transform: true, whitelist: true }))
+    query: JobsQueryDto,
   ) {
-    const filters = {
-      category,
-      talentType,
-      location,
-      budgetMin: budgetMin ? parseInt(budgetMin) : undefined,
-      budgetMax: budgetMax ? parseInt(budgetMax) : undefined,
-      ageMin: ageMin ? parseInt(ageMin) : undefined,
-      ageMax: ageMax ? parseInt(ageMax) : undefined,
-      gender,
-      languages: languages ? languages.split(',') : undefined,
-      skills: skills ? skills.split(',') : undefined,
-      isUrgent: isUrgent === 'true',
-      isFeatured: isFeatured === 'true',
-      search,
-    };
-
-    return this.jobsService.getJobPosts(filters, parseInt(page), parseInt(limit));
+    this.logger.debug(`GET /api/v1/jobs query=${JSON.stringify(query)}`);
+    const result = await this.jobsService.getJobPosts(query);
+    this.logger.debug(`RESP /api/v1/jobs count=${result.data?.length ?? 0}`);
+    return result;
   }
 
   @Public()

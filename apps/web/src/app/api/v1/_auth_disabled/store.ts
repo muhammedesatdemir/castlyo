@@ -117,7 +117,7 @@ export const store = {
       const now = new Date()
       let cleaned = 0
       
-      for (const [hash, token] of tokens.entries()) {
+      for (const [hash, token] of Array.from(tokens.entries())) {
         if (token.expiresAt < now || token.used) {
           tokens.delete(hash)
           cleaned++

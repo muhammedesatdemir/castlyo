@@ -28,7 +28,7 @@ export async function GET(request: NextRequest) {
     const tokenHash = crypto.createHash('sha256').update(token).digest('hex')
     
     // Look up token in mock store
-    const tokenRecord = mockStore.tokens.findByHash(tokenHash)
+    const tokenRecord = mockStore.tokens.get(tokenHash)
     
     if (!tokenRecord) {
       console.log(`[VERIFY ROUTE] Token not found: ${token.substring(0, 8)}...`)
@@ -46,7 +46,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.redirect(loginUrl)
     }
     
-    if (tokenRecord.expiresAt < new Date()) {
+    if (tokenRecord.expiresAt < Date.now()) {
       console.log(`[VERIFY ROUTE] Token expired: ${token.substring(0, 8)}...`)
       const loginUrl = new URL('/auth', request.url)
       loginUrl.searchParams.set('verified', 'false')
@@ -55,7 +55,7 @@ export async function GET(request: NextRequest) {
     }
     
     // Find user by token's userId
-    const users = mockStore.users.list()
+    const users = Array.from(mockStore.users.values())
     const user = users.find(u => u.id === tokenRecord.userId)
     
     if (!user) {
@@ -67,29 +67,24 @@ export async function GET(request: NextRequest) {
     }
     
     // Update user verification status
-    const updated = mockStore.users.updateEmailVerified(user.email, true)
-    if (updated) {
-      // Mark token as used
-      mockStore.tokens.markAsUsed(tokenHash)
-      
-      console.log(`[VERIFY ROUTE] ✅ User verified successfully: ${user.email}`)
-      if ((mockStore as any)?.dev?.stats) {
-        console.log(`[VERIFY ROUTE] 📊 Mock Store Stats:`, (mockStore as any).dev.stats());
-      }
-      
-      // Redirect to login page with success message
-      const loginUrl = new URL('/auth', request.url)
-      loginUrl.searchParams.set('verified', 'true')
-      loginUrl.searchParams.set('message', 'E-posta adresiniz başarıyla doğrulandı! Şimdi giriş yapabilirsiniz.')
-      
-      return NextResponse.redirect(loginUrl)
-    } else {
-      console.log(`[VERIFY ROUTE] Failed to update user: ${user.email}`)
-      const loginUrl = new URL('/auth', request.url)
-      loginUrl.searchParams.set('verified', 'false')
-      loginUrl.searchParams.set('message', 'Doğrulama sırasında bir hata oluştu.')
-      return NextResponse.redirect(loginUrl)
+    const updatedUser = { ...user, emailVerified: true }
+    mockStore.users.set(user.email, updatedUser)
+    
+    // Mark token as used
+    const updatedToken = { ...tokenRecord, used: true }
+    mockStore.tokens.set(tokenHash, updatedToken)
+    
+    console.log(`[VERIFY ROUTE] ✅ User verified successfully: ${user.email}`)
+    if ((mockStore as any)?.dev?.stats) {
+      console.log(`[VERIFY ROUTE] 📊 Mock Store Stats:`, (mockStore as any).dev.stats());
     }
+    
+    // Redirect to login page with success message
+    const loginUrl = new URL('/auth', request.url)
+    loginUrl.searchParams.set('verified', 'true')
+    loginUrl.searchParams.set('message', 'E-posta adresiniz başarıyla doğrulandı! Şimdi giriş yapabilirsiniz.')
+    
+    return NextResponse.redirect(loginUrl)
     
   } catch (error) {
     console.error('[VERIFY ROUTE] Error:', error)
@@ -119,7 +114,7 @@ export async function POST(request: NextRequest) {
     const tokenHash = crypto.createHash('sha256').update(token).digest('hex')
     
     // Look up token in mock store
-    const tokenRecord = mockStore.tokens.findByHash(tokenHash)
+    const tokenRecord = mockStore.tokens.get(tokenHash)
     
     if (!tokenRecord) {
       console.log(`[VERIFY API] Token not found: ${token.substring(0, 8)}...`)
@@ -131,13 +126,13 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ ok: false, message: 'Bu doğrulama token\'ı daha önce kullanılmış' }, { status: 400 })
     }
     
-    if (tokenRecord.expiresAt < new Date()) {
+    if (tokenRecord.expiresAt < Date.now()) {
       console.log(`[VERIFY API] Token expired: ${token.substring(0, 8)}...`)
       return NextResponse.json({ ok: false, message: 'Doğrulama token\'ının süresi dolmuş' }, { status: 400 })
     }
     
     // Find user by token's userId
-    const users = mockStore.users.list()
+    const users = Array.from(mockStore.users.values())
     const user = users.find(u => u.id === tokenRecord.userId)
     
     if (!user) {
@@ -146,21 +141,19 @@ export async function POST(request: NextRequest) {
     }
     
     // Update user verification status - THIS IS THE CRITICAL PART
-    const updated = mockStore.users.updateEmailVerified(user.email, true)
-    if (updated) {
-      // Mark token as used
-      mockStore.tokens.markAsUsed(tokenHash)
-      
-      console.log(`[VERIFY API] ✅ User verified successfully: ${user.email}`)
-      if ((mockStore as any)?.dev?.stats) {
-        console.log(`[VERIFY API] 📊 Mock Store Stats:`, (mockStore as any).dev.stats());
-      }
-      
-      return NextResponse.json({ ok: true, message: 'E-posta başarıyla doğrulandı' })
-    } else {
-      console.log(`[VERIFY API] Failed to update user: ${user.email}`)
-      return NextResponse.json({ ok: false, message: 'Doğrulama sırasında bir hata oluştu' }, { status: 500 })
+    const updatedUser = { ...user, emailVerified: true }
+    mockStore.users.set(user.email, updatedUser)
+    
+    // Mark token as used
+    const updatedToken = { ...tokenRecord, used: true }
+    mockStore.tokens.set(tokenHash, updatedToken)
+    
+    console.log(`[VERIFY API] ✅ User verified successfully: ${user.email}`)
+    if ((mockStore as any)?.dev?.stats) {
+      console.log(`[VERIFY API] 📊 Mock Store Stats:`, (mockStore as any).dev.stats());
     }
+    
+    return NextResponse.json({ ok: true, message: 'E-posta başarıyla doğrulandı' })
     
   } catch (error) {
     console.error('[VERIFY API] Error:', error)

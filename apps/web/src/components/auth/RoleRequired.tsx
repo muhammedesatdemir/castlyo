@@ -18,13 +18,9 @@ export default function RoleRequired({ required, children }: RoleRequiredProps) 
     if (status === "authenticated") {
       const role = (session?.user as any)?.role;
       if (role && role !== required) {
-        toast({
-          type: "error",
-          title: "Erişim engellendi",
-          message: role === "TALENT"
-            ? "Yetenek hesabıyla Ajans onboardingine erişemezsiniz."
-            : "Ajans hesabıyla Yetenek onboardingine erişemezsiniz.",
-        });
+        toast.error("Erişim engellendi", role === "TALENT"
+          ? "Yetenek hesabıyla Ajans onboardingine erişemezsiniz."
+          : "Ajans hesabıyla Yetenek onboardingine erişemezsiniz.");
         router.replace("/");
       }
     }

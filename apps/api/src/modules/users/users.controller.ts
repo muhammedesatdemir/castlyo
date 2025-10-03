@@ -1,9 +1,12 @@
 import { Controller, Get, UseGuards, Request, Logger, Patch, Body, UnauthorizedException, Put } from '@nestjs/common';
+import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { UsersService } from './users.service';
 import { UpdateUserDto } from './dto/update-user.dto';
+import { MeResponseDto } from './dto/me-response.dto';
 
 @Controller('users')
+@ApiTags('users')
 @UseGuards(JwtAuthGuard) // Tüm endpoint'ler için auth zorunlu
 export class UsersController {
   private readonly logger = new Logger(UsersController.name);
@@ -11,7 +14,11 @@ export class UsersController {
   constructor(private usersService: UsersService) {}
 
   @Get('me')
-  async getCurrentUser(@Request() req) {
+  @ApiOperation({ summary: 'Get current user profile with completeness flags' })
+  @ApiResponse({ status: 200, description: 'User profile retrieved successfully', type: MeResponseDto })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  @ApiResponse({ status: 404, description: 'User not found' })
+  async getCurrentUser(@Request() req): Promise<MeResponseDto> {
     // Guard-rail: sub yoksa 401 at
     const userId = req.user?.sub ?? req.user?.userId ?? req.user?.id;
     this.logger.log(`[GET /users/me] req.user =`, req.user);

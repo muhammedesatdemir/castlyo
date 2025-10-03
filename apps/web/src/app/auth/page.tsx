@@ -313,7 +313,7 @@ export default function AuthPage() {
         }
       }
     } catch (error) {
-      logger.error('AUTH', 'Auth process failed', { mode, email: formData.email, error: error.message })
+      logger.error('AUTH', 'Auth process failed', { mode, email: formData.email, error: error instanceof Error ? error.message : String(error) })
       console.error('Auth error:', error)
       
       // Network errors
@@ -566,7 +566,7 @@ export default function AuthPage() {
       {/* Modern Notification Permission Popup */}
       <NotificationPermission 
         onPermissionChange={(permission) => {
-          logger.info('NOTIFICATION', 'Permission changed', { permission })
+          logger.info('GENERAL', 'Permission changed', { permission })
         }}
       />
 

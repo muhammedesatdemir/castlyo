@@ -1,7 +1,7 @@
 "use client";
 
 import { useForm } from "react-hook-form";
-import AvatarUploader from "@/components/AvatarUploader";
+// import AvatarUploader from "@/components/AvatarUploader";
 
 type FormValues = {
   firstName: string;
@@ -28,10 +28,10 @@ export default function Step2Account() {
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
       {/* YENİ: Avatar */}
-      <AvatarUploader
+      {/* <AvatarUploader
         value={watch("profilePhotoUrl")}
         onChange={(url) => setValue("profilePhotoUrl", url, { shouldDirty: true })}
-      />
+      /> */}
 
       {/* Mevcut alanlar */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
