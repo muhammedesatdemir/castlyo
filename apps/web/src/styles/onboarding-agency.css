@@ -1,0 +1,61 @@
+/* Onboarding (Agency) forma özel renk teması */
+.onboarding-agency label,
+.onboarding-agency .form-label,
+.onboarding-agency .field-label {
+  color: #F6E6C3 !important;
+}
+
+/* Input / textarea / select içindeki metin */
+.onboarding-agency input,
+.onboarding-agency textarea,
+.onboarding-agency select,
+.onboarding-agency [role="textbox"] {
+  color: #F6E6C3 !important;
+  caret-color: #F6E6C3;
+}
+
+/* Placeholder (daha soluk krem tonunda) */
+.onboarding-agency input::placeholder,
+.onboarding-agency textarea::placeholder {
+  color: rgba(246, 230, 195, 0.55) !important; /* direkt RGBA ile saydam */
+  @apply placeholder-[#F6E6C3]/55; /* Tailwind override fallback */
+}
+
+/* Yardım/alt metinler (varsa) */
+.onboarding-agency .text-muted-foreground,
+.onboarding-agency .help-text,
+.onboarding-agency .description {
+  color: #F6E6C3 !important;
+  opacity: 0.85;
+}
+
+/* Form başlıkları ve açıklamaları */
+.onboarding-agency h2,
+.onboarding-agency h3,
+.onboarding-agency h4,
+.onboarding-agency p {
+  color: #F6E6C3 !important;
+}
+
+/* Checkbox ve radio button etiketleri */
+.onboarding-agency input[type="checkbox"] + span,
+.onboarding-agency input[type="radio"] + span {
+  color: #F6E6C3 !important;
+}
+
+/* Özel bileşenler için genel seçici */
+.onboarding-agency .chip-checkbox-label {
+  color: #F6E6C3 !important;
+}
+
+/* Progress bar ve step açıklamaları */
+.onboarding-agency .text-white\/70,
+.onboarding-agency .text-white\/80,
+.onboarding-agency .text-white\/90 {
+  color: #F6E6C3 !important;
+}
+
+/* Form açıklama metinleri */
+.onboarding-agency .text-sm {
+  color: #F6E6C3 !important;
+}

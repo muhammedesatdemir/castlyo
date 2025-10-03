@@ -7,15 +7,17 @@ const FolderMap = {
   cv: 'documents',        // CV (pdf/doc/docx)
   portfolio: 'portfolios',// görsel & video
   jobImage: 'jobs',       // iş ilanı görseli (varsa)
+  verification: 'documents/verification', // agency verification documents
 } as const;
 
-export async function uploadWithPresigned(file: File, type: 'avatar'|'cv'|'portfolio'|'jobImage') {
+export async function uploadWithPresigned(file: File, type: 'avatar'|'cv'|'portfolio'|'jobImage'|'verification') {
   const presignRes = await fetch('/api/proxy/api/v1/upload/presigned-url', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
+    credentials: 'include',
     body: JSON.stringify({ 
-      fileName: file.name, 
-      fileType: file.type || 'application/octet-stream', 
+      filename: file.name, 
+      contentType: file.type || 'application/octet-stream', 
       folder: FolderMap[type] 
     }),
   });
@@ -51,5 +53,9 @@ export async function uploadAvatar(file: File) {
 
 export async function uploadCv(file: File) {
   return uploadWithPresigned(file, 'cv');
+}
+
+export async function uploadVerificationDocument(file: File) {
+  return uploadWithPresigned(file, 'verification');
 }
 

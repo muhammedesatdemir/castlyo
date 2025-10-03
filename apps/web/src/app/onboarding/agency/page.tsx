@@ -1,69 +1,248 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { ArrowLeft, ArrowRight, Check } from 'lucide-react'
 import { AuthGuard } from '@/components/auth/AuthGuard'
 import RoleRequired from '@/components/auth/RoleRequired'
+import { step1Schema, step2Schema, step3Schema, normalize, Step1, Step2, Step3 } from '@/lib/schemas/agency-onboarding'
+import { z } from 'zod'
+import '@/styles/onboarding-agency.css'
 
 const STEPS = [
   { id: 1, title: 'Şirket Bilgileri', description: 'Temel şirket bilgilerinizi girin' },
   { id: 2, title: 'İletişim Bilgileri', description: 'İletişim detaylarını tamamlayın' },
-  { id: 3, title: 'Belge Yükleme', description: 'Şirket belgelerini yükleyin' },
-  { id: 4, title: 'Tamamlandı', description: 'Doğrulama beklemede!' }
+  { id: 3, title: 'Belge Yükleme', description: 'Kimlik doğrulama belgesi yükleyin' },
+  { id: 4, title: 'Tamamlandı', description: 'Hesabınız aktif!' }
 ]
+
+type FormData = Step1 & Step2 & Step3
+
+const initial: FormData = {
+  agencyName: "",
+  companyName: "",
+  taxNumber: "",
+  about: "",
+  website: "",
+  contactName: "",
+  contactEmail: "",
+  contactPhone: "",
+  address: "",
+  country: "",
+  city: "",
+  specialties: [] as string[],
+  verificationDocKey: "",
+}
 
 function AgencyOnboardingContent() {
   const router = useRouter()
-  const [currentStep, setCurrentStep] = useState(1)
-  const [formData, setFormData] = useState({
-    // Step 1 - Company
-    companyName: '',
-    tradeName: '',
-    taxNumber: '',
-    description: '',
-    website: '',
-    
-    // Step 2 - Contact
-    contactPerson: '',
-    contactEmail: '',
-    contactPhone: '',
-    address: '',
-    city: '',
-    
-    // Step 3 - Verification
-    specialties: [] as string[],
-    verificationDocuments: [] as string[]
-  })
+  const [step, setStep] = useState<1|2|3>(1)
+  const [form, setForm] = useState<FormData>(initial)
+  const [errors, setErrors] = useState<Record<string, string[]>>({})
+  const [saving, setSaving] = useState(false)
+  const [serverError, setServerError] = useState<string|undefined>(undefined)
+  const [documentFile, setDocumentFile] = useState<File | null>(null)
+  const [uploading, setUploading] = useState(false)
+  const [banner, setBanner] = useState<{type:"error"|"success", text:string}|null>(null)
 
-  const handleNext = () => {
-    if (currentStep < STEPS.length) {
-      setCurrentStep(currentStep + 1)
+  // 1) PREFILL: kayıtlı veriyi çek ve formu doldur
+  useEffect(() => {
+    (async () => {
+      try {
+        const res = await fetch("/api/proxy/api/v1/profiles/agency/me", { credentials: "include" });
+        if (!res.ok) return;
+        const data = await res.json();
+        // API alan adları sizin servisle birebir olmalı:
+        setForm(prev => ({
+          ...prev,
+          agencyName: data.agencyName ?? "",
+          companyName: data.companyName ?? "",
+          taxNumber: data.taxNumber ?? "",
+          about: data.about ?? "",
+          website: data.website ?? "",
+          contactName: data.contactName ?? "",
+          contactEmail: data.contactEmail ?? "",
+          contactPhone: data.contactPhone ?? "",
+          address: data.address ?? "",
+          country: data.country ?? "",
+          city: data.city ?? "",
+          specialties: Array.isArray(data.specialties) ? data.specialties : [],
+          verificationDocKey: data.verificationDocKey ?? "",
+        }));
+      } catch {}
+    })();
+  }, []);
+
+  // Clean function to filter undefined values
+  function clean<T extends Record<string, any>>(obj: T) {
+    return Object.fromEntries(Object.entries(obj).filter(([, v]) => v !== undefined)) as Partial<T>;
+  }
+
+  // 2) tek noktadan kaydet
+  const saveStep = async (payload: Partial<FormData>) => {
+    setSaving(true);
+    setServerError(undefined);
+    try {
+      const res = await fetch("/api/proxy/api/v1/profiles/agency/me", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify(clean(payload as any)),
+      });
+      if (!res.ok) {
+        const txt = await res.text().catch(() => "");
+        throw new Error(txt || `Save failed: ${res.status}`);
+      }
+      return true;
+    } catch (e: any) {
+      setServerError(e?.message || "Kaydetme hatası");
+      return false;
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  // 3) "Sonraki" butonu → doğrula → kaydet → adım ilerlet
+  const handleNext = async () => {
+    setBanner(null);
+
+    const schema = [step1Schema, step2Schema, step3Schema][step - 1];
+    const parsed = schema.safeParse(form);
+
+    if (!parsed.success) {
+      const fe = parsed.error.flatten().fieldErrors;
+      setErrors(fe);
+      const count = Object.values(fe).flat().length;
+      setBanner({
+        type: 'error',
+        text: `Bu adımda ${count} eksik/hatalı alan var. Zorunlu alanları doldurmadan ilerleyemezsiniz.`,
+      });
+      return;                 // <<< ilerlemeyi BLOKLA
+    }
+
+    // kayıt olmadan ilerleme yok
+    let ok = false;
+    if (step === 1) {
+      const step1Data = parsed.data as Step1;
+      ok = await saveStep({
+        agencyName: step1Data.agencyName,
+        companyName: step1Data.companyName,
+        taxNumber: step1Data.taxNumber,
+        about: step1Data.about ?? "",
+        website: step1Data.website ?? "",
+      });
+    } else if (step === 2) {
+      const step2Data = parsed.data as Step2;
+      ok = await saveStep({
+        contactName: step2Data.contactName,
+        contactEmail: step2Data.contactEmail,
+        contactPhone: step2Data.contactPhone,
+        address: step2Data.address,
+        country: step2Data.country,
+        city: step2Data.city,
+      });
+    } else if (step === 3) {
+      const step3Data = parsed.data as Step3;
+      ok = await saveStep({
+        specialties: step3Data.specialties,
+        verificationDocKey: step3Data.verificationDocKey ?? "",
+      });
+    }
+
+    if (!ok) {
+      setBanner({ type: 'error', text: 'Kaydetme başarısız. Lütfen tekrar deneyin.' });
+      return;                 // <<< yine BLOK
+    }
+
+    if (step === 3) {
+      // başarı: /jobs'a gönder
+      router.push("/jobs");
+    } else {
+      setStep((s) => (s + 1) as 1|2|3);    // sadece başarılıysa ilerle
     }
   }
 
   const handlePrevious = () => {
-    if (currentStep > 1) {
-      setCurrentStep(currentStep - 1)
+    if (step > 1) {
+      setStep((s) => (s === 2 ? 1 : 2))
     }
   }
 
-  const handleSubmit = async () => {
+  // file input'tan sonra çağrılacak
+  const uploadVerification = async (file: File) => {
+    if (!file) return setBanner({ type: 'error', text: 'Lütfen bir PDF dosyası seçin.' });
+
+    const isPdf = file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf');
+    if (!isPdf) return setBanner({ type: 'error', text: 'Sadece PDF yükleyebilirsiniz.' });
+
     try {
-      // TODO: API call to save profile
-      console.log('Saving agency profile:', formData)
-      
-      // Redirect to profile page
-      router.push('/profile')
-    } catch (error) {
-      console.error('Error saving profile:', error)
+      // 1) Presign al
+      const res = await fetch('/api/proxy/api/v1/upload/presigned-url', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({
+          fileName: file.name,
+          fileType: file.type || 'application/pdf',
+          folder: 'documents', // backend enum'a uygun değer
+        }),
+      });
+
+      const presign = await res.json();
+      if (!res.ok) {
+        console.error('presign error', presign);
+        setBanner({ type: 'error', text: presign?.message || 'Ön imza alınamadı.' });
+        return;
+      }
+
+      // 2) Yükleme türünü otomatik tespit et
+      let uploadOk = false;
+
+      // a) PUT presign (classic)
+      if (presign.putUrl) {
+        const putUrl = presign.putUrl;
+        const putRes = await fetch(putUrl, {
+          method: 'PUT',
+          headers: { 'content-type': file.type || 'application/pdf' },
+          body: file,
+        });
+        uploadOk = putRes.ok;
+        if (!uploadOk) {
+          console.error('PUT upload failed', putRes.status, await putRes.text());
+        }
+      }
+      // b) POST policy (S3 form upload)
+      else if ((presign.url || presign.uploadUrl) && presign.fields) {
+        const postUrl = presign.url ?? presign.uploadUrl; // <- backend 'uploadUrl' veriyorsa onu kullan
+        const form = new FormData();
+        Object.entries(presign.fields).forEach(([k, v]) => form.append(k, String(v)));
+        form.append('file', file);
+        const postRes = await fetch(postUrl, { method: 'POST', body: form });
+        uploadOk = postRes.ok;
+        if (!uploadOk) {
+          console.error('POST upload failed', postRes.status, await postRes.text());
+        }
+      }
+
+      if (!uploadOk) {
+        setBanner({ type: 'error', text: 'Dosya S3\'e yüklenemedi.' });
+        return;
+      }
+
+      // 3) DB'ye anahtarı kaydet
+      const key = presign.key || presign.fields?.key; // ikisinden biri gelir
+      setForm(prev => ({ ...prev, verificationDocKey: key }));
+      await saveStep({ verificationDocKey: key });
+      setBanner({ type: 'success', text: 'Belge başarıyla yüklendi.' });
+    } catch (e: any) {
+      setBanner({ type: 'error', text: e?.message ?? 'Belge yüklenemedi.' });
     }
   }
 
   const renderStepContent = () => {
-    switch (currentStep) {
+    switch (step) {
       case 1:
         return (
           <div className="space-y-4">
@@ -74,36 +253,41 @@ function AgencyOnboardingContent() {
                 Şirket Adı *
               </label>
               <Input
-                value={formData.companyName}
-                onChange={(e) => setFormData({ ...formData, companyName: e.target.value })}
+                value={form.agencyName}
+                onChange={(e) => setForm({ ...form, agencyName: e.target.value })}
                 className="bg-white/10 border-white/20 text-white placeholder:text-white/50"
                 placeholder="ABC Casting Ajansı Ltd. Şti."
                 required
               />
+              {errors.agencyName?.[0] && <p className="text-red-400 text-sm mt-1">{errors.agencyName[0]}</p>}
             </div>
             
             <div>
               <label className="block text-sm font-medium text-white/90 mb-2">
-                Ticari Ünvan
+                Ticari Ünvan *
               </label>
               <Input
-                value={formData.tradeName}
-                onChange={(e) => setFormData({ ...formData, tradeName: e.target.value })}
+                value={form.companyName}
+                onChange={(e) => setForm({ ...form, companyName: e.target.value })}
                 className="bg-white/10 border-white/20 text-white placeholder:text-white/50"
                 placeholder="ABC Casting"
+                required
               />
+              {errors.companyName?.[0] && <p className="text-red-400 text-sm mt-1">{errors.companyName[0]}</p>}
             </div>
             
             <div>
               <label className="block text-sm font-medium text-white/90 mb-2">
-                Vergi Numarası
+                Vergi Numarası *
               </label>
               <Input
-                value={formData.taxNumber}
-                onChange={(e) => setFormData({ ...formData, taxNumber: e.target.value })}
+                value={form.taxNumber}
+                onChange={(e) => setForm({ ...form, taxNumber: e.target.value })}
                 className="bg-white/10 border-white/20 text-white placeholder:text-white/50"
                 placeholder="1234567890"
+                required
               />
+              {errors.taxNumber?.[0] && <p className="text-red-400 text-sm mt-1">{errors.taxNumber[0]}</p>}
             </div>
             
             <div>
@@ -111,8 +295,8 @@ function AgencyOnboardingContent() {
                 Şirket Açıklaması
               </label>
               <textarea
-                value={formData.description}
-                onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                value={form.about}
+                onChange={(e) => setForm({ ...form, about: e.target.value })}
                 className="w-full rounded-lg bg-white/10 border border-white/20 text-white placeholder:text-white/50 px-3 py-2 min-h-[100px]"
                 placeholder="Şirketiniz hakkında bilgi verin..."
               />
@@ -124,11 +308,12 @@ function AgencyOnboardingContent() {
               </label>
               <Input
                 type="url"
-                value={formData.website}
-                onChange={(e) => setFormData({ ...formData, website: e.target.value })}
+                value={form.website}
+                onChange={(e) => setForm({ ...form, website: e.target.value })}
                 className="bg-white/10 border-white/20 text-white placeholder:text-white/50"
                 placeholder="https://www.abccasting.com"
               />
+              {errors.website?.[0] && <p className="text-red-400 text-sm mt-1">{errors.website[0]}</p>}
             </div>
           </div>
         )
@@ -143,12 +328,13 @@ function AgencyOnboardingContent() {
                 İletişim Sorumlusu *
               </label>
               <Input
-                value={formData.contactPerson}
-                onChange={(e) => setFormData({ ...formData, contactPerson: e.target.value })}
+                value={form.contactName}
+                onChange={(e) => setForm({ ...form, contactName: e.target.value })}
                 className="bg-white/10 border-white/20 text-white placeholder:text-white/50"
                 placeholder="Ahmet Yılmaz"
                 required
               />
+              {errors.contactName?.[0] && <p className="text-red-400 text-sm mt-1">{errors.contactName[0]}</p>}
             </div>
             
             <div>
@@ -157,12 +343,13 @@ function AgencyOnboardingContent() {
               </label>
               <Input
                 type="email"
-                value={formData.contactEmail}
-                onChange={(e) => setFormData({ ...formData, contactEmail: e.target.value })}
+                value={form.contactEmail}
+                onChange={(e) => setForm({ ...form, contactEmail: e.target.value })}
                 className="bg-white/10 border-white/20 text-white placeholder:text-white/50"
                 placeholder="info@abccasting.com"
                 required
               />
+              {errors.contactEmail?.[0] && <p className="text-red-400 text-sm mt-1">{errors.contactEmail[0]}</p>}
             </div>
             
             <div>
@@ -171,36 +358,56 @@ function AgencyOnboardingContent() {
               </label>
               <Input
                 type="tel"
-                value={formData.contactPhone}
-                onChange={(e) => setFormData({ ...formData, contactPhone: e.target.value })}
+                value={form.contactPhone}
+                onChange={(e) => setForm({ ...form, contactPhone: e.target.value })}
                 className="bg-white/10 border-white/20 text-white placeholder:text-white/50"
                 placeholder="+90 212 XXX XX XX"
                 required
               />
+              {errors.contactPhone?.[0] && <p className="text-red-400 text-sm mt-1">{errors.contactPhone[0]}</p>}
             </div>
             
             <div>
               <label className="block text-sm font-medium text-white/90 mb-2">
-                Adres
+                Adres *
               </label>
               <textarea
-                value={formData.address}
-                onChange={(e) => setFormData({ ...formData, address: e.target.value })}
+                value={form.address}
+                onChange={(e) => setForm({ ...form, address: e.target.value })}
                 className="w-full rounded-lg bg-white/10 border border-white/20 text-white placeholder:text-white/50 px-3 py-2 min-h-[80px]"
                 placeholder="Şirket adresinizi girin..."
+                required
               />
+              {errors.address?.[0] && <p className="text-red-400 text-sm mt-1">{errors.address[0]}</p>}
             </div>
             
-            <div>
-              <label className="block text-sm font-medium text-white/90 mb-2">
-                Şehir
-              </label>
-              <Input
-                value={formData.city}
-                onChange={(e) => setFormData({ ...formData, city: e.target.value })}
-                className="bg-white/10 border-white/20 text-white placeholder:text-white/50"
-                placeholder="İstanbul"
-              />
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-white/90 mb-2">
+                  Ülke *
+                </label>
+                <Input
+                  value={form.country}
+                  onChange={(e) => setForm({ ...form, country: e.target.value })}
+                  className="bg-white/10 border-white/20 text-white placeholder:text-white/50"
+                  placeholder="Türkiye"
+                  required
+                />
+                {errors.country?.[0] && <p className="text-red-400 text-sm mt-1">{errors.country[0]}</p>}
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-white/90 mb-2">
+                  Şehir *
+                </label>
+                <Input
+                  value={form.city}
+                  onChange={(e) => setForm({ ...form, city: e.target.value })}
+                  className="bg-white/10 border-white/20 text-white placeholder:text-white/50"
+                  placeholder="İstanbul"
+                  required
+                />
+                {errors.city?.[0] && <p className="text-red-400 text-sm mt-1">{errors.city[0]}</p>}
+              </div>
             </div>
             
             <div className="bg-blue-500/10 border border-blue-500/20 rounded-lg p-4 mt-6">
@@ -215,12 +422,12 @@ function AgencyOnboardingContent() {
       case 3:
         return (
           <div className="space-y-6">
-            <h2 className="text-2xl font-bold text-white mb-6">Belge Yükleme ve Doğrulama</h2>
+            <h2 className="text-2xl font-bold text-white mb-6">Belge Yükleme</h2>
             
             {/* Specialties */}
             <div>
               <label className="block text-sm font-medium text-white/90 mb-3">
-                Hangi alanlarda çalışıyorsunuz?
+                Hangi alanlarda çalışıyorsunuz? *
               </label>
               <div className="grid grid-cols-2 gap-3">
                 {[
@@ -231,17 +438,17 @@ function AgencyOnboardingContent() {
                     <input
                       type="checkbox"
                       className="peer rounded border-white/20 bg-white/10"
-                      checked={formData.specialties.includes(specialty)}
+                      checked={form.specialties.includes(specialty)}
                       onChange={(e) => {
                         if (e.target.checked) {
-                          setFormData({
-                            ...formData,
-                            specialties: [...formData.specialties, specialty]
+                          setForm({
+                            ...form,
+                            specialties: [...form.specialties, specialty] as string[]
                           })
                         } else {
-                          setFormData({
-                            ...formData,
-                            specialties: formData.specialties.filter(s => s !== specialty)
+                          setForm({
+                            ...form,
+                            specialties: form.specialties.filter(s => s !== specialty) as string[]
                           })
                         }
                       }}
@@ -250,137 +457,48 @@ function AgencyOnboardingContent() {
                   </label>
                 ))}
               </div>
+              {errors.specialties?.[0] && <p className="text-red-400 text-sm mt-1">{errors.specialties[0]}</p>}
             </div>
 
-            {/* Document Upload */}
+            {/* Single Document Upload */}
             <div className="border-t border-white/10 pt-6">
-              <h3 className="text-lg font-semibold text-white mb-4">Gerekli Belgeler</h3>
+              <h3 className="text-lg font-semibold text-white mb-4">Kimlik Doğrulama</h3>
               
-              <div className="space-y-4">
-                <div className="bg-blue-500/10 border border-blue-500/20 rounded-lg p-4">
-                  <h4 className="text-blue-200 font-medium mb-2">📄 Ticaret Sicil Gazetesi</h4>
-                  <p className="text-blue-200/80 text-sm mb-3">
-                    Şirketinizin ticaret sicil gazetesi (son 6 ay içinde alınmış)
-                  </p>
-                  <div className="border-2 border-dashed border-blue-500/30 rounded-lg p-6 text-center">
-                    <div className="text-blue-300 mb-2">📁</div>
-                    <p className="text-blue-200 text-sm">PDF dosyasını sürükleyin veya seçin</p>
-                    <input 
-                      type="file" 
-                      accept=".pdf" 
-                      className="mt-2 text-xs text-blue-200"
-                      onChange={(e) => {
-                        // TODO: Handle file upload
-                        console.log('File selected:', e.target.files?.[0])
-                      }}
-                    />
-                  </div>
-                </div>
-
-                <div className="bg-green-500/10 border border-green-500/20 rounded-lg p-4">
-                  <h4 className="text-green-200 font-medium mb-2">🏢 Vergi Levhası</h4>
-                  <p className="text-green-200/80 text-sm mb-3">
-                    Güncel vergi levhası fotokopyası
-                  </p>
-                  <div className="border-2 border-dashed border-green-500/30 rounded-lg p-6 text-center">
-                    <div className="text-green-300 mb-2">📁</div>
-                    <p className="text-green-200 text-sm">PDF dosyasını sürükleyin veya seçin</p>
-                    <input 
-                      type="file" 
-                      accept=".pdf,.jpg,.jpeg,.png" 
-                      className="mt-2 text-xs text-green-200"
-                      onChange={(e) => {
-                        // TODO: Handle file upload
-                        console.log('File selected:', e.target.files?.[0])
-                      }}
-                    />
-                  </div>
-                </div>
-
-                <div className="bg-purple-500/10 border border-purple-500/20 rounded-lg p-4">
-                  <h4 className="text-purple-200 font-medium mb-2">✍️ İmza Sirküleri</h4>
-                  <p className="text-purple-200/80 text-sm mb-3">
-                    Şirket imza sirküleri (yetkili kişiler)
-                  </p>
-                  <div className="border-2 border-dashed border-purple-500/30 rounded-lg p-6 text-center">
-                    <div className="text-purple-300 mb-2">📁</div>
-                    <p className="text-purple-200 text-sm">PDF dosyasını sürükleyin veya seçin</p>
-                    <input 
-                      type="file" 
-                      accept=".pdf" 
-                      className="mt-2 text-xs text-purple-200"
-                      onChange={(e) => {
-                        // TODO: Handle file upload
-                        console.log('File selected:', e.target.files?.[0])
-                      }}
-                    />
-                  </div>
+              <div className="bg-blue-500/10 border border-blue-500/20 rounded-lg p-6">
+                <h4 className="text-blue-200 font-medium mb-2">📄 Doğrulama Belgesi</h4>
+                <p className="text-blue-200/80 text-sm mb-4">
+                  Kimliğinizi doğrulamak için tek bir belge (ör. vergi levhası) yüklemeniz yeterlidir. 
+                  Belgeniz arşivlenecek, hesabınız hemen aktif olacaktır.
+                </p>
+                <div className="border-2 border-dashed border-blue-500/30 rounded-lg p-6 text-center">
+                  <div className="text-blue-300 mb-2">📁</div>
+                  <p className="text-blue-200 text-sm mb-3">PDF dosyasını sürükleyin veya seçin</p>
+                  <input 
+                    type="file" 
+                    accept=".pdf,application/pdf" 
+                    className="mt-2 text-xs text-blue-200"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (file) {
+                        setDocumentFile(file);
+                        setUploading(true);
+                        uploadVerification(file).finally(() => setUploading(false));
+                      }
+                    }}
+                  />
+                  {uploading && (
+                    <p className="text-yellow-200 text-sm mt-2">
+                      ⏳ Dosya yükleniyor...
+                    </p>
+                  )}
+                  {form.verificationDocKey && !uploading && (
+                    <p className="text-green-200 text-sm mt-2">
+                      ✓ Dosya yüklendi: {documentFile?.name}
+                    </p>
+                  )}
                 </div>
               </div>
             </div>
-            
-            <div className="bg-yellow-500/10 border border-yellow-500/20 rounded-lg p-4">
-              <h3 className="text-yellow-200 font-medium mb-2">⏱️ Doğrulama Süreci</h3>
-              <ul className="text-sm text-yellow-200/80 space-y-1">
-                <li>• Belgeleriniz Castlyo ekibi tarafından 1-2 iş günü içinde incelenir</li>
-                <li>• Doğrulama tamamlanana kadar yeteneklere teklif gönderemezsiniz</li>
-                <li>• Eksik belge durumunda e-posta ile bilgilendirilirsiniz</li>
-                <li>• Onay sonrası platform özelliklerine tam erişim sağlanır</li>
-              </ul>
-            </div>
-
-            <div className="bg-red-500/10 border border-red-500/20 rounded-lg p-4">
-              <h3 className="text-red-200 font-medium mb-2">🚫 Doğrulanmamış Ajanslar</h3>
-              <p className="text-sm text-red-200/80">
-                <strong>Güvenlik önlemi:</strong> Doğrulanmamış ajanslar yetenek profillerini 
-                görüntüleyebilir ancak iletişim kurma ve teklif gönderme yetkisi yoktur.
-              </p>
-            </div>
-          </div>
-        )
-      
-      case 4:
-        return (
-          <div className="text-center space-y-6">
-            <div className="w-20 h-20 bg-green-500 rounded-full flex items-center justify-center mx-auto">
-              <Check className="w-10 h-10 text-white" />
-            </div>
-            
-            <h2 className="text-3xl font-bold text-white">Başvurunuz Alındı! 🎉</h2>
-            
-            <p className="text-white/80 text-lg">
-              Ajans profiliniz oluşturuldu ve belge doğrulama süreci başlatıldı.
-            </p>
-            
-            <div className="space-y-3">
-              <div className="bg-blue-500/10 border border-blue-500/20 rounded-lg p-4">
-                <p className="text-sm text-blue-200">
-                  <strong>⏱️ Doğrulama Süreci:</strong> Belgeleriniz 1-2 iş günü içinde incelenecek. 
-                  Sonuç e-posta ile bildirilecek.
-                </p>
-              </div>
-              
-              <div className="bg-yellow-500/10 border border-yellow-500/20 rounded-lg p-4">
-                <p className="text-sm text-yellow-200">
-                  <strong>🚫 Geçici Kısıtlama:</strong> Doğrulama tamamlanana kadar yeteneklere 
-                  teklif gönderemez, sadece profilleri görüntüleyebilirsiniz.
-                </p>
-              </div>
-              
-              <div className="bg-green-500/10 border border-green-500/20 rounded-lg p-4">
-                <p className="text-sm text-green-200">
-                  <strong>🔒 Gizlilik Güvencesi:</strong> Doğrulama sonrasında bile yetenek iletişim 
-                  bilgilerine erişim sadece onaylarıyla mümkün olacak.
-                </p>
-              </div>
-            </div>
-            
-            <Button
-              onClick={handleSubmit}
-              className="w-full bg-brand-primary hover:bg-brand-primary/90 text-white font-semibold py-3"
-            >
-              Profilime Git
-            </Button>
           </div>
         )
       
@@ -390,22 +508,26 @@ function AgencyOnboardingContent() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-black">
+    <div className="onboarding-agency min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-black">
       <div className="container mx-auto px-4 py-8">
         {/* Header */}
         <div className="flex items-center justify-between mb-8">
-          <Button
-            variant="ghost"
-            onClick={() => router.back()}
-            className="text-white/70 hover:text-white p-0 h-auto"
-          >
-            <ArrowLeft className="w-4 h-4 mr-2" />
-            Geri Dön
-          </Button>
+          {step > 1 ? (
+            <Button
+              variant="ghost"
+              onClick={() => router.back()}
+              className="text-white/70 hover:text-white p-0 h-auto"
+            >
+              <ArrowLeft className="w-4 h-4 mr-2" />
+              Geri Dön
+            </Button>
+          ) : (
+            <div className="w-20"> {/* Spacer for Step 1 */}</div>
+          )}
           
           <div className="text-center">
             <h1 className="text-2xl font-bold text-white">Ajans Profili Oluştur</h1>
-            <p className="text-white/70">Adım {currentStep} / {STEPS.length}</p>
+            <p className="text-white/70">Adım {step} / 3</p>
           </div>
           
           <div className="w-20"> {/* Spacer */}</div>
@@ -414,27 +536,27 @@ function AgencyOnboardingContent() {
         {/* Progress Bar */}
         <div className="mb-8">
           <div className="flex items-center justify-between mb-4">
-            {STEPS.map((step) => (
+            {[1, 2, 3].map((stepNum) => (
               <div
-                key={step.id}
-                className={`flex items-center ${step.id < STEPS.length ? 'flex-1' : ''}`}
+                key={stepNum}
+                className={`flex items-center ${stepNum < 3 ? 'flex-1' : ''}`}
               >
                 <div
                   className={`w-10 h-10 rounded-full flex items-center justify-center text-sm font-semibold ${
-                    step.id === currentStep
+                    stepNum === step
                       ? 'bg-brand-primary text-white'
-                      : step.id < currentStep
+                      : stepNum < step
                       ? 'bg-green-500 text-white'
                       : 'bg-white/10 text-white/50'
                   }`}
                 >
-                  {step.id < currentStep ? <Check className="w-5 h-5" /> : step.id}
+                  {stepNum < step ? <Check className="w-5 h-5" /> : stepNum}
                 </div>
                 
-                {step.id < STEPS.length && (
+                {stepNum < 3 && (
                   <div
                     className={`flex-1 h-1 mx-4 ${
-                      step.id < currentStep ? 'bg-green-500' : 'bg-white/10'
+                      stepNum < step ? 'bg-green-500' : 'bg-white/10'
                     }`}
                   />
                 )}
@@ -444,10 +566,14 @@ function AgencyOnboardingContent() {
           
           <div className="text-center">
             <h3 className="text-lg font-semibold text-white">
-              {STEPS[currentStep - 1]?.title}
+              {step === 1 && 'Şirket Bilgileri'}
+              {step === 2 && 'İletişim Bilgileri'}
+              {step === 3 && 'Belge Yükleme'}
             </h3>
             <p className="text-white/70 text-sm">
-              {STEPS[currentStep - 1]?.description}
+              {step === 1 && 'Temel şirket bilgilerinizi girin'}
+              {step === 2 && 'İletişim detaylarını tamamlayın'}
+              {step === 3 && 'Kimlik doğrulama belgesi yükleyin'}
             </p>
           </div>
         </div>
@@ -455,30 +581,54 @@ function AgencyOnboardingContent() {
         {/* Form Content */}
         <div className="max-w-2xl mx-auto">
           <div className="bg-white/5 backdrop-blur-lg rounded-2xl border border-white/10 p-8 shadow-2xl">
+            {/* Banner Display */}
+            {banner && (
+              <div
+                className={
+                  banner.type === "error"
+                    ? "mb-3 rounded-md border border-red-400 bg-red-50 px-3 py-2 text-red-700"
+                    : "mb-3 rounded-md border border-emerald-400 bg-emerald-50 px-3 py-2 text-emerald-700"
+                }
+              >
+                {banner.text}
+              </div>
+            )}
+
+            {/* Server Error Display */}
+            {serverError && (
+              <div className="bg-red-500/10 border border-red-500/20 rounded-lg p-4 mb-6">
+                <p className="text-red-200 text-sm">
+                  <strong>Hata:</strong> {serverError}
+                </p>
+              </div>
+            )}
+            
             {renderStepContent()}
             
             {/* Navigation Buttons */}
-            {currentStep < 4 && (
-              <div className="flex justify-between mt-8 pt-6 border-t border-white/10">
+            <div className="mt-6 flex items-center justify-end gap-3">
+              {step > 1 && (
                 <Button
+                  type="button"
                   variant="outline"
                   onClick={handlePrevious}
-                  disabled={currentStep === 1}
-                  className="border-white/20 text-white hover:bg-white/10"
+                  disabled={saving}
+                  className="border-white/20 text-white hover:bg-white/10 min-h-[40px] px-4"
                 >
                   <ArrowLeft className="w-4 h-4 mr-2" />
                   Önceki
                 </Button>
-                
-                <Button
-                  onClick={handleNext}
-                  className="bg-brand-primary hover:bg-brand-primary/90 text-white"
-                >
-                  Sonraki
-                  <ArrowRight className="w-4 h-4 ml-2" />
-                </Button>
-              </div>
-            )}
+              )}
+              <Button
+                type="button"
+                onClick={handleNext}
+                disabled={saving}
+                className="bg-brand-primary hover:bg-brand-primary/90 text-white min-h-[40px] px-4 disabled:opacity-50"
+              >
+                {saving ? "Kaydediliyor…" : step === 3 ? "Bitir" : "Sonraki"}
+                <ArrowRight className="w-4 h-4 ml-2" />
+              </Button>
+            </div>
           </div>
         </div>
       </div>

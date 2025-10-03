@@ -12,18 +12,7 @@ import {
 } from '@nestjs/common';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { UploadService } from './upload.service';
-import { IsString, IsEnum } from 'class-validator';
-
-class GeneratePresignedUrlDto {
-  @IsString()
-  fileName: string;
-
-  @IsString()
-  fileType: string;
-
-  @IsEnum(['profiles', 'portfolios', 'documents', 'jobs'])
-  folder: 'profiles' | 'portfolios' | 'documents' | 'jobs';
-}
+import { PresignDto } from './upload.dto';
 
 @Controller('upload')
 @UseGuards(JwtAuthGuard)
@@ -32,12 +21,8 @@ export class UploadController {
 
   @Post('presigned-url')
   @HttpCode(HttpStatus.OK)
-  async generatePresignedUrl(@Body() body: GeneratePresignedUrlDto) {
-    return await this.uploadService.generatePresignedPost(
-      body.fileType,
-      body.fileName,
-      body.folder
-    );
+  async generatePresignedUrl(@Body() body: PresignDto) {
+    return await this.uploadService.presignPut(body);
   }
 
   @Delete('file')

@@ -2,7 +2,8 @@ import LegalLayout from "@/components/legal/LegalLayout";
 
 export default function TermsPage() {
   return (
-    <LegalLayout title="CASTLYO KULLANIM KOŞULLARI VE ÜYELİK SÖZLEŞMESİ">
+    <div data-legal-page="terms">
+      <LegalLayout title="CASTLYO KULLANIM KOŞULLARI VE ÜYELİK SÖZLEŞMESİ">
       <h2>1. Taraflar</h2>
       <p>
         Bu sözleşme, bir tarafta Castlyo (bundan sonra "Platform", "Castlyo", "Biz" olarak anılacaktır) ile diğer tarafta Platform'a üye olan gerçek veya tüzel kişiler (bundan sonra birlikte "Kullanıcı", ayrı ayrı "Üye", "Aday" veya "Ajans" olarak anılacaktır) arasında, işbu metnin koşulları çerçevesinde düzenlenir.
@@ -68,6 +69,7 @@ export default function TermsPage() {
 
       <h2>11. Kabul</h2>
       <p>Üye kayıt formunu onaylayarak bu Kullanım Koşullarını okuduğunu, anladığını ve kabul ettiğini beyan eder.</p>
-    </LegalLayout>
+      </LegalLayout>
+    </div>
   );
 }

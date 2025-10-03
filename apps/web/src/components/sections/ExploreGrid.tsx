@@ -6,9 +6,10 @@ import { fetcher } from '@/lib/fetcher';
 import { motion } from 'framer-motion';
 import Image from 'next/image';
 import { useRouter, useSearchParams } from 'next/navigation';
+import { useSession } from 'next-auth/react';
 import { montserratDisplay } from '@/lib/fonts';
 import { ALL_OPTION, CATEGORIES, normalizeSkill, type SkillSlug } from '@/constants/categories';
-import { normalizeList, toCard } from '@/utils/talent-mapper';
+import { normalizeList, toCard, type TalentCard } from '@/utils/talent-mapper';
 import React from 'react';
 
 // URL'deki skill paramı TR -> kod eşleşmesi
@@ -74,9 +75,8 @@ function mapSlugToBadge(slug: SkillSlug): string {
 }
 
 function sortByNewest(a: TalentCard, b: TalentCard) {
-  const ak = new Date(a.updatedAt ?? a.createdAt ?? 0).getTime();
-  const bk = new Date(b.updatedAt ?? b.createdAt ?? 0).getTime();
-  return bk - ak;
+  // Since TalentCard doesn't have timestamps, just return 0 for stable sort
+  return 0;
 }
 
 function dedupeById(list: TalentCard[]) {
@@ -121,8 +121,12 @@ export default function ExploreGrid() {
   const allTalents: TalentCard[] = filteredByCode.filter(c => c.name || c.imageUrl);
 
   // ❂ Me (kendim) - sadece kendi kartımı işaretlemek için
+  // Only fetch talent profile if user is a talent
+  const { data: session } = useSession();
+  const isTalent = (session?.user as any)?.role === 'TALENT';
+  
   const { data: rawMe } = useSWR<any>(
-    '/api/proxy/api/v1/profiles/talent/me',
+    isTalent ? '/api/proxy/api/v1/profiles/talent/me' : null,
     fetcher,
     { 
       shouldRetryOnError: (err) => err?.status !== 404, // 404'te retry yapma
@@ -299,7 +303,7 @@ export default function ExploreGrid() {
               >
                 <div className="relative aspect-[4/5]">
                   <Image 
-                    src={t.imageUrl ?? t.profileImage ?? '/images/avatar-placeholder.png'} 
+                    src={t.imageUrl ?? '/images/avatar-placeholder.png'} 
                     alt={t.name}
                     fill
                     className="object-cover"
@@ -327,7 +331,7 @@ export default function ExploreGrid() {
                   
                   {/* Etiketler */}
                   <div className="profile-tags mt-2.5 flex flex-wrap gap-2">
-                    {t.tags.slice(0, 3).map((sp, idx) => (
+                    {t.tags.slice(0, 3).map((sp: string, idx: number) => (
                       <span
                         key={`${sp}-${idx}`}
                         className={montserratDisplay.className + " text-[11px] font-semibold px-2 py-1 rounded-md bg-white/8 text-white/85"}

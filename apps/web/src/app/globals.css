@@ -564,3 +564,250 @@ input[type="date"] {
   background: #e5e7eb; /* slate-200 */
   color: #111827;      /* slate-900 */
 }
+
+/* Onboarding wizard steps 2 and 3 text color overrides */
+@layer components {
+  /* Etiketler (boy, kilo vb. alan başlıkları) */
+  [data-wizard-step="2"] label,
+  [data-wizard-step="3"] label {
+    @apply text-[#F6E6C3];
+  }
+
+  /* Input, textarea, select iç metin rengi */
+  [data-wizard-step="2"] input,
+  [data-wizard-step="2"] textarea,
+  [data-wizard-step="2"] select,
+  [data-wizard-step="3"] input,
+  [data-wizard-step="3"] textarea,
+  [data-wizard-step="3"] select {
+    color: #F6E6C3;
+  }
+
+  /* Placeholder (gölge yazı) rengi */
+  [data-wizard-step="2"] input::placeholder,
+  [data-wizard-step="2"] textarea::placeholder,
+  [data-wizard-step="3"] input::placeholder,
+  [data-wizard-step="3"] textarea::placeholder {
+    color: #F6E6C3;
+    opacity: 0.85; /* istersen kaldırabilirsin */
+  }
+
+  /* shadcn/ui bileşenleri için yaygın class hedefleri */
+  [data-wizard-step="2"] .placeholder\:text-muted-foreground,
+  [data-wizard-step="3"] .placeholder\:text-muted-foreground {
+    /* Tailwind'in ürettiği sınıfı override etmek için */
+    color: #F6E6C3 !important;
+  }
+
+  /* Seçim metinleri (select-trigger vb.) */
+  [data-wizard-step="2"] .select-trigger,
+  [data-wizard-step="3"] .select-trigger {
+    @apply text-[#F6E6C3];
+  }
+
+  /* Yardım/description metinleri varsa (küçük gri yazılar) */
+  [data-wizard-step="2"] .form-description,
+  [data-wizard-step="3"] .form-description {
+    @apply text-[#F6E6C3];
+    opacity: 0.9;
+  }
+
+  /* Date input değeri için özel stil */
+  [data-wizard-step="2"] input[type="date"],
+  [data-wizard-step="3"] input[type="date"] {
+    color: #F6E6C3 !important;
+  }
+
+  /* Chrome'un tarih input'u için değer parçaları */
+  [data-wizard-step="2"] input[type="date"]::-webkit-datetime-edit,
+  [data-wizard-step="2"] input[type="date"]::-webkit-datetime-edit-text,
+  [data-wizard-step="2"] input[type="date"]::-webkit-datetime-edit-month-field,
+  [data-wizard-step="2"] input[type="date"]::-webkit-datetime-edit-day-field,
+  [data-wizard-step="2"] input[type="date"]::-webkit-datetime-edit-year-field,
+  [data-wizard-step="3"] input[type="date"]::-webkit-datetime-edit,
+  [data-wizard-step="3"] input[type="date"]::-webkit-datetime-edit-text,
+  [data-wizard-step="3"] input[type="date"]::-webkit-datetime-edit-month-field,
+  [data-wizard-step="3"] input[type="date"]::-webkit-datetime-edit-day-field,
+  [data-wizard-step="3"] input[type="date"]::-webkit-datetime-edit-year-field {
+    color: #F6E6C3 !important;
+  }
+
+  /* Select option'ları için */
+  [data-wizard-step="2"] select option,
+  [data-wizard-step="3"] select option {
+    color: #1f2937; /* Dark text for options */
+    background: white;
+  }
+
+  /* Yaş bilgisi gibi yardımcı metinler */
+  [data-wizard-step="2"] .text-\[11px\],
+  [data-wizard-step="3"] .text-\[11px\] {
+    color: #F6E6C3 !important;
+  }
+}
+
+/* ——— Onboarding Step 2 & 3: krem metin (#F6E6C3) ——— */
+@layer components {
+  /* Label/başlıklar (Boy, Kilo, Şehir vb.) */
+  [data-wizard-step="2"] .form-item label,
+  [data-wizard-step="3"] .form-item label,
+  [data-wizard-step="2"] label,
+  [data-wizard-step="3"] label,
+  [data-wizard-step="2"] .form-label,
+  [data-wizard-step="3"] .form-label,
+  [data-wizard-step="2"] .text-muted-foreground,
+  [data-wizard-step="3"] .text-muted-foreground {
+    color: #F6E6C3 !important;
+    opacity: 1 !important; /* bazı label'larda opacity-70 olabiliyor */
+  }
+
+  /* Input/textarea/select iç metinleri */
+  [data-wizard-step="2"] input,
+  [data-wizard-step="3"] input,
+  [data-wizard-step="2"] textarea,
+  [data-wizard-step="3"] textarea,
+  [data-wizard-step="2"] select,
+  [data-wizard-step="3"] select {
+    color: #F6E6C3 !important;
+    caret-color: #F6E6C3;
+  }
+
+  /* Placeholder renkleri */
+  [data-wizard-step="2"] input::placeholder,
+  [data-wizard-step="3"] input::placeholder,
+  [data-wizard-step="2"] textarea::placeholder,
+  [data-wizard-step="3"] textarea::placeholder {
+    color: #F6E6C3 !important;
+    opacity: .85;
+  }
+
+  /* WebKit autofill (Chrome sarımsı doldurma metni) */
+  [data-wizard-step="2"] input:-webkit-autofill,
+  [data-wizard-step="3"] input:-webkit-autofill {
+    -webkit-text-fill-color: #F6E6C3 !important;
+    caret-color: #F6E6C3;
+    box-shadow: 0 0 0px 1000px transparent inset !important;
+  }
+
+  /* Radix Select (cinsiyet vb.) tetik ve değer */
+  [data-wizard-step="2"] .select-trigger,
+  [data-wizard-step="3"] .select-trigger,
+  [data-wizard-step="2"] .SelectTrigger,
+  [data-wizard-step="3"] .SelectTrigger,
+  [data-wizard-step="2"] .select-trigger .SelectValue,
+  [data-wizard-step="3"] .select-trigger .SelectValue,
+  [data-wizard-step="2"] .SelectTrigger > span,
+  [data-wizard-step="3"] .SelectTrigger > span,
+  [data-wizard-step="2"] [role="combobox"] span,
+  [data-wizard-step="3"] [role="combobox"] span {
+    color: #F6E6C3 !important;
+  }
+
+  /* Radix Select ikon/ok rengi (SVG) */
+  [data-wizard-step="2"] .select-trigger svg,
+  [data-wizard-step="3"] .select-trigger svg {
+    color: #F6E6C3 !important;
+    stroke: #F6E6C3 !important;
+  }
+
+  /* Yardım/ek açıklama yazıları (Yaş: 22 vb.) */
+  [data-wizard-step="2"] .form-description,
+  [data-wizard-step="3"] .form-description,
+  [data-wizard-step="2"] .helper-text,
+  [data-wizard-step="3"] .helper-text,
+  [data-wizard-step="2"] .text-xs,
+  [data-wizard-step="3"] .text-xs {
+    color: #F6E6C3 !important;
+    opacity: .9;
+  }
+
+  /* YALNIZCA 3. adım cinsiyet kutucuğu iç yazısı siyah */
+  [data-wizard-step="3"] [data-field="gender"] .select-trigger,
+  [data-wizard-step="3"] [data-field="gender"] .select-trigger span,
+  [data-wizard-step="3"] [data-field="gender"] .SelectTrigger,
+  [data-wizard-step="3"] [data-field="gender"] .SelectTrigger span,
+  [data-wizard-step="3"] [data-field="gender"] [role="combobox"] span,
+  [data-wizard-step="3"] [data-field="gender"] .SelectValue,
+  [data-wizard-step="3"] [data-field="gender"] select {
+    color: #000 !important;
+  }
+
+  /* Radix ikon/ok rengi değişmesin istiyorsan bunu ekleme;
+     istersen ok da siyah olsun diye ekleyebilirsin: */
+  /* [data-wizard-step="3"] [data-field="gender"] .select-trigger svg { color:#000 !important; } */
+}
+
+/* ——— Auth (Login & Register) metinlerini krem (#F6E6C3) yap ——— */
+@layer components {
+  /* Label/başlıklar */
+  [data-auth-page="login"] label,
+  [data-auth-page="register"] label,
+  [data-auth-page="login"] .form-label,
+  [data-auth-page="register"] .form-label,
+  [data-auth-page="login"] .text-muted-foreground,
+  [data-auth-page="register"] .text-muted-foreground {
+    color: #F6E6C3 !important;
+    opacity: 1 !important;
+  }
+
+  /* Input/textarea/select iç metinleri */
+  [data-auth-page="login"] input,
+  [data-auth-page="register"] input,
+  [data-auth-page="login"] textarea,
+  [data-auth-page="register"] textarea,
+  [data-auth-page="login"] select,
+  [data-auth-page="register"] select {
+    color: #F6E6C3 !important;
+    caret-color: #F6E6C3;
+  }
+
+  /* Placeholder'lar */
+  [data-auth-page="login"] input::placeholder,
+  [data-auth-page="register"] input::placeholder,
+  [data-auth-page="login"] textarea::placeholder,
+  [data-auth-page="register"] textarea::placeholder {
+    color: #F6E6C3 !important;
+    opacity: .8;
+  }
+
+  /* Chrome autofill sarısı üzerindeki metin rengi */
+  [data-auth-page="login"] input:-webkit-autofill,
+  [data-auth-page="register"] input:-webkit-autofill {
+    -webkit-text-fill-color: #F6E6C3 !important;
+    caret-color: #F6E6C3;
+    box-shadow: 0 0 0px 1000px transparent inset !important;
+  }
+
+  /* Şifre göz ikonu vb. kontrol içi ikonlar */
+  [data-auth-page="login"] .form-item svg,
+  [data-auth-page="register"] .form-item svg {
+    color: #F6E6C3 !important;
+    stroke: #F6E6C3 !important;
+  }
+
+  /* Yardım/description minik yazılar (varsa) */
+  [data-auth-page="login"] .form-description,
+  [data-auth-page="register"] .form-description,
+  [data-auth-page="login"] .helper-text,
+  [data-auth-page="register"] .helper-text {
+    color: #F6E6C3 !important;
+    opacity: .9;
+  }
+}
+
+/* ——— Legal Pages (Privacy & Terms) başlıklarını krem (#F6E6C3) yap ——— */
+@layer components {
+  /* Privacy & Terms sayfa başlıkları */
+  [data-legal-page="privacy"] h1,
+  [data-legal-page="terms"] h1 {
+    color: #F6E6C3 !important; /* krem */
+    font-weight: 700;
+  }
+
+  /* İçerideki alt başlıklar (1. Taraflar, 2. Tanımlar vs.) */
+  [data-legal-page="privacy"] h2,
+  [data-legal-page="terms"] h2 {
+    color: #F6E6C3 !important;
+    font-weight: 600;
+  }
+}

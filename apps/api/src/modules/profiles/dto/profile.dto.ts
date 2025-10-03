@@ -1,6 +1,7 @@
 import { 
   IsString, 
   IsOptional, 
+  IsEmail,
   IsEnum, 
   IsArray, 
   IsNumber, 
@@ -10,7 +11,9 @@ import {
   IsInt,
   Min, 
   Max, 
-  Length 
+  Length,
+  ValidateNested,
+  IsIn
 } from 'class-validator';
 import { Transform, Type, Expose } from 'class-transformer';
 
@@ -158,6 +161,31 @@ export class CreateTalentProfileDto {
   @IsOptional()
   @IsBoolean()
   isPublic?: boolean;
+}
+
+class GuardianDto {
+  @IsString()
+  fullName!: string;
+
+  // UI'dan "Anne/Baba/Vasi/Diğer" gelebilir -> serviste map'leyeceğiz
+  @IsString()
+  @IsIn(['mother', 'father', 'guardian', 'other', 'Anne', 'Baba', 'Vasi', 'Diğer'])
+  relation!: string;
+
+  @IsString()
+  phone!: string;
+
+  @IsOptional()
+  @IsEmail()
+  email?: string;
+
+  @IsOptional()
+  @IsBoolean()
+  consent?: boolean;
+
+  @IsOptional()
+  @IsBoolean()
+  consentAccepted?: boolean;
 }
 
 export class UpdateTalentProfileDto {
@@ -330,6 +358,11 @@ export class UpdateTalentProfileDto {
   @IsOptional()
   @IsBoolean()
   isPublic?: boolean;
+
+  @IsOptional()
+  @ValidateNested()
+  @Type(() => GuardianDto)
+  guardian?: GuardianDto;
 }
 
 export class CreateAgencyProfileDto {
@@ -392,9 +425,8 @@ export class CreateAgencyProfileDto {
   coverImage?: string;
 
   @IsOptional()
-  @IsArray()
-  @IsString({ each: true })
-  verificationDocuments?: string[];
+  @IsString()
+  document_url?: string;
 }
 
 export class UpdateAgencyProfileDto {
@@ -461,7 +493,6 @@ export class UpdateAgencyProfileDto {
   coverImage?: string;
 
   @IsOptional()
-  @IsArray()
-  @IsString({ each: true })
-  verificationDocuments?: string[];
+  @IsString()
+  document_url?: string;
 }

@@ -2,7 +2,8 @@ import LegalLayout from "@/components/legal/LegalLayout";
 
 export default function PrivacyPage() {
   return (
-    <LegalLayout title="CASTLYO GİZLİLİK POLİTİKASI (KVKK UYUMLU AÇIKLAMA)">
+    <div data-legal-page="privacy">
+      <LegalLayout title="CASTLYO GİZLİLİK POLİTİKASI (KVKK UYUMLU AÇIKLAMA)">
       <h2>1. Veri Sorumlusu</h2>
       <p>
         Bu politika kapsamında veri sorumlusu: Castlyo — [Adres, Ticaret Sicil No, İletişim E-posta ve Telefon] (ayrıntılar site üzerinde belirtilecektir).
@@ -45,6 +46,7 @@ export default function PrivacyPage() {
       <p>
         KVKK kapsamında ilgili kişiler; veri işlenip işlenmediğini öğrenme, işlenme amacını öğrenme, veri aktarıldığı üçüncü tarafları bilme, eksik/yanlış verilerin düzeltilmesini isteme, verilerin silinmesini/anonimleştirilmesini isteme, işleme itiraz etme ve zarar varsa tazminat talep etme haklarına sahiptir. Talepler iletişim@castlyo.com
       </p>
-    </LegalLayout>
+      </LegalLayout>
+    </div>
   );
 }

@@ -26,6 +26,7 @@ import {
   CreateAgencyProfileDto,
   UpdateAgencyProfileDto 
 } from './dto/profile.dto';
+import { UpsertAgencyProfileDto } from './dto/agency.dto';
 
 @Controller('profiles')
 export class ProfilesController {
@@ -107,7 +108,7 @@ export class ProfilesController {
     if (!userId) {
       throw new UnauthorizedException('Missing user id in token');
     }
-    return this.profilesService.getAgencyProfile(userId);
+    return this.profilesService.getMyAgencyProfile(userId);
   }
 
   @Get('talent/:id')
@@ -198,12 +199,12 @@ export class ProfilesController {
   @Put('agency/me')
   @UseGuards(JwtAuthGuard)
   async updateMyAgencyProfile(
-    @Body() profileData: UpdateAgencyProfileDto,
+    @Body() profileData: UpsertAgencyProfileDto,
     @Request() req
   ) {
     const userId = req.user?.id || req.user?.userId;
     if (!userId) throw new UnauthorizedException('Missing user id in token');
-    return this.profilesService.updateAgencyProfile(userId, profileData);
+    return this.profilesService.upsertMyAgencyProfile(userId, profileData);
   }
 
   @Put('talent/:id')

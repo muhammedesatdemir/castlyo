@@ -12,20 +12,48 @@ import {
   talentProfiles, 
   agencyProfiles,
   contactPermissions,
+  guardianContacts,
   db
 } from '@castlyo/database';
+import { isCorporateDomain } from '../../utils/email';
 import { 
   CreateTalentProfileDto, 
   UpdateTalentProfileDto,
   CreateAgencyProfileDto,
   UpdateAgencyProfileDto 
 } from './dto/profile.dto';
+import { UpsertAgencyProfileDto } from './dto/agency.dto';
 
 @Injectable()
 export class ProfilesService {
   constructor(
     @Inject('DRIZZLE') private readonly database: any,
   ) {}
+
+  private normalizeRelation(input: string): string {
+    const x = input?.toLowerCase();
+    if (x === 'baba') return 'father';
+    if (x === 'anne') return 'mother';
+    if (x === 'vasi') return 'guardian';
+    if (x === 'diğer' || x === 'diger') return 'other';
+    return ['mother','father','guardian','other'].includes(x) ? x : 'other';
+  }
+
+  private calcAge(birth?: Date | string | null): number | null {
+    if (!birth) return null;
+    const birthDate = typeof birth === 'string' ? new Date(birth) : birth;
+    if (isNaN(birthDate.getTime())) return null;
+    
+    const now = new Date();
+    let age = now.getFullYear() - birthDate.getFullYear();
+    const monthDiff = now.getMonth() - birthDate.getMonth();
+    
+    if (monthDiff < 0 || (monthDiff === 0 && now.getDate() < birthDate.getDate())) {
+      age--;
+    }
+    
+    return age;
+  }
 
   async createTalentProfile(userId: string, profileData: CreateTalentProfileDto) {
     // Check if user exists and is a talent
@@ -89,62 +117,87 @@ export class ProfilesService {
       throw new BadRequestException('Agency profile already exists');
     }
 
+    // Auto-verify rule: document present AND corporate email (contactEmail or fallback to users.email)
+    const contactOrUserEmail = profileData.contactEmail ?? user[0]?.email;
+    const hasDoc = Boolean(profileData.document_url);
+    const corporate = isCorporateDomain(contactOrUserEmail);
+    const autoVerified = hasDoc && corporate;
+
     const newProfile = await this.database.insert(agencyProfiles)
       .values({
         userId,
         ...profileData,
-        specialties: profileData.specialties || [],
-        verificationDocuments: profileData.verificationDocuments || [],
-        isVerified: false,
+        document_url: profileData.document_url ?? null,
+        isVerified: autoVerified,
         country: profileData.country || 'TR',
       })
       .returning();
+
+    // Update user status to ACTIVE
+    await this.database.update(users)
+      .set({ 
+        status: 'ACTIVE',
+        emailVerified: true // Also mark email as verified
+      })
+      .where(eq(users.id, userId));
 
     return newProfile[0];
   }
 
   async getTalentProfile(userId: string, requestingUserId?: string) {
-    const profile = await this.database.select()
+    const rows = await this.database
+      .select({
+        tp: talentProfiles,
+        u: users,
+        g: {
+          id: guardianContacts.id,
+          fullName: guardianContacts.fullName,
+          relation: guardianContacts.relation,
+          phone: guardianContacts.phone,
+          email: guardianContacts.email,
+        }
+      })
       .from(talentProfiles)
       .leftJoin(users, eq(talentProfiles.userId, users.id))
+      .leftJoin(guardianContacts, eq(guardianContacts.talentProfileId, talentProfiles.id))
       .where(eq(talentProfiles.userId, userId))
       .limit(1);
 
-    if (!profile.length) {
+    const row = rows[0];
+    if (!row) {
       throw new NotFoundException('Talent profile not found');
     }
 
-    const talentProfile = profile[0].talent_profiles;
-    const user = profile[0].users;
-
-    // Note: isPublic column doesn't exist in schema, so we'll allow access for now
-    // TODO: Implement proper visibility controls when needed
-
-    // Note: profileViews column doesn't exist in schema
-    // TODO: Implement profile view tracking when needed
+    const { tp, u, g } = row;
 
     // If not the owner, return PII-safe version
     if (requestingUserId !== userId) {
-      return this.sanitizeTalentProfile(talentProfile, user);
+      return this.sanitizeTalentProfile(tp, u);
     }
 
     // Format birthDate to ISO string if it's a Date object
     const formattedProfile = {
-      ...talentProfile,
-      birthDate: talentProfile.birthDate 
-        ? (talentProfile.birthDate instanceof Date 
-           ? talentProfile.birthDate.toISOString().slice(0, 10) 
-           : String(talentProfile.birthDate).slice(0, 10))
+      ...tp,
+      birthDate: tp.birthDate 
+        ? (tp.birthDate instanceof Date 
+           ? tp.birthDate.toISOString().slice(0, 10) 
+           : String(tp.birthDate).slice(0, 10))
         : null,
       user: {
-        id: user.id,
-        email: user.email,
-        phone: user.phone,
-        role: user.role,
-        status: user.status,
-        emailVerified: user.emailVerified,
-        phoneVerified: user.phoneVerified,
-      }
+        id: u.id,
+        email: u.email,
+        phone: u.phone,
+        role: u.role,
+        status: u.status,
+        emailVerified: u.emailVerified,
+        phoneVerified: u.phoneVerified,
+      },
+      guardian: g?.id ? {
+        fullName: g.fullName,
+        relation: g.relation,
+        phone: g.phone,
+        email: g.email ?? null,
+      } : null,
     };
 
     return formattedProfile;
@@ -263,6 +316,23 @@ export class ProfilesService {
     };
   }
 
+  async getMyAgencyProfile(userId: string) {
+    const rows = await this.database.select()
+      .from(agencyProfiles)
+      .leftJoin(users, eq(agencyProfiles.userId, users.id))
+      .where(eq(agencyProfiles.userId, userId))
+      .limit(1);
+
+    if (!rows.length) return null;
+
+    const agencyProfile = rows[0].agency_profiles;
+    const user = rows[0].users;
+    return {
+      ...agencyProfile,
+      user: user ? { id: user.id, role: user.role, email: user.email } : undefined,
+    };
+  }
+
   async updateTalentProfile(
     userId: string, 
     profileData: UpdateTalentProfileDto,
@@ -354,7 +424,36 @@ export class ProfilesService {
         })
         .returning();
 
-      return result[0];
+      const tpRow = result[0];
+
+      // 2) Handle guardian upsert for minors
+      const guardianData = profileData.guardian || src.guardian;
+      if (guardianData) {
+        const age = this.calcAge(tpRow.birthDate);
+        if (age !== null && age < 18) {
+          await this.database.insert(guardianContacts)
+            .values({
+              talentProfileId: tpRow.id,
+              fullName: guardianData.fullName,
+              relation: this.normalizeRelation(guardianData.relation),
+              phone: guardianData.phone,
+              email: guardianData.email ?? null,
+            })
+            .onConflictDoUpdate({
+              target: guardianContacts.talentProfileId,
+              set: {
+                fullName: guardianData.fullName,
+                relation: this.normalizeRelation(guardianData.relation),
+                phone: guardianData.phone,
+                email: guardianData.email ?? null,
+                updatedAt: new Date(),
+              }
+            });
+        }
+      }
+
+      // 3) Return updated profile with guardian data
+      return this.getTalentProfile(userId);
     } catch (e) {
       // DEBUG: Log detailed error information
       console.error('[UPDATE TALENT ME FAILED]', {
@@ -371,11 +470,23 @@ export class ProfilesService {
     userId: string, 
     profileData: UpdateAgencyProfileDto
   ) {
+    // Fetch user email for fallback
+    const user = await this.database.select()
+      .from(users)
+      .where(eq(users.id, userId))
+      .limit(1);
+
+    const contactOrUserEmail = (profileData as any)?.contactEmail ?? user[0]?.email;
+    const hasDoc = Boolean((profileData as any)?.document_url);
+    const corporate = isCorporateDomain(contactOrUserEmail);
+    const autoVerified = hasDoc && corporate;
+
     const mappedData = {
-      userId, // Use only the JWT user ID
+      userId,
       ...profileData,
-      updatedAt: new Date()
-    };
+      isVerified: autoVerified,
+      updatedAt: new Date(),
+    } as any;
 
     // Upsert (insert or update) - one record per user
     const result = await this.database
@@ -388,6 +499,121 @@ export class ProfilesService {
       .returning();
 
     return result[0];
+  }
+
+  async upsertMyAgencyProfile(userId: string, dto: UpsertAgencyProfileDto) {
+    // Helper function to pick only defined values
+    const pickDefined = <T extends object>(o: T): Partial<T> => {
+      const r: any = {};
+      for (const [k, v] of Object.entries(o)) if (v !== undefined) r[k] = v;
+      return r;
+    };
+
+    try {
+      // 1) Get user for email fallback
+      const user = await this.database.select()
+        .from(users)
+        .where(eq(users.id, userId))
+        .limit(1);
+
+      const userRow = user[0];
+      if (!userRow) {
+        throw new NotFoundException('User not found');
+      }
+
+      // 2) Auto-verify rule: corporate email + document
+      const hasDoc = Boolean(dto.verificationDocKey);
+      const corporate = isCorporateDomain(dto.contactEmail ?? userRow.email);
+      const autoVerified = hasDoc && corporate;
+
+      // 3) UPDATE fields (only defined ones)
+      const updateSet = pickDefined({
+        agencyName: dto.agencyName,
+        companyName: dto.companyName,
+        taxNumber: dto.taxNumber,
+        about: dto.about,
+        website: dto.website,
+        address: dto.address,
+        city: dto.city,
+        country: dto.country,
+        contactName: dto.contactName,
+        contactEmail: dto.contactEmail,
+        contactPhone: dto.contactPhone,
+        specialties: dto.specialties,
+        verificationDocKey: dto.verificationDocKey,
+        isVerified: autoVerified,
+        updatedAt: new Date(),
+      });
+
+      // 4) CREATE values (for INSERT if needed)
+      const createValues = {
+        userId,
+        agencyName: dto.agencyName ?? null,
+        companyName: dto.companyName ?? null,
+        taxNumber: dto.taxNumber ?? null,
+        about: dto.about ?? null,
+        website: dto.website ?? null,
+        address: dto.address ?? null,
+        city: dto.city ?? null,
+        country: dto.country ?? null,
+        contactName: dto.contactName ?? null,
+        contactEmail: dto.contactEmail ?? null,
+        contactPhone: dto.contactPhone ?? null,
+        specialties: dto.specialties ?? [],
+        verificationDocKey: dto.verificationDocKey ?? null,
+        isVerified: autoVerified,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      };
+
+      console.log('[AGENCY UPSERT] Update set:', JSON.stringify(updateSet, null, 2));
+      console.log('[AGENCY UPSERT] Create values:', JSON.stringify(createValues, null, 2));
+
+      // 5) Two-step UPSERT (transaction-safe)
+      const result = await this.database.transaction(async (tx) => {
+        // Try UPDATE first
+        const updated = await tx
+          .update(agencyProfiles)
+          .set(updateSet)
+          .where(eq(agencyProfiles.userId, userId))
+          .returning();
+
+        if (updated.length > 0) {
+          console.log('[AGENCY UPSERT] Updated existing record:', updated[0].id);
+          return updated[0];
+        }
+
+        // If no rows updated, INSERT new record
+        const inserted = await tx
+          .insert(agencyProfiles)
+          .values(createValues)
+          .returning();
+
+        console.log('[AGENCY UPSERT] Inserted new record:', inserted[0].id);
+        return inserted[0];
+      });
+
+      return {
+        ...result,
+        user: {
+          id: userRow.id,
+          role: userRow.role,
+          email: userRow.email,
+          status: userRow.status,
+          emailVerified: userRow.emailVerified,
+        },
+      };
+    } catch (err: any) {
+      console.error('[AGENCY UPSERT ERROR]', {
+        code: err?.code,
+        detail: err?.detail,
+        message: err?.message,
+        stack: err?.stack,
+        userId,
+        dto: JSON.stringify(dto, null, 2)
+      });
+      throw err;
+    }
   }
 
   async updateTalentProfileById(

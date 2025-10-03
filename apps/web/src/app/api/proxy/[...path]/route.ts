@@ -27,12 +27,29 @@ async function proxy(req: NextRequest, { params }: { params: { path: string[] } 
   const original = new URL(req.url);
   original.searchParams.forEach((v, k) => url.searchParams.append(k, v));
 
-  // Body'yi güvenle yeniden oluştur
-  const hasBody = !['GET','HEAD'].includes(req.method.toUpperCase());
-  const body = hasBody ? Buffer.from(await req.arrayBuffer()) : undefined;
-
   // Orijinal header'ları al
   const headers = new Headers(req.headers);
+
+  // Body'yi güvenle yeniden oluştur
+  const hasBody = !['GET','HEAD'].includes(req.method.toUpperCase());
+  let body: any = undefined;
+  
+  if (hasBody) {
+    const contentType = req.headers.get('content-type') || '';
+    
+    if (contentType.includes('application/json')) {
+      // 🔑 ÖNEMLİ: JSON'u okuyup tekrar JSON string olarak gönderiyoruz
+      const jsonBody = await req.json();
+      body = JSON.stringify(jsonBody);
+      headers.set('content-type', 'application/json');
+    } else if (contentType.startsWith('multipart/form-data')) {
+      // Form data için arrayBuffer kullan
+      body = Buffer.from(await req.arrayBuffer());
+    } else {
+      // Diğer durumlar için arrayBuffer
+      body = Buffer.from(await req.arrayBuffer());
+    }
+  }
   
   // KRİTİK: Authorization header'ını asla override etme
   // Sadece gelen header'ı logla ve koru

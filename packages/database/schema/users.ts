@@ -7,6 +7,7 @@ import {
   timestamp,
   boolean,
   integer,
+  uniqueIndex,
 } from "drizzle-orm/pg-core";
 import { userRoleEnum, userStatusEnum, genderEnum } from './enums';
 
@@ -90,14 +91,26 @@ export const agencyProfiles = pgTable("agency_profiles", {
   companyName: text("company_name"), // API'nin beklediği alan
   about: text("about"),
   website: text("website"),
+  address: text("address"),
   city: text("city"),
   country: text("country"),
+  taxNumber: text("tax_number"),
+
+  // Contact
+  contactName: text("contact_name"),
+  contactEmail: text("contact_email"),
+  contactPhone: text("contact_phone"),
+
+  // Expertise
+  specialties: text("specialties").array(),
 
   // Verification
   isVerified: boolean("is_verified").notNull().default(false),
+  verificationDocKey: text("verification_doc_key"),
   
-  // Logo/Image
+  // **EKSİKLERİ EKLE** - Diğer servisler bu alanları kullanıyor
   logo: text("logo"),
+  documentUrl: text("document_url"),
 
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
@@ -105,3 +118,24 @@ export const agencyProfiles = pgTable("agency_profiles", {
 
 export type AgencyProfile = typeof agencyProfiles.$inferSelect;
 export type NewAgencyProfile = typeof agencyProfiles.$inferInsert;
+
+/**
+ * Guardian contacts table for minors (under 18)
+ */
+export const guardianContacts = pgTable("guardian_contacts", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  talentProfileId: uuid("talent_profile_id")
+    .notNull()
+    .references(() => talentProfiles.id, { onDelete: "cascade" }),
+  fullName: text("full_name").notNull(),
+  relation: text("relation").notNull(), // 'mother' | 'father' | 'guardian' | 'other'
+  phone: text("phone").notNull(),
+  email: text("email"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+}, (t) => ({
+  onePerProfile: uniqueIndex("guardian_contacts_one_per_profile").on(t.talentProfileId),
+}));
+
+export type GuardianContact = typeof guardianContacts.$inferSelect;
+export type NewGuardianContact = typeof guardianContacts.$inferInsert;

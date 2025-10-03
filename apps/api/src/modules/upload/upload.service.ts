@@ -2,6 +2,7 @@ import { Injectable, BadRequestException, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import * as AWS from 'aws-sdk';
 import { v4 as uuidv4 } from 'uuid';
+import { PresignDto } from './upload.dto';
 
 export interface PresignedPostData {
   uploadUrl: string;
@@ -10,9 +11,20 @@ export interface PresignedPostData {
   fileUrl: string;
 }
 
+export interface PresignedPutData {
+  type: 'PUT';
+  putUrl: string;
+  key: string;
+  fileUrl: string;
+  contentType: string;
+}
+
 @Injectable()
 export class UploadService {
-  private s3: AWS.S3;
+  // Internal client: API -> MinIO/S3 (container network)
+  private s3Internal: AWS.S3;
+  // Presign client: generates URLs for the browser (public host)
+  private s3Presign: AWS.S3;
   private bucketName: string;
   private cdnUrl: string;
   private publicUrl: string;
@@ -23,12 +35,27 @@ export class UploadService {
     this.cdnUrl = this.configService.get<string>('CDN_URL', 'http://localhost:9000');
     this.publicUrl = this.configService.get<string>('S3_PUBLIC_URL', 'http://localhost:9000');
 
-    this.s3 = new AWS.S3({
-      accessKeyId: this.configService.get<string>('S3_ACCESS_KEY'),
-      secretAccessKey: this.configService.get<string>('S3_SECRET_KEY'),
-      region: this.configService.get<string>('S3_REGION', 'us-east-1'),
-      endpoint: this.configService.get<string>('S3_ENDPOINT'), // MinIO veya gerçek S3 endpoint
-      s3ForcePathStyle: true,                           // MinIO için şart (AWS S3'de de sorun çıkarmaz)
+    const accessKeyId = this.configService.get<string>('S3_ACCESS_KEY');
+    const secretAccessKey = this.configService.get<string>('S3_SECRET_KEY');
+    const region = this.configService.get<string>('S3_REGION', 'us-east-1');
+    const internalEndpoint = this.configService.get<string>('S3_ENDPOINT'); // http://minio:9000
+    const publicEndpoint = this.publicUrl; // http://localhost:9000
+
+    this.s3Internal = new AWS.S3({
+      accessKeyId,
+      secretAccessKey,
+      region,
+      endpoint: internalEndpoint,
+      s3ForcePathStyle: true,
+      signatureVersion: 'v4',
+    });
+
+    this.s3Presign = new AWS.S3({
+      accessKeyId,
+      secretAccessKey,
+      region,
+      endpoint: publicEndpoint,
+      s3ForcePathStyle: true,
       signatureVersion: 'v4',
     });
   }
@@ -58,7 +85,7 @@ export class UploadService {
         ],
       };
 
-      const { url, fields } = await this.s3.createPresignedPost(params);
+      const { url, fields } = await this.s3Presign.createPresignedPost(params);
 
       // Tarayıcı public URL kullanmalı
       const uploadUrl = `${(this.publicUrl || url).replace(/\/$/, '')}/${this.bucketName}`;
@@ -82,6 +109,42 @@ export class UploadService {
     } catch (err) {
       this.log.error('presign failed', err as any);
       throw new BadRequestException('PRESIGN_FAILED');
+    }
+  }
+
+  async presignPut(dto: PresignDto): Promise<PresignedPutData> {
+    this.validateFileType(dto.fileType, dto.folder);
+
+    try {
+      const ext = (dto.fileName.split('.').pop() || 'bin').toLowerCase();
+      const key = `${dto.folder}/${uuidv4()}.${ext}`;
+
+      const putUrl = await this.s3Presign.getSignedUrlPromise('putObject', {
+        Bucket: this.bucketName,
+        Key: key,
+        Expires: 60,
+        ContentType: dto.fileType,
+      });
+
+      const fileUrl = `${this.publicUrl}/${this.bucketName}/${key}`;
+
+      this.log.debug('Generated presigned PUT URL:', {
+        bucketName: this.bucketName,
+        key,
+        putUrl,
+        fileUrl,
+      });
+
+      return {
+        type: 'PUT',
+        putUrl,
+        key,
+        fileUrl,
+        contentType: dto.fileType,
+      };
+    } catch (err) {
+      this.log.error('presign PUT failed', err as any);
+      throw new BadRequestException('PRESIGN_PUT_FAILED');
     }
   }
 

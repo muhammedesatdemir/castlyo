@@ -69,3 +69,7 @@ temp/
 
 # Sentry
 .sentryclirc
+
+# MinIO runtime data
+storage/minio/
+

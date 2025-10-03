@@ -705,7 +705,7 @@ function TalentOnboardingContent() {
 
   function renderStep2() {
     return (
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div data-wizard-step="2" className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div>
           <label className="text-xs opacity-80">Ad</label>
           <Input
@@ -737,13 +737,9 @@ function TalentOnboardingContent() {
               placeholder="5xx xxx xx xx"
             />
           </div>
-          <div className="text-[11px] opacity-70 mt-1">
-            Sunucuya şu formatta kaydedilir: {phoneDigits ? `+90${phoneDigits}` : "-"}
-          </div>
         </div>
 
         <div className="md:col-span-2">
-          <label className="text-xs opacity-80 block mb-2">Profil Fotoğrafı</label>
           <AvatarInput value={formData.profilePhotoUrl} onChange={handleAvatarChange} />
         </div>
       </div>
@@ -752,7 +748,7 @@ function TalentOnboardingContent() {
 
   function renderStep3() {
     return (
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div data-wizard-step="3" className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div>
           <label className="text-xs opacity-80">Doğum Tarihi</label>
           <Input
@@ -763,7 +759,7 @@ function TalentOnboardingContent() {
           <div className="text-[11px] opacity-70 mt-1">{Number.isFinite(age) ? `Yaş: ${age}` : ""}</div>
         </div>
 
-        <div>
+        <div data-field="gender">
           <label className="text-xs opacity-80">Cinsiyet</label>
           <select
             className="w-full rounded-md px-3 py-2 bg-white/90 text-black ring-1 ring-neutral-300"

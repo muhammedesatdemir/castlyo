@@ -272,6 +272,26 @@ export default function ProfileClient({
         : undefined,
   });
 
+  // Update guardian state when profile data changes
+  React.useEffect(() => {
+    const guardianData = initialProfile.personal?.guardian;
+    if (guardianData) {
+      const phoneDigits = digits(guardianData.phone ?? "").slice(-10);
+      setGuardian({
+        fullName: guardianData.fullName ?? "",
+        relation: (guardianData.relation as any) ?? "",
+        phoneDigits: phoneDigits,
+        email: (guardianData.email as any) ?? "",
+        consent:
+          typeof guardianData.consent === "boolean"
+            ? guardianData.consent
+            : typeof guardianData.consentAccepted === "boolean"
+            ? guardianData.consentAccepted
+            : undefined,
+      });
+    }
+  }, [initialProfile.personal?.guardian]);
+
   /* ---------- defaults ---------- */
   const initialDigitsFromDb = (() => {
     const d = digits(initialProfile.phone ?? "");
@@ -565,7 +585,26 @@ export default function ProfileClient({
         cvUrl: form.resumeUrl,
       };
 
-      const profilePayload = profileFormUiToApi(mapperInput);
+      const profilePayload: any = profileFormUiToApi(mapperInput);
+
+      // Add guardian data if user is minor
+      if (isMinorByDate(form.birthDate)) {
+        const guardianPhoneDigits = guardian.phoneDigits;
+        if (guardian.fullName.trim() || guardianPhoneDigits || guardian.relation || guardian.email.trim()) {
+          const guardianData: Record<string, any> = {};
+          if (guardian.fullName.trim()) guardianData.fullName = guardian.fullName.trim();
+          if (guardian.relation) guardianData.relation = guardian.relation;
+          if (guardianPhoneDigits) guardianData.phone = toE164TR(guardianPhoneDigits);
+          if (guardian.email.trim()) guardianData.email = guardian.email.trim();
+          if (guardian.consent !== undefined) {
+            guardianData.consent = guardian.consent;
+            guardianData.consentAccepted = guardian.consent;
+          }
+          if (Object.keys(guardianData).length) {
+            profilePayload.guardian = guardianData;
+          }
+        }
+      }
 
       // Phone payload (user data)
       const phonePayload = clean({
