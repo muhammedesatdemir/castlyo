@@ -4,6 +4,12 @@ declare module "next-auth" {
   interface Session extends DefaultSession {
     accessToken?: string | null;
     refreshToken?: string | null;
+    user?: {
+      name?: string | null;
+      email?: string | null;
+      image?: string | null;
+      talent_profile_id?: string | null;
+    };
   }
 }
 

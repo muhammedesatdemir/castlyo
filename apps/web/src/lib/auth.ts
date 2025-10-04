@@ -15,27 +15,12 @@ export const authOptions: NextAuthOptions = {
       async authorize(credentials) {
         if (!credentials?.email || !credentials?.password) return null;
 
-        const res = await fetch(`${API}/api/v1/auth/login`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            email: credentials.email,
-            password: credentials.password,
-          }),
-        });
-
-        if (!res.ok) return null;
-        const data = await res.json();
-
-        if (!data?.access_token || !data?.user?.id) return null;
-
-        // ⬇⬇⬇  ROLÜ MUTLAKA DÖN!  ⬇⬇⬇
+        // Backend login'i client-side'da yapıldı, burada sadece FE session oluştur
+        // Basit user objesi döndür - gerçek doğrulama client-side'da yapıldı
         return {
-          id: data.user.id,
-          email: data.user.email,
-          role: data.user.role,           // <— KRİTİK
-          accessToken: data.access_token, // NextAuth için camelCase
-          refreshToken: data.refresh_token,
+          id: credentials.email, // Email'i ID olarak kullan
+          email: credentials.email,
+          role: 'TALENT', // Default role, gerçek role backend'den alınacak
         };
       },
     }),

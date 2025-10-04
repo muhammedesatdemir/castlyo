@@ -1,12 +1,12 @@
 import { useState, useEffect } from 'react'
 import { useSession } from 'next-auth/react'
-import { profileApi } from '@/lib/api'
+import { loadMyProfile, saveMyProfile } from '@/features/profile/api'
 
 export function useProfile() {
   const { data: session, status } = useSession()
-  const [profile, setProfile] = useState(null)
+  const [profile, setProfile] = useState<any>(null)
   const [loading, setLoading] = useState(true)
-  const [error, setError] = useState(null)
+  const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
     if (status === 'authenticated' && session?.user) {
@@ -20,10 +20,11 @@ export function useProfile() {
     try {
       setLoading(true)
       setError(null)
-      const response = await profileApi.getMyProfile()
-      setProfile(response.data)
+      
+      const profileData = await loadMyProfile()
+      setProfile(profileData)
     } catch (err: any) {
-      setError(err.response?.data?.message || 'Failed to fetch profile')
+      setError(err.message || 'Failed to fetch profile')
       setProfile(null)
     } finally {
       setLoading(false)
@@ -33,11 +34,12 @@ export function useProfile() {
   const createTalentProfile = async (data: any) => {
     try {
       setError(null)
-      const response = await profileApi.createTalentProfile(data)
-      setProfile(response.data)
-      return response.data
+      
+      const response = await saveMyProfile(data)
+      setProfile(response)
+      return response
     } catch (err: any) {
-      setError(err.response?.data?.message || 'Failed to create profile')
+      setError(err.message || 'Failed to create profile')
       throw err
     }
   }
@@ -45,11 +47,14 @@ export function useProfile() {
   const createAgencyProfile = async (data: any) => {
     try {
       setError(null)
-      const response = await profileApi.createAgencyProfile(data)
-      setProfile(response.data)
-      return response.data
+      
+      // For now, use the same saveMyProfile method
+      // In the future, this should be separate agency profile handling
+      const response = await saveMyProfile(data)
+      setProfile(response)
+      return response
     } catch (err: any) {
-      setError(err.response?.data?.message || 'Failed to create profile')
+      setError(err.message || 'Failed to create profile')
       throw err
     }
   }
@@ -57,11 +62,12 @@ export function useProfile() {
   const updateTalentProfile = async (data: any) => {
     try {
       setError(null)
-      const response = await profileApi.updateTalentProfile(session?.user?.id, data)
-      setProfile(response.data)
-      return response.data
+      
+      const response = await saveMyProfile(data)
+      setProfile(response)
+      return response
     } catch (err: any) {
-      setError(err.response?.data?.message || 'Failed to update profile')
+      setError(err.message || 'Failed to update profile')
       throw err
     }
   }
@@ -69,11 +75,14 @@ export function useProfile() {
   const updateAgencyProfile = async (data: any) => {
     try {
       setError(null)
-      const response = await profileApi.updateAgencyProfile(session?.user?.id, data)
-      setProfile(response.data)
-      return response.data
+      
+      // For now, use the same saveMyProfile method
+      // In the future, this should be separate agency profile handling
+      const response = await saveMyProfile(data)
+      setProfile(response)
+      return response
     } catch (err: any) {
-      setError(err.response?.data?.message || 'Failed to update profile')
+      setError(err.message || 'Failed to update profile')
       throw err
     }
   }

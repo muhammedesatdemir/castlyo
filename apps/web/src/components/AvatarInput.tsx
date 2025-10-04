@@ -1,13 +1,16 @@
 "use client";
 import { useRef, useState } from "react";
+import { useSession } from "next-auth/react";
 
 type Props = {
   value?: string | null;
   onChange: (url: string | null) => void;
   label?: string;
+  profile?: { id?: string; talent_profile_id?: string };
 };
 
-export default function AvatarInput({ value, onChange, label = "Profil Fotoğrafı" }: Props) {
+export default function AvatarInput({ value, onChange, label = "Profil Fotoğrafı", profile }: Props) {
+  const { data: session } = useSession();
   const [preview, setPreview] = useState<string | null>(value ?? null);
   const [busy, setBusy] = useState(false);
   const inp = useRef<HTMLInputElement>(null);
@@ -18,25 +21,49 @@ export default function AvatarInput({ value, onChange, label = "Profil Fotoğraf
     if (!["image/jpeg","image/png","image/webp"].includes(f.type)) {
       alert("JPEG/PNG/WEBP yükleyin."); return;
     }
-    if (f.size > 5 * 1024 * 1024) { alert("Maksimum 5 MB."); return; }
+    if (f.size > 2 * 1024 * 1024) { alert("Maksimum 2 MB."); return; }
 
     const localUrl = URL.createObjectURL(f);
     setPreview(localUrl);
     setBusy(true);
     try {
-      // Use presigned upload helper aligned with /api/v1
-      const mod: any = await import("@/lib/upload");
-      const { fileUrl } = await mod.uploadAvatar(f);
-      onChange(fileUrl as string);
+      // Get correct profile ID - talent_profile_id is what we need
+      const profileId = 
+        profile?.id || 
+        profile?.talent_profile_id || 
+        session?.user?.talent_profile_id;
+      
+      if (!profileId) {
+        // Fallback: try to get from user API
+        const userRes = await fetch("/api/proxy/api/v1/users/me", { credentials: "include" });
+        if (!userRes.ok) throw new Error("Kullanıcı bilgisi alınamadı");
+        const user = await userRes.json();
+        const fallbackProfileId = user.talent_profile_id;
+        if (!fallbackProfileId) throw new Error("Talent profil ID bulunamadı. Lütfen önce profilinizi oluşturun.");
+        return await uploadWithProfileId(f, fallbackProfileId);
+      }
+
+      await uploadWithProfileId(f, profileId);
     } catch (err) {
+      console.error("Avatar upload error:", err);
       URL.revokeObjectURL(localUrl);
       setPreview(value ?? null);
       onChange(value ?? null);
-      alert("Yükleme sırasında bir hata oluştu.");
+      alert(`Yükleme sırasında hata: ${err instanceof Error ? err.message : "Bilinmeyen hata"}`);
     } finally {
       setBusy(false);
       if (inp.current) inp.current.value = "";
     }
+  }
+
+  async function uploadWithProfileId(file: File, profileId: string) {
+    // Use new presigned upload with profile fallbacks
+    const { uploadFileWithPresigned, saveProfileAvatar } = await import("@/lib/upload-presigned");
+    
+    const fileUrl = await uploadFileWithPresigned(file, profileId, "profile_image", "profiles");
+    await saveProfileAvatar(fileUrl);
+    
+    onChange(fileUrl);
   }
 
   return (

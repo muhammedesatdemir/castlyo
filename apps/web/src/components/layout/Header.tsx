@@ -14,10 +14,22 @@ interface HeaderProps {
 export default function Header({ onSignup }: HeaderProps) {
   const { data: session, status } = useSession()
   const isLoggedIn = status === 'authenticated'
+  const isTalent = (session?.user as any)?.role === "TALENT"
   const [open, setOpen] = useState(false)
   
-  // Filter menu items based on authentication status
-  const visibleMenuItems = MENU.filter(item => !('requiresAuth' in item) || isLoggedIn)
+  // Filter menu items based on authentication status and role
+  const visibleMenuItems = MENU.filter(item => {
+    if (!('requiresAuth' in item) || !isLoggedIn) {
+      return !('requiresAuth' in item) || isLoggedIn
+    }
+    
+    // Special case for "Profilim" - only show for TALENT users
+    if (item.label === 'Profilim') {
+      return isLoggedIn && isTalent
+    }
+    
+    return isLoggedIn
+  })
 
   return (
     <header className="site-header fixed top-0 w-full z-50 bg-black border-b border-gray-800">

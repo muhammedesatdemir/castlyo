@@ -1,51 +1,52 @@
-import { NextRequest, NextResponse } from 'next/server'
-import { loginSchema } from '@/lib/validations/auth'
-import { z } from 'zod'
+import { NextRequest, NextResponse } from 'next/server';
 
-export async function POST(request: NextRequest) {
-  try {
-    const body = await request.json()
-    
-    // Validate the request body
-    const validatedData = loginSchema.parse(body)
-    
-    // Call the backend API
-    const apiUrl = process.env.INTERNAL_API_URL || 'http://castlyo-api:3001'
-    const response = await fetch(`${apiUrl}/api/v1/auth/login`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(validatedData),
-    })
-    
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}))
-      throw new Error(errorData.message || 'Login failed')
-    }
-    
-    const result = await response.json()
-    
-    return NextResponse.json(result)
-    
-  } catch (error) {
-    console.error('Login error:', error)
-    
-    if (error instanceof z.ZodError) {
-      return NextResponse.json(
-        { 
-          message: 'Validation error', 
-          errors: error.errors 
-        },
-        { status: 400 }
-      )
-    }
-    
-    return NextResponse.json(
-      { 
-        message: error instanceof Error ? error.message : 'Login failed' 
-      },
-      { status: 401 }
-    )
+export const runtime = 'nodejs';
+export const dynamic = 'force-dynamic';
+
+function rewriteSetCookieForLocalhost(raw: string) {
+  const parts = raw.split(';').map(p => p.trim());
+  const [nv, ...attrs] = parts;
+  const keep: string[] = [];
+  for (const a of attrs) {
+    const k = a.toLowerCase();
+    if (k.startsWith('domain=')) continue;
+    if (k === 'secure') continue;
+    if (k.startsWith('samesite=')) continue;
+    if (k.startsWith('path=')) { keep.push(a); continue; }
+    keep.push(a);
   }
+  if (!keep.some(p => p.toLowerCase().startsWith('path='))) keep.push('Path=/');
+  keep.push('SameSite=Lax');
+  return [nv, ...keep].join('; ');
+}
+
+export async function POST(req: NextRequest) {
+  const body = await req.text(); // ham gövde
+  const api = process.env.INTERNAL_API_URL ?? 'http://castlyo-api:3001';
+
+  const res = await fetch(`${api}/api/v1/auth/login`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body,
+    redirect: 'manual',
+  });
+
+  const headers = new Headers(res.headers);
+  headers.delete('content-length');
+  headers.delete('content-encoding');
+  headers.delete('transfer-encoding');
+
+  // Set-Cookie'leri yeniden yaz ve ekle
+  const setCookies =
+    (typeof (res.headers as any).getSetCookie === 'function'
+      ? (res.headers as any).getSetCookie()
+      : null) ?? (headers.get('set-cookie') ? [headers.get('set-cookie') as string] : []);
+
+  headers.delete('set-cookie');
+  for (const sc of setCookies) {
+    headers.append('set-cookie', rewriteSetCookieForLocalhost(sc!));
+  }
+
+  // body'yi proxyle
+  return new NextResponse(res.body, { status: res.status, headers });
 }

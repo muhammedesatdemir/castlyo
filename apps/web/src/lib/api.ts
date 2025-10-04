@@ -153,8 +153,69 @@ export async function apiFetch<T>(
   return (await res.json()) as T;
 }
 
-// Profile API using fetch
+// API Guard function to check user email match
+export async function guardApiUser(expectedEmail?: string) {
+  if (!expectedEmail) return;
+  
+  try {
+    const me = await fetch('/api/proxy/api/v1/users/me', { credentials: 'include' })
+      .then(r => r.ok ? r.json() : null)
+      .catch(() => null);
+
+    if (me?.email && me.email !== expectedEmail) {
+      // API'de başka user açık => logout + uyarı
+      console.warn('[API Guard] Session mismatch detected:', { expected: expectedEmail, actual: me.email });
+      await fetch('/api/proxy/api/v1/auth/logout', { method: 'POST', credentials: 'include' });
+      throw new Error('Oturum uyuşmazlığı: Lütfen tekrar giriş yapın.');
+    }
+  } catch (error) {
+    if (error instanceof Error && error.message.includes('Oturum uyuşmazlığı')) {
+      throw error;
+    }
+    // Diğer hatalar için sessizce devam et
+    console.warn('[API Guard] Failed to check user match:', error);
+  }
+}
+
+// Profile API using fetch with proper endpoint structure
 export const profileApiFetch = {
+  // Load user's talent profile using the correct flow: /users/me -> /talents/:id
+  async loadMyProfile() {
+    const me = await apiFetch('/users/me') as any;
+    if (!me?.id) throw new Error('Kullanıcı bulunamadı');
+
+    if (me.talent_profile_id) {
+      const profile = await apiFetch(`/talents/${me.talent_profile_id}`);
+      if (!profile) throw new Error('Profil getirilemedi');
+      return profile;
+    }
+    // profil yok -> FE'de boş form göster
+    return null;
+  },
+
+  // Save user's talent profile using the correct flow
+  async saveMyProfile(data: any) {
+    const me = await apiFetch('/users/me') as any;
+    if (!me?.id) throw new Error('Kullanıcı bulunamadı');
+
+    if (me.talent_profile_id) {
+      // Update existing profile
+      const response = await apiFetch(`/talents/${me.talent_profile_id}`, {
+        method: 'PATCH',
+        json: data,
+      });
+      return response;
+    } else {
+      // Create new profile
+      const response = await apiFetch('/talents', {
+        method: 'POST',
+        json: data,
+      });
+      return response;
+    }
+  },
+
+  // Legacy methods for backward compatibility (will be deprecated)
   updateMyTalentProfile: (data: any) => apiFetch('/profiles/talent/me', { method: 'PUT', json: data }),
   getMyProfile: () => apiFetch('/profiles/me'),
 };

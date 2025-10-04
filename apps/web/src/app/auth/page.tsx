@@ -255,33 +255,50 @@ export default function AuthPage() {
       } else {
         logger.info('AUTH', 'Starting login process', { email: formData.email })
         
-        // Login işlemi için NextAuth kullan
-        const result = await signIn('credentials', {
-          email: formData.email,
-          password: formData.password,
-          redirect: false,
-          callbackUrl: nextUrl || '/',
-        })
-
-        logger.logAuthAction('login', !!result?.ok, { email: formData.email, error: result?.error })
-
-        if (result?.error) {
-          logger.error('AUTH', 'Login failed', { email: formData.email, error: result.error })
+        try {
+          // 1) Önce backend'e login – PROXY ÜZERİNDEN
+          const r = await fetch("/api/proxy/api/v1/auth/login", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            credentials: "include",                // önemli!
+            body: JSON.stringify({ 
+              email: formData.email, 
+              password: formData.password 
+            })
+          });
           
-          // Özel hata mesajları
-          if (result.error === 'CredentialsSignin') {
-            // Check if this is due to email verification
-            if (formData.email === registeredEmail && emailVerificationRequired) {
-              setDialogTitle('E-posta Doğrulaması Gerekli 📧')
-              setDialogMessage('Hesabınıza giriş yapmadan önce e-posta adresinizi doğrulamanız gerekmektedir. E-posta kutunuzu kontrol edin.')
-            } else {
-              setDialogTitle('Giriş Hatası')
-              setDialogMessage('Geçersiz e-posta adresi veya şifre. Lütfen bilgilerinizi kontrol edin.')
-            }
-            setShowKvkkDialog(true)
-            return
-          } else if (result.error === 'AccessDenied') {
-            setDialogTitle('Erişim Reddedildi')
+          if (!r.ok) {
+            const err = await r.json().catch(()=> ({}));
+            throw new Error(err.message || "API login başarısız");
+          }
+
+          // 2) Ardından NextAuth – sadece FE oturumu için
+          const result = await signIn("credentials", {
+            redirect: false,
+            email: formData.email,
+            password: formData.password,
+            callbackUrl: nextUrl || '/',
+          });
+
+          logger.logAuthAction('login', !!result?.ok, { email: formData.email, error: result?.error })
+
+          if (result?.error) {
+            logger.error('AUTH', 'NextAuth failed', { email: formData.email, error: result.error })
+            
+            // Özel hata mesajları
+            if (result.error === 'CredentialsSignin') {
+              // Check if this is due to email verification
+              if (formData.email === registeredEmail && emailVerificationRequired) {
+                setDialogTitle('E-posta Doğrulaması Gerekli 📧')
+                setDialogMessage('Hesabınıza giriş yapmadan önce e-posta adresinizi doğrulamanız gerekmektedir. E-posta kutunuzu kontrol edin.')
+              } else {
+                setDialogTitle('Giriş Hatası')
+                setDialogMessage('Geçersiz e-posta adresi veya şifre. Lütfen bilgilerinizi kontrol edin.')
+              }
+              setShowKvkkDialog(true)
+              return
+            } else if (result.error === 'AccessDenied') {
+              setDialogTitle('Erişim Reddedildi')
             setDialogMessage('Hesap erişimi reddedildi. Lütfen destek ekibi ile iletişime geçin.')
             setShowKvkkDialog(true)
             return
@@ -300,16 +317,33 @@ export default function AuthPage() {
           }
         }
 
-        if (result?.ok && result.url) {
-          logger.info('AUTH', 'Login successful', { email: formData.email })
-          logger.info('NAVIGATION', 'Redirecting after login', { destination: result.url })
-          // Login başarılı, NextAuth'ın önerdiği URL'e yönlendir
-          router.replace(result.url)
-        } else if (result?.ok) {
-          logger.info('AUTH', 'Login successful', { email: formData.email })
-          logger.info('NAVIGATION', 'Redirecting after login', { destination: nextUrl || '/' })
-          // Fallback: callbackUrl'e yönlendir (ana sayfaya, role'e göre onboarding'e yönlendirilir)
-          router.replace(nextUrl || '/')
+          if (result?.ok && result.url) {
+            logger.info('AUTH', 'Login successful', { email: formData.email })
+            logger.info('NAVIGATION', 'Redirecting after login', { destination: result.url })
+            // Login başarılı, NextAuth'ın önerdiği URL'e yönlendir
+            router.replace(result.url)
+          } else if (result?.ok) {
+            logger.info('AUTH', 'Login successful', { email: formData.email })
+            logger.info('NAVIGATION', 'Redirecting after login', { destination: nextUrl || '/' })
+            // Fallback: callbackUrl'e yönlendir (ana sayfaya, role'e göre onboarding'e yönlendirilir)
+            router.replace(nextUrl || '/')
+          }
+        } catch (error) {
+          logger.error('AUTH', 'Login process failed', { email: formData.email, error: error instanceof Error ? error.message : String(error) })
+          console.error('Login error:', error)
+          
+          // API login hatası
+          if (error instanceof Error && error.message.includes('API login başarısız')) {
+            setDialogTitle('Giriş Hatası')
+            setDialogMessage('Geçersiz e-posta adresi veya şifre. Lütfen bilgilerinizi kontrol edin.')
+            setShowKvkkDialog(true)
+            return
+          }
+          
+          // Diğer hatalar
+          setDialogTitle('Hata Oluştu')
+          setDialogMessage('Giriş yapılamadı. Lütfen tekrar deneyin.')
+          setShowKvkkDialog(true)
         }
       }
     } catch (error) {

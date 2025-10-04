@@ -1,49 +1,41 @@
-type PresignPost = { uploadUrl: string; fields: Record<string, string>; key: string; fileUrl: string };
-type PresignPut  = { url: string; method?: 'PUT'; fileUrl: string };
+// Re-export the new presigned upload functions
+export { 
+  uploadFileWithPresigned, 
+  saveProfileAvatar, 
+  saveProfileCV 
+} from './upload-presigned';
 
-// Backend folder mapping
-const FolderMap = {
-  avatar: 'profiles',     // profil foto
-  cv: 'documents',        // CV (pdf/doc/docx)
-  portfolio: 'portfolios',// görsel & video
-  jobImage: 'jobs',       // iş ilanı görseli (varsa)
-  verification: 'documents/verification', // agency verification documents
-} as const;
-
+// Legacy wrapper for backward compatibility
 export async function uploadWithPresigned(file: File, type: 'avatar'|'cv'|'portfolio'|'jobImage'|'verification') {
-  const presignRes = await fetch('/api/proxy/api/v1/upload/presigned-url', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    credentials: 'include',
-    body: JSON.stringify({ 
-      filename: file.name, 
-      contentType: file.type || 'application/octet-stream', 
-      folder: FolderMap[type] 
-    }),
-  });
-  if (!presignRes.ok) throw new Error(`presign failed: ${presignRes.status}`);
-  const presign = await presignRes.json() as PresignPost & PresignPut;
+  // Get profile ID from current user context
+  // This is a simplified approach - in real implementation you might want to pass profileId explicitly
+  const profileId = 'current-user'; // This should be replaced with actual profile ID
+  
+  const folderMap = {
+    avatar: 'profiles/images',
+    cv: 'documents',
+    portfolio: 'portfolios',
+    jobImage: 'jobs',
+    verification: 'documents/verification',
+  } as const;
 
-  if ((presign as PresignPost).fields) {
-    const { uploadUrl, fields, fileUrl } = presign as PresignPost;
-    const fd = new FormData();
-    Object.entries(fields).forEach(([k, v]) => fd.append(k, String(v)));
-    fd.append('file', file);
-    const r = await fetch(uploadUrl, { method: 'POST', body: fd });
-    if (!r.ok) {
-      const t = await r.text().catch(()=>'');
-      throw new Error(`upload failed: ${r.status} ${t}`);
-    }
-    return { fileUrl };
-  } else {
-    const { url, fileUrl } = presign as PresignPut;
-    const r = await fetch(url, { method: 'PUT', headers: { 'Content-Type': file.type || 'application/octet-stream' }, body: file });
-    if (!r.ok) {
-      const t = await r.text().catch(()=>'');
-      throw new Error(`upload failed: ${r.status} ${t}`);
-    }
-    return { fileUrl };
-  }
+  const purposeMap = {
+    avatar: 'profile_image',
+    cv: 'cv',
+    portfolio: 'portfolio',
+    jobImage: 'job_image',
+    verification: 'verification_document',
+  } as const;
+
+  const { uploadFileWithPresigned } = await import('./upload-presigned');
+  const fileUrl = await uploadFileWithPresigned(
+    file, 
+    profileId, 
+    purposeMap[type], 
+    folderMap[type]
+  );
+
+  return { fileUrl };
 }
 
 // Convenience wrappers

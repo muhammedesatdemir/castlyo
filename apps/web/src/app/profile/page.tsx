@@ -2,8 +2,10 @@
 
 import { useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
+import useSWR from "swr";
 import ProfileClient from "./ProfileClient";
 import { mapApiSpecialtiesToUI } from "@/lib/profile-mapper";
+import { guardApiUser } from "@/lib/api-guard";
 
 /** Sunucudan dönen profil tipi — ProfileClient de bunu kullanır */
 export type Profile = {
@@ -47,6 +49,63 @@ export type Profile = {
 };
 
 const THEME = { light: "#F6E6C3", dark: "#962901", black: "#000000" };
+
+/* ---------- SWR fetcher ---------- */
+async function fetchProfileData(): Promise<Profile> {
+  try {
+    const [uRes, pRes] = await Promise.all([
+      fetch('/api/proxy/api/v1/users/me', { credentials: 'include' }),
+      fetch('/api/proxy/api/v1/profiles/talent/me', { credentials: 'include' }),
+    ]);
+
+    const user = uRes.ok ? await uRes.json() : {};
+    let profileRaw: any = {};
+    
+    // 404'u "profil yok" olarak ele al - hata değil
+    if (pRes.ok) {
+      const p = await pRes.json();
+      profileRaw = p && typeof p === 'object' && !Array.isArray(p) ? p : {};
+    } else if (pRes.status === 404) {
+      // Profil henüz oluşturulmamış - bu normal
+      console.debug('[ProfilePage] Profile not found (404) - user has no profile yet');
+      profileRaw = {};
+    } else if (!pRes.ok) {
+      // Gerçek hata durumu
+      console.error('[ProfilePage] Profile fetch error:', pRes.status, pRes.statusText);
+      profileRaw = {};
+    }
+
+    const hasProfile = Object.keys(profileRaw).length > 0;
+
+    console.info('[ProfilePage] API Response structure', {
+      hasUser: !!user?.id,
+      hasProfile,
+      userKeys: Object.keys(user || {}),
+      profileKeys: Object.keys(profileRaw || {}),
+      profileStatus: pRes.status,
+    });
+
+    // Merge user and profile data with proper priority
+    // Profile data takes priority for all fields, user data as fallback
+    const combinedData = {
+      // Start with user data as base
+      ...user,
+      // Profile data takes priority for all fields (profile > user > '')
+      first_name: profileRaw?.first_name ?? user?.first_name ?? '',
+      last_name: profileRaw?.last_name ?? user?.last_name ?? '',
+      email: user?.email ?? profileRaw?.email ?? '',
+      phone: profileRaw?.phone ?? user?.phone ?? '',
+      // Add all other profile fields
+      ...profileRaw,
+    };
+
+    // Map API → UI (safe defaults)
+    return mapApiToProfile(combinedData);
+  } catch (error) {
+    console.error('[ProfilePage] Fetch error:', error);
+    throw error;
+  }
+}
 
 /* ---------- API mapping helpers ---------- */
 const g = (o: any, ...keys: string[]) => {
@@ -120,127 +179,31 @@ function mapApiToProfile(api: any): Profile {
 
 export default function ProfilePage() {
   const router = useRouter();
-  const [data, setData] = useState<Profile | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+
+  // Guard: Check session sync on page load
+  useEffect(() => {
+    guardApiUser().catch((e) => {
+      console.warn(e.message);
+      // Optionally show toast: "Oturum yenilendi, lütfen tekrar deneyin."
+    });
+  }, []);
+
+  // Use SWR with keepPreviousData to prevent form clearing during revalidation
+  const { data, error, isLoading, isValidating, mutate } = useSWR(
+    'profile-data',
+    fetchProfileData,
+    {
+      revalidateOnFocus: false,
+      keepPreviousData: true,     // SWR v2 - prevents data from becoming undefined during revalidation
+      revalidateOnMount: true,
+      dedupingInterval: 5000,     // Prevent excessive refetches
+    }
+  );
 
   const refetch = useCallback(async () => {
-    try {
-      setError(null);
-      console.debug('[ProfilePage] Refetching profile data...');
-      
-      const [uRes, pRes] = await Promise.all([
-        fetch('/api/proxy/api/v1/users/me', { credentials: 'include' }),
-        fetch('/api/proxy/api/v1/profiles/talent/me', { credentials: 'include' }),
-      ]);
-
-      const user = uRes.ok ? await uRes.json() : {};
-      let profileRaw: any = {};
-      
-      // 404'u "profil yok" olarak ele al - hata değil
-      if (pRes.ok) {
-        const p = await pRes.json();
-        profileRaw = p && typeof p === 'object' && !Array.isArray(p) ? p : {};
-      } else if (pRes.status === 404) {
-        // Profil henüz oluşturulmamış - bu normal
-        console.debug('[ProfilePage] Profile not found (404) - user has no profile yet');
-        profileRaw = {};
-      } else if (!pRes.ok) {
-        // Gerçek hata durumu
-        console.error('[ProfilePage] Profile fetch error:', pRes.status, pRes.statusText);
-        profileRaw = {};
-      }
-
-      const hasProfile = Object.keys(profileRaw).length > 0;
-
-      console.info('[ProfilePage] API Response structure (refetch)', {
-        hasUser: !!user?.id,
-        hasProfile,
-        userKeys: Object.keys(user || {}),
-        profileKeys: Object.keys(profileRaw || {}),
-        profileStatus: pRes.status,
-      });
-
-      // Map API → UI (safe defaults)
-      const apiResponse = { ...user, ...profileRaw };
-      const p: Profile = mapApiToProfile(apiResponse);
-      
-      setData(p);
-    } catch (error) {
-      console.error('[ProfilePage] Refetch error:', error);
-      setError(error instanceof Error ? error.message : 'Beklenmeyen bir hata oluştu');
-    }
-  }, []);
-
-  useEffect(() => {
-    let alive = true;
-    (async () => {
-      try {
-        setError(null);
-        console.debug('[ProfilePage] Initial profile fetch...');
-        
-        const [uRes, pRes] = await Promise.all([
-          fetch('/api/proxy/api/v1/users/me', { credentials: 'include' }),
-          fetch('/api/proxy/api/v1/profiles/talent/me', { credentials: 'include' }),
-        ]);
-
-        const user = uRes.ok ? await uRes.json() : {};
-        let profileRaw: any = {};
-        
-        // 404'u "profil yok" olarak ele al - hata değil
-        if (pRes.ok) {
-          const p = await pRes.json();
-          profileRaw = p && typeof p === 'object' && !Array.isArray(p) ? p : {};
-        } else if (pRes.status === 404) {
-          // Profil henüz oluşturulmamış - bu normal
-          console.debug('[ProfilePage] Profile not found (404) - user has no profile yet');
-          profileRaw = {};
-        } else if (!pRes.ok) {
-          // Gerçek hata durumu
-          console.error('[ProfilePage] Profile fetch error:', pRes.status, pRes.statusText);
-          profileRaw = {};
-        }
-
-        const hasProfile = Object.keys(profileRaw).length > 0;
-
-        console.info('[ProfilePage] API Response structure', {
-          hasUser: !!user?.id,
-          hasProfile,
-          userKeys: Object.keys(user || {}),
-          profileKeys: Object.keys(profileRaw || {}),
-          profileStatus: pRes.status,
-        });
-
-        // Merge user and profile data with proper priority
-        // Profile data should take priority for personal/professional fields, but not overwrite with empty values
-        const combinedData = {
-          // Start with profile data as base
-          ...profileRaw,
-          // User data takes priority for identity fields (always use user data if available)
-          ...(user?.first_name && { first_name: user.first_name }),
-          ...(user?.last_name && { last_name: user.last_name }),
-          ...(user?.email && { email: user.email }),
-          ...(user?.phone && { phone: user.phone }),
-          // For other fields, use user data as fallback only if profile data is empty
-          first_name: profileRaw?.first_name || user?.first_name || '',
-          last_name: profileRaw?.last_name || user?.last_name || '',
-          email: profileRaw?.email || user?.email || '',
-          phone: profileRaw?.phone || user?.phone || '',
-        };
-
-        // Map API → UI (safe defaults)
-        const p: Profile = mapApiToProfile(combinedData);
-        
-        if (alive) setData(p);
-      } catch (error) {
-        console.error('[ProfilePage] Initial fetch error:', error);
-        if (alive) setError(error instanceof Error ? error.message : 'Profil verileri yüklenemedi');
-      } finally {
-        if (alive) setLoading(false);
-      }
-    })();
-    return () => { alive = false; };
-  }, []);
+    console.debug('[ProfilePage] Refetching profile data...');
+    await mutate();
+  }, [mutate]);
 
   return (
     <main
@@ -265,7 +228,7 @@ export default function ProfilePage() {
       </header>
 
       <div className="mx-auto max-w-6xl px-4 py-8">
-        {loading && (
+        {isLoading && (
           <div className="flex items-center justify-center py-12">
             <div className="text-center">
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 mx-auto mb-4" style={{ borderColor: THEME.dark }}></div>
@@ -277,7 +240,7 @@ export default function ProfilePage() {
         {error && (
           <div className="bg-red-50 border border-red-200 rounded-lg p-6 text-center">
             <div className="text-red-800 font-medium mb-2">Hata</div>
-            <div className="text-red-600 mb-4">{error}</div>
+            <div className="text-red-600 mb-4">{error instanceof Error ? error.message : 'Beklenmeyen bir hata oluştu'}</div>
             <button
               onClick={refetch}
               className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
@@ -287,12 +250,18 @@ export default function ProfilePage() {
           </div>
         )}
 
-        {!loading && !error && data && (
+        {!isLoading && !error && data && (
           <ProfileClient
             initialProfile={data}
             theme={THEME}
-            onSaved={(fresh) => setData(fresh)}
+            onSaved={(fresh) => {
+              // Optimistic update: update SWR cache immediately
+              mutate(fresh, { revalidate: false });
+              // Then revalidate in background
+              mutate();
+            }}
             onDemandRefetch={refetch}
+            isValidating={isValidating}
           />
         )}
       </div>

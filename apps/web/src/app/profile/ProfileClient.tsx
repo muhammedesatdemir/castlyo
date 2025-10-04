@@ -124,6 +124,7 @@ const UField = React.memo(function UField({
   description?: string;
   error?: string;
 }) {
+  // Safe value binding - always use form state, never data directly
   const controlledValue = value == null ? "" : String(value);
   return (
     <div>
@@ -195,11 +196,13 @@ export default function ProfileClient({
   theme,
   onSaved,
   onDemandRefetch,
+  isValidating = false,
 }: {
   initialProfile: Profile;
   theme: { light: string; dark: string; black: string };
   onSaved?: (fresh: Profile) => void;
   onDemandRefetch?: () => Promise<void>;
+  isValidating?: boolean;
 }) {
   const { data: session } = useSession();
 
@@ -336,6 +339,12 @@ export default function ProfileClient({
 
   // defaults değişirse (ör. rehydrate) formu bir kez senkronla
   React.useEffect(() => {
+    // CRITICAL: Don't reset form if data is undefined during revalidation
+    if (!initialProfile) {
+      console.debug('[ProfileClient] Skipping form update - no profile data');
+      return;
+    }
+
     console.debug('[ProfileClient] Updating form with new data:', {
       firstName: defaults.firstName,
       lastName: defaults.lastName,
@@ -380,20 +389,24 @@ export default function ProfileClient({
 
   // Update form when initialProfile changes (after refetch)
   React.useEffect(() => {
-    if (initialProfile) {
-      console.debug('[ProfileClient] Initial profile changed, updating form:', {
-        gender: initialProfile.personal?.gender,
-        birthDate: initialProfile.personal?.birthDate,
-      });
-      
-      setForm(f => ({
-        ...f,
-        gender: initialProfile.personal?.gender as ApiGender | undefined,
-        birthDate: initialProfile.personal?.birthDate || undefined,
-        heightCm: initialProfile.personal?.heightCm?.toString() ?? undefined,
-        weightKg: initialProfile.personal?.weightKg?.toString() ?? undefined,
-      }));
+    // CRITICAL: Don't reset form if data is undefined during revalidation
+    if (!initialProfile) {
+      console.debug('[ProfileClient] Skipping form update - no profile data');
+      return;
     }
+
+    console.debug('[ProfileClient] Initial profile changed, updating form:', {
+      gender: initialProfile.personal?.gender,
+      birthDate: initialProfile.personal?.birthDate,
+    });
+    
+    setForm(f => ({
+      ...f,
+      gender: initialProfile.personal?.gender as ApiGender | undefined,
+      birthDate: initialProfile.personal?.birthDate || undefined,
+      heightCm: initialProfile.personal?.heightCm?.toString() ?? undefined,
+      weightKg: initialProfile.personal?.weightKg?.toString() ?? undefined,
+    }));
   }, [initialProfile]);
 
   /* başlık bilgileri (gereksiz bağımlılık yok) */
@@ -614,18 +627,9 @@ export default function ProfileClient({
       console.log('[ProfileSave] Profile payload', profilePayload);
       console.log('[ProfileSave] Phone payload', phonePayload);
 
-      // 1) Save profile data using PATCH for partial updates
-      const profileRes = await fetch('/api/proxy/api/v1/profiles/talent/me', {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify(profilePayload),
-      });
-
-      if (!profileRes.ok) {
-        const text = await profileRes.text();
-        throw new Error(`Profile save failed: ${profileRes.status} ${text}`);
-      }
+      // 1) Save profile data using the new secure API
+      const { saveMyProfile } = await import('@/features/profile/api');
+      const profileResult = await saveMyProfile(profilePayload);
 
       // 2) Save phone data (if provided)
       if (phonePayload.phone) {
@@ -633,17 +637,58 @@ export default function ProfileClient({
           method: 'PUT',
           json: phonePayload,
         });
+        if (!phoneRes) {
+          console.warn('Phone update failed, but profile was saved');
+        }
       }
 
-      // 3) Refetch data and show success
-      await onDemandRefetch?.();
-      toast.success('Profil kaydedildi');
+      // 3) Optimistic update and show success
+      // Update the profile data immediately to prevent form clearing
+      const updatedProfile = mapCombinedToProfile({
+        ...initialProfile,
+        firstName: form.firstName,
+        lastName: form.lastName,
+        personal: {
+          ...initialProfile.personal,
+          city: form.city,
+          birthDate: form.birthDate,
+          gender: form.gender,
+          heightCm: form.heightCm ? Number(form.heightCm) : undefined,
+          weightKg: form.weightKg ? Number(form.weightKg) : undefined,
+        },
+        professional: {
+          ...initialProfile.professional,
+          bio: form.bio,
+          experience: form.experience,
+          cvUrl: form.resumeUrl,
+          specialties: selectedSpecs,
+        },
+        phone: toE164TR(form.phoneDigits),
+        profilePhotoUrl: photoUrl,
+      });
+
+      // Call onSaved with the updated profile for optimistic update
+      onSaved?.(updatedProfile);
+      
+      toast.success('Profil başarıyla kaydedildi');
       setEditing(false);
-      setMsg("Profil kaydedildi.");
+      setMsg("Profil başarıyla kaydedildi.");
     } catch (error) {
       console.error('Profile save error:', error);
       let errorMsg = "Kaydetme sırasında hata oluştu.";
-      if ((error as any)?.body) {
+      
+      // Handle different types of errors
+      const errorMessage = String((error as any)?.message || '');
+      
+      if (errorMessage.includes('(401)')) {
+        errorMsg = "Oturum süresi dolmuş. Lütfen tekrar giriş yapın.";
+      } else if (errorMessage.includes('(404)')) {
+        errorMsg = "Profil bulunamadı. Onboarding'i tamamlayın.";
+      } else if (errorMessage.includes('(400)') || errorMessage.includes('(422)')) {
+        errorMsg = "Lütfen alanları kontrol edin.";
+      } else if (errorMessage.includes('(500)') || errorMessage.includes('(502)') || errorMessage.includes('(503)')) {
+        errorMsg = "Sunucu hatası. Lütfen daha sonra tekrar deneyin.";
+      } else if ((error as any)?.body) {
         try {
           const parsed = JSON.parse((error as any).body);
           errorMsg = parsed.message || parsed.error || (error as any).body;
@@ -653,6 +698,7 @@ export default function ProfileClient({
       } else if ((error as any)?.message) {
         errorMsg = (error as any).message;
       }
+      
       setMsg(errorMsg);
       toast.error(`Profil kaydedilemedi: ${errorMsg}`);
     } finally {
@@ -724,16 +770,16 @@ export default function ProfileClient({
             <UField
               label="Ad"
               inputRef={firstNameRef}
-              disabled={!editing}
-              value={form.firstName}
+              disabled={!editing || saving || isValidating}
+              value={form.firstName ?? ''}
               onValueChange={(v) => setForm((f) => ({ ...f, firstName: v }))}
               onBlur={() => setForm((f) => ({ ...f, firstName: toTitleTR(f.firstName) }))}
             />
             <UField
               label="Soyad"
               inputRef={lastNameRef}
-              disabled={!editing}
-              value={form.lastName}
+              disabled={!editing || saving || isValidating}
+              value={form.lastName ?? ''}
               onValueChange={(v) => setForm((f) => ({ ...f, lastName: v }))}
               onBlur={() => setForm((f) => ({ ...f, lastName: toTitleTR(f.lastName) }))}
             />
@@ -760,7 +806,7 @@ export default function ProfileClient({
                   +90
                 </span>
                 <input
-                  disabled={!editing}
+                  disabled={!editing || saving || isValidating}
                   inputMode="numeric"
                   pattern="[0-9]*"
                   placeholder="5xx xxx xx xx"
@@ -779,8 +825,8 @@ export default function ProfileClient({
             <UField
               label="Şehir"
               inputRef={cityRef}
-              disabled={!editing}
-              value={form.city}
+              disabled={!editing || saving || isValidating}
+              value={form.city ?? ''}
               onValueChange={(v) => setForm((f) => ({ ...f, city: v }))}
               onBlur={() => setForm((f) => ({ ...f, city: toTitleTR(f.city) }))}
             />
@@ -794,9 +840,9 @@ export default function ProfileClient({
                 onChange={(e) =>
                   setForm(f => ({ ...f, gender: (e.target.value || undefined) as ApiGender | undefined }))
                 }
-                disabled={!editing}
+                disabled={!editing || saving || isValidating}
                 className={`w-full rounded-lg px-3 py-2 ring-1 bg-white ${
-                  editing ? "ring-neutral-300 focus:outline-none focus:ring-2" : "ring-neutral-200/70"
+                  editing && !saving && !isValidating ? "ring-neutral-300 focus:outline-none focus:ring-2" : "ring-neutral-200/70"
                 }`}
               >
                 <option value="">Seçin</option>
@@ -808,7 +854,7 @@ export default function ProfileClient({
             <UField
               label="Doğum Tarihi"
               inputRef={birthRef}
-              disabled={!editing}
+              disabled={!editing || saving || isValidating}
               type="date"
               value={form.birthDate ?? ''}
               onValueChange={(v) => {
@@ -820,7 +866,7 @@ export default function ProfileClient({
             <UField
               label="Boy (cm)"
               inputRef={heightRef}
-              disabled={!editing}
+              disabled={!editing || saving || isValidating}
               type="number"
               value={form.heightCm ?? ''}
               onValueChange={(v) => setForm((f) => ({ ...f, heightCm: v.replace(/\D+/g, "") }))}
@@ -830,7 +876,7 @@ export default function ProfileClient({
             <UField
               label="Kilo (kg)"
               inputRef={weightRef}
-              disabled={!editing}
+              disabled={!editing || saving || isValidating}
               type="number"
               value={form.weightKg ?? ''}
               onValueChange={(v) => setForm((f) => ({ ...f, weightKg: v.replace(/\D+/g, "") }))}
@@ -947,15 +993,15 @@ export default function ProfileClient({
           <div>
             <div className="text-sm font-medium text-slate-700 mb-1">Biyografi</div>
             <textarea
-              disabled={!editing}
-              value={form.bio}
+              disabled={!editing || saving || isValidating}
+              value={form.bio ?? ''}
               placeholder=" "
               onChange={(e) => {
                 const val = e.currentTarget.value; // event pooling'e takılmamak için önce al
                 setForm((f) => ({ ...f, bio: val }));
               }}
               className={`w-full rounded-lg px-3 py-2 ring-1 bg-white min-h-[80px] ${
-                editing ? "ring-neutral-300 focus:outline-none focus:ring-2" : "ring-neutral-200/70"
+                editing && !saving && !isValidating ? "ring-neutral-300 focus:outline-none focus:ring-2" : "ring-neutral-200/70"
               }`}
             />
           </div>
@@ -963,21 +1009,21 @@ export default function ProfileClient({
           <div className="mt-4">
             <div className="text-sm font-medium text-slate-700 mb-1">Deneyim</div>
             <textarea
-              disabled={!editing}
-              value={form.experience}
+              disabled={!editing || saving || isValidating}
+              value={form.experience ?? ''}
               placeholder=" "
               onChange={(e) => {
                 const val = e.currentTarget.value; // event pooling'e takılmamak için önce al
                 setForm((f) => ({ ...f, experience: val }));
               }}
               className={`w-full rounded-lg px-3 py-2 ring-1 bg-white min-h-[80px] ${
-                editing ? "ring-neutral-300 focus:outline-none focus:ring-2" : "ring-neutral-200/70"
+                editing && !saving && !isValidating ? "ring-neutral-300 focus:outline-none focus:ring-2" : "ring-neutral-200/70"
               }`}
             />
             <div className="mt-3 flex flex-wrap items-center gap-3">
               <label
                 className={`cursor-pointer rounded-lg px-3 py-2 text-sm ring-1 ring-neutral-300 bg-white ${
-                  !editing || cvUploading ? "opacity-60 pointer-events-none" : ""
+                  !editing || cvUploading || saving || isValidating ? "opacity-60 pointer-events-none" : ""
                 }`}
               >
                 PDF Ekle (≤ 5 MB)
@@ -1082,9 +1128,9 @@ export default function ProfileClient({
                   type="button"
                   className="rounded-xl bg-white text-neutral-900 px-3 py-2 text-sm"
                   onClick={handleSave}
-                  disabled={saving}
+                  disabled={saving || isValidating}
                 >
-                  {saving ? "Kaydediliyor..." : "Kaydet"}
+                  {saving ? "Kaydediliyor..." : isValidating ? "Doğrulanıyor..." : "Kaydet"}
                 </button>
                 <button
                   type="button"

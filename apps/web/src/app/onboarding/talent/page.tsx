@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -9,6 +9,7 @@ import { AuthGuard } from "@/components/auth/AuthGuard";
 import RoleRequired from "@/components/auth/RoleRequired";
 import AvatarInput from "@/components/AvatarInput";
 import { DISCOVER_ROUTE } from "@/lib/routes";
+import { guardApiUser } from "@/lib/api-guard";
 
 /* ------------------------------------------------------------------ */
 /* Tema / sabitler                                                     */
@@ -175,10 +176,22 @@ function TalentOnboardingContent() {
   const [saving, setSaving] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
 
+  // Guard: Check session sync on page load
+  useEffect(() => {
+    guardApiUser().catch((e) => {
+      console.warn(e.message);
+      // Optionally show toast: "Oturum yenilendi, lütfen tekrar deneyin."
+    });
+  }, []);
+
   const [cvUrl, setCvUrl] = useState<string | null>(null);
   const [cvUploading, setCvUploading] = useState(false);
 
-  const [formData, setFormData] = useState<FormData>({
+  const [formData, setFormData] = useState<FormData | null>(null);
+  const initializedRef = React.useRef(false);
+
+  // Safe form data for controlled inputs - prevents undefined errors
+  const safeFormData = formData ?? {
     // Step 2
     firstName: "",
     lastName: "",
@@ -204,161 +217,83 @@ function TalentOnboardingContent() {
     skills: [],
     languages: [],
     specialties: [],
-  });
-
-  /* -------------------------------------------------------------- */
-  /* Prefill                                                        */
-  /* -------------------------------------------------------------- */
-
-  const loadProfile = async () => {
-    try {
-      // Fetch both user and profile data to get complete information
-      const [userRes, profileRes] = await Promise.all([
-        fetch("/api/proxy/api/v1/users/me", { 
-          cache: "no-store",
-          credentials: 'include'
-        }),
-        fetch("/api/proxy/api/v1/profiles/talent/me", { 
-          cache: "no-store",
-          credentials: 'include'
-        })
-      ]);
-
-      if (!userRes.ok && userRes.status === 401) {
-        router.push('/auth/login?next=/onboarding/talent');
-        throw new Error('Oturum açmanız gerekiyor.');
-      }
-
-      // Get user data (for basic info like name, email, phone)
-      const userData = userRes.ok ? await userRes.json() : {};
-      
-      // Get profile data (for personal/professional info)
-      let profileData = {};
-      if (profileRes.ok) {
-        const profileRaw = await profileRes.json();
-        profileData = profileRaw && typeof profileRaw === 'object' && !Array.isArray(profileRaw) ? profileRaw : {};
-      } else if (profileRes.status === 404) {
-        // Profil henüz oluşturulmamış - bu normal, onboarding sırasında beklenen durum
-        console.debug('[TalentOnboarding] Profile not found (404) - user has no profile yet, will create during onboarding');
-        profileData = {};
-      } else if (!profileRes.ok) {
-        // Gerçek hata durumu
-        console.error('[TalentOnboarding] Profile fetch error:', profileRes.status, profileRes.statusText);
-        profileData = {};
-      }
-
-      // Merge user and profile data with proper priority
-      const combinedData = {
-        // User data takes priority for identity fields
-        first_name: (userData as any)?.first_name || (profileData as any)?.first_name || '',
-        last_name: (userData as any)?.last_name || (profileData as any)?.last_name || '',
-        email: (userData as any)?.email || (profileData as any)?.email || '',
-        phone: (userData as any)?.phone || (profileData as any)?.phone || '',
-        // Profile data takes priority for personal/professional fields
-        ...profileData,
-        // Ensure user identity fields are not overwritten by empty profile values
-        ...((userData as any)?.first_name && { first_name: (userData as any).first_name }),
-        ...((userData as any)?.last_name && { last_name: (userData as any).last_name }),
-        ...((userData as any)?.email && { email: (userData as any).email }),
-        ...((userData as any)?.phone && { phone: (userData as any).phone }),
-      };
-
-      // Use the new mapper to convert API data to UI format
-      const { apiToUi } = await import('@/lib/mappers/profile');
-      const uiData = apiToUi(combinedData);
-
-      console.log("[ONBOARDING] Combined API data:", combinedData);
-      console.log("[ONBOARDING] Mapped UI data:", uiData);
-
-      // Format phone numbers for UI display
-      const userTen = onlyLocal10(uiData.phone ?? "").slice(0, 10);
-      const phoneFmt = userTen ? `+90 ${formatTRPhoneBlocks(userTen)}` : "";
-
-      // Handle guardian data if exists
-      const gObj = combinedData?.guardian ?? null;
-      const gPhoneTen = onlyLocal10(gObj?.phone ?? "").slice(0, 10);
-      const gPhoneFmt = gPhoneTen ? `+90 ${formatTRPhoneBlocks(gPhoneTen)}` : "";
-      const gConsent = !!(gObj?.consent ?? gObj?.consentAccepted);
-
-      // Map UI data to form structure with proper gender conversion
-      const newFormData = {
-        // Step 2 - Account (from user data primarily)
-        firstName: uiData.firstName || "",
-        lastName: uiData.lastName || "",
-        phone: phoneFmt,
-        profilePhotoUrl: uiData.profilePhotoUrl || null,
-        
-        // Step 3 - Personal (from profile data primarily)
-        dateOfBirth: uiData.birthDate || "", // Already in YYYY-MM-DD format
-        gender: uiData.gender === 'male' ? 'MALE' : uiData.gender === 'female' ? 'FEMALE' : uiData.gender === 'other' ? 'OTHER' : "" as FormData["gender"], // Convert UI format to form format
-        city: uiData.city || "",
-        height: uiData.heightCm ? String(uiData.heightCm) : "",
-        weight: uiData.weightKg ? String(uiData.weightKg) : "",
-        eyeColor: "",
-        hairColor: "",
-        
-        // Guardian data
-        parentName: gObj?.fullName ?? gObj?.name ?? "",
-        parentPhone: gPhoneFmt,
-        guardianRelation: (gObj?.relation as any) ?? "",
-        guardianEmail: gObj?.email ?? "",
-        guardianConsent: gConsent,
-        
-        // Step 4 - Professional
-        bio: uiData.bio || "",
-        experience: stripCvLines(uiData.experience || ""),
-        skills: [],
-        languages: [],
-        specialties: Array.isArray(uiData.specialties) ? uiData.specialties : [],
-      };
-
-      setFormData((prev) => ({
-        ...prev,
-        ...newFormData
-      }));
-
-      // Extract CV URL from experience or direct field
-      const m = (uiData.experience ?? "").match(/(https?:\/\/\S+\.pdf)/i);
-      setCvUrl(m?.[1] ?? uiData.cvUrl ?? null);
-
-      console.log("[ONBOARDING] Loaded profile data:", {
-        firstName: newFormData.firstName,
-        lastName: newFormData.lastName,
-        phone: newFormData.phone,
-        city: newFormData.city,
-        birthDate: newFormData.dateOfBirth,
-        gender: newFormData.gender,
-        heightCm: newFormData.height,
-        weightKg: newFormData.weight,
-        bio: newFormData.bio,
-        specialties: newFormData.specialties
-      });
-    } catch (error) {
-      console.error("[ONBOARDING] Profile load error:", error);
-      // Hata durumunda boş form ile devam et
-    } finally {
-      setLoading(false);
-    }
   };
 
+
   useEffect(() => {
-    let mounted = true;
-    loadProfile();
-    const onPageShow = (e: PageTransitionEvent) => {
-      if ((e as any).persisted && mounted) loadProfile();
-    };
-    window.addEventListener("pageshow", onPageShow as any);
-    return () => {
-      mounted = false;
-      window.removeEventListener("pageshow", onPageShow as any);
-    };
+    let alive = true;
+    (async () => {
+      try {
+        const { fetchCombined } = await import('@/helpers/onboarding-map');
+        const ui = await fetchCombined();
+        if (!alive || initializedRef.current) return;
+        
+        // Map UI data to form structure
+        const newFormData = {
+          // Step 2 - Account
+          firstName: ui.firstName,
+          lastName: ui.lastName,
+          phone: ui.phoneCountry + " " + (await import('@/helpers/onboarding-map')).formatTRPhoneBlocks(ui.phoneDigits),
+          profilePhotoUrl: ui.photoUrl ?? null,
+          
+          // Step 3 - Personal
+          dateOfBirth: ui.birthDate ? ui.birthDate.split('.').reverse().join('-') : "",
+          gender: ui.gender,
+          city: ui.city,
+          height: ui.height,
+          weight: ui.weight,
+          eyeColor: "",
+          hairColor: "",
+          
+          // Guardian data
+          parentName: ui.parentName,
+          parentPhone: ui.parentPhone,
+          guardianRelation: ui.guardianRelation,
+          guardianEmail: ui.guardianEmail,
+          guardianConsent: ui.guardianConsent,
+          
+          // Step 4 - Professional
+          bio: ui.bio,
+          experience: stripCvLines(ui.experience),
+          skills: [],
+          languages: [],
+          specialties: ui.specialties,
+        };
+
+        setFormData(newFormData); // << Yalnızca ilk kez doldur
+        initializedRef.current = true;
+        
+        // Extract CV URL from experience
+        const m = (ui.experience ?? "").match(/(https?:\/\/\S+\.pdf)/i);
+        setCvUrl(m?.[1] ?? null);
+
+        console.log("[ONBOARDING] Loaded profile data:", {
+          firstName: newFormData.firstName,
+          lastName: newFormData.lastName,
+          phone: newFormData.phone,
+          city: newFormData.city,
+          birthDate: newFormData.dateOfBirth,
+          gender: newFormData.gender,
+          heightCm: newFormData.height,
+          weightKg: newFormData.weight,
+          bio: newFormData.bio,
+          specialties: newFormData.specialties
+        });
+      } catch (error) {
+        console.error("[ONBOARDING] Profile load error:", error);
+        // Hata durumunda boş form ile devam et
+      } finally {
+        if (alive) setLoading(false);
+      }
+    })();
+    return () => { alive = false; };
   }, []);
 
   /* -------------------------------------------------------------- */
   /* Minor kontrolü                                                 */
   /* -------------------------------------------------------------- */
 
-  const age = useMemo(() => getAge(formData.dateOfBirth), [formData.dateOfBirth]);
+  const age = useMemo(() => getAge(safeFormData.dateOfBirth), [safeFormData.dateOfBirth]);
   const isMinor = useMemo(() => Number.isFinite(age) && age < 18, [age]);
 
   /* -------------------------------------------------------------- */
@@ -366,23 +301,23 @@ function TalentOnboardingContent() {
   /* -------------------------------------------------------------- */
 
   const onBlurTitleCase = (key: "firstName" | "lastName" | "city") => {
-    setFormData((d) => ({ ...d, [key]: toTitleTR(d[key] as string) }));
+    setFormData((d) => ({ ...(d ?? safeFormData), [key]: toTitleTR(safeFormData[key] as string) }));
   };
 
   // User phone (UI)
-  const phoneDigits = useMemo(() => onlyLocal10(formData.phone).slice(0, 10), [formData.phone]);
+  const phoneDigits = useMemo(() => onlyLocal10(safeFormData.phone).slice(0, 10), [safeFormData.phone]);
   const phoneBlocks = useMemo(() => formatTRPhoneBlocks(phoneDigits), [phoneDigits]);
 
   const onPhoneInput = (val: string) => {
     const d = digits(val).slice(0, 10);
     const fmt = formatTRPhoneBlocks(d);
-    setFormData((f) => ({ ...f, phone: d ? `+90 ${fmt}` : "" }));
+    setFormData((f) => ({ ...(f ?? safeFormData), phone: d ? `+90 ${fmt}` : "" }));
   };
 
   // Guardian phone (UI)
   const parentPhoneDigits = useMemo(
-    () => onlyLocal10(formData.parentPhone).slice(0, 10),
-    [formData.parentPhone]
+    () => onlyLocal10(safeFormData.parentPhone).slice(0, 10),
+    [safeFormData.parentPhone]
   );
   const parentPhoneBlocks = useMemo(
     () => formatTRPhoneBlocks(parentPhoneDigits),
@@ -392,7 +327,7 @@ function TalentOnboardingContent() {
   const onParentPhoneInput = (val: string) => {
     const d = digits(val).slice(0, 10);
     const fmt = formatTRPhoneBlocks(d);
-    setFormData((f) => ({ ...f, parentPhone: d ? `+90 ${fmt}` : "" }));
+    setFormData((f) => ({ ...(f ?? safeFormData), parentPhone: d ? `+90 ${fmt}` : "" }));
   };
 
   /* -------------------------------------------------------------- */
@@ -435,13 +370,9 @@ function TalentOnboardingContent() {
       if (payload[k] !== undefined) talentPayload[k] = payload[k];
     }
     if (Object.keys(talentPayload).length) {
-      const r = await fetch('/api/proxy/api/v1/profiles/talent/me', {
-        method: 'PUT',
-        headers,
-        body: JSON.stringify(talentPayload),
-        credentials: 'include',
-      });
-      if (!r.ok) return false;
+      // Use the new secure profile API
+      const { saveMyProfile } = await import('@/features/profile/api');
+      await saveMyProfile(talentPayload);
     }
 
     return true;
@@ -452,7 +383,7 @@ function TalentOnboardingContent() {
     setMsg(null);
 
     // CV varsa Deneyim'e tek satır ekle
-    let experienceToSave = stripCvLines(formData.experience);
+    let experienceToSave = stripCvLines(safeFormData.experience);
     if (cvUrl && !experienceToSave.includes(cvUrl)) {
       experienceToSave = `${experienceToSave ? experienceToSave + "\n\n" : ""}CV: ${cvUrl}`;
     }
@@ -463,18 +394,18 @@ function TalentOnboardingContent() {
       
       // Prepare form data for mapper
       const mapperInput = {
-        firstName: formData.firstName.trim(),
-        lastName: formData.lastName.trim(),
+        firstName: safeFormData.firstName.trim(),
+        lastName: safeFormData.lastName.trim(),
         phone: toE164TR(phoneDigits), // Convert phone to E.164 format
-        profilePhotoUrl: formData.profilePhotoUrl,
-        city: formData.city.trim(),
-        birthDate: formData.dateOfBirth, // Already in YYYY-MM-DD format
-        gender: formData.gender === 'MALE' ? 'male' : formData.gender === 'FEMALE' ? 'female' : formData.gender === 'OTHER' ? 'other' : null, // Convert form format to UI format for mapper
-        heightCm: formData.height ? Number(formData.height) : null,
-        weightKg: formData.weight ? Number(formData.weight) : null,
-        bio: formData.bio.trim(),
+        profilePhotoUrl: safeFormData.profilePhotoUrl,
+        city: safeFormData.city.trim(),
+        birthDate: safeFormData.dateOfBirth, // Already in YYYY-MM-DD format
+        gender: safeFormData.gender === 'MALE' ? 'male' : safeFormData.gender === 'FEMALE' ? 'female' : safeFormData.gender === 'OTHER' ? 'other' : null, // Convert form format to UI format for mapper
+        heightCm: safeFormData.height ? Number(safeFormData.height) : null,
+        weightKg: safeFormData.weight ? Number(safeFormData.weight) : null,
+        bio: safeFormData.bio.trim(),
         experience: experienceToSave.trim(),
-        specialties: formData.specialties,
+        specialties: safeFormData.specialties,
         cvUrl: cvUrl,
       };
 
@@ -493,18 +424,18 @@ function TalentOnboardingContent() {
         const parentTen = parentPhoneDigits;
         if (
           isMinor ||
-          formData.parentName.trim() ||
+          safeFormData.parentName.trim() ||
           parentTen ||
-          formData.guardianRelation ||
-          formData.guardianEmail ||
-          formData.guardianConsent
+          safeFormData.guardianRelation ||
+          safeFormData.guardianEmail ||
+          safeFormData.guardianConsent
         ) {
           const guardian: Record<string, any> = {};
-          if (formData.parentName.trim()) guardian.fullName = formData.parentName.trim();
-          if (formData.guardianRelation) guardian.relation = formData.guardianRelation;
+          if (safeFormData.parentName.trim()) guardian.fullName = safeFormData.parentName.trim();
+          if (safeFormData.guardianRelation) guardian.relation = safeFormData.guardianRelation;
           if (parentTen) guardian.phone = toE164TR(parentTen);
-          if (formData.guardianEmail.trim()) guardian.email = formData.guardianEmail.trim();
-          if (formData.guardianConsent) {
+          if (safeFormData.guardianEmail.trim()) guardian.email = safeFormData.guardianEmail.trim();
+          if (safeFormData.guardianConsent) {
             guardian.consent = true;
             guardian.consentAccepted = true;
           }
@@ -533,15 +464,71 @@ function TalentOnboardingContent() {
       if (!r.ok) {
         const errorText = await r.text();
         console.error('[ONBOARDING] Save error:', r.status, errorText);
-        setMsg(`Kaydetme hatası (${r.status})`);
+        
+        let errorMsg = `Kaydetme hatası (${r.status})`;
+        if (r.status === 401) {
+          errorMsg = "Oturum süresi dolmuş. Lütfen tekrar giriş yapın.";
+        } else if (r.status === 400 || r.status === 422) {
+          errorMsg = "Lütfen alanları kontrol edin.";
+        } else if (r.status === 404) {
+          errorMsg = "Profil bulunamadı. Onboarding'i tamamlayın.";
+        } else if (r.status >= 500) {
+          errorMsg = "Sunucu hatası. Lütfen daha sonra tekrar deneyin.";
+        }
+        
+        setMsg(errorMsg);
         return false;
       }
       
-      setMsg("Kaydedildi");
+      setMsg("Başarıyla kaydedildi");
+      
+      // Update form state with the saved data to prevent form clearing
+      try {
+        const { fetchCombined } = await import('@/helpers/onboarding-map');
+        const updatedUiData = await fetchCombined();
+        
+        // Convert back to form format
+        const updatedFormData = {
+          // Step 2 - Account
+          firstName: updatedUiData.firstName,
+          lastName: updatedUiData.lastName,
+          phone: updatedUiData.phoneCountry + " " + (await import('@/helpers/onboarding-map')).formatTRPhoneBlocks(updatedUiData.phoneDigits),
+          profilePhotoUrl: updatedUiData.photoUrl ?? null,
+          
+          // Step 3 - Personal
+          dateOfBirth: updatedUiData.birthDate ? updatedUiData.birthDate.split('.').reverse().join('-') : "",
+          gender: updatedUiData.gender,
+          city: updatedUiData.city,
+          height: updatedUiData.height,
+          weight: updatedUiData.weight,
+          eyeColor: "",
+          hairColor: "",
+          
+          // Guardian data
+          parentName: updatedUiData.parentName,
+          parentPhone: updatedUiData.parentPhone,
+          guardianRelation: updatedUiData.guardianRelation,
+          guardianEmail: updatedUiData.guardianEmail,
+          guardianConsent: updatedUiData.guardianConsent,
+          
+          // Step 4 - Professional
+          bio: updatedUiData.bio,
+          experience: stripCvLines(updatedUiData.experience),
+          skills: [],
+          languages: [],
+          specialties: updatedUiData.specialties,
+        };
+        
+        setFormData(updatedFormData);
+      } catch (error) {
+        console.warn("Failed to refresh form data after save:", error);
+        // Continue anyway - the save was successful
+      }
+      
       return true;
     } catch (error) {
       console.error('[ONBOARDING] Save exception:', error);
-      setMsg("Kaydetme hatası");
+      setMsg("Kaydetme sırasında hata oluştu");
       return false;
     } finally {
       setSaving(false);
@@ -554,43 +541,43 @@ function TalentOnboardingContent() {
 
   const validateCurrentStep = (): string | null => {
     if (currentStep === 2) {
-      if (!formData.firstName.trim()) return "Lütfen adınızı girin.";
-      if (!formData.lastName.trim()) return "Lütfen soyadınızı girin.";
-      const d = onlyLocal10(formData.phone);
+      if (!safeFormData.firstName.trim()) return "Lütfen adınızı girin.";
+      if (!safeFormData.lastName.trim()) return "Lütfen soyadınızı girin.";
+      const d = onlyLocal10(safeFormData.phone);
       if (d.length !== 10) return "Telefon numarası +90 dışında 10 haneli olmalıdır.";
     }
 
     if (currentStep === 3) {
-      if (!formData.dateOfBirth) return "Doğum tarihi zorunludur.";
-      if (!["MALE", "FEMALE", "OTHER"].includes(formData.gender)) return "Cinsiyet seçiniz.";
-      if (!formData.city.trim()) return "Şehir zorunludur.";
-      if (!/^\d+$/.test(formData.height) || Number(formData.height) <= 0)
+      if (!safeFormData.dateOfBirth) return "Doğum tarihi zorunludur.";
+      if (!["MALE", "FEMALE", "OTHER"].includes(safeFormData.gender)) return "Cinsiyet seçiniz.";
+      if (!safeFormData.city.trim()) return "Şehir zorunludur.";
+      if (!/^\d+$/.test(safeFormData.height) || Number(safeFormData.height) <= 0)
         return "Boy (cm) sadece sayı olmalıdır.";
-      if (!/^\d+$/.test(formData.weight) || Number(formData.weight) <= 0)
+      if (!/^\d+$/.test(safeFormData.weight) || Number(safeFormData.weight) <= 0)
         return "Kilo (kg) sadece sayı olmalıdır.";
 
       if (isMinor) {
-        if (!formData.parentName.trim())
+        if (!safeFormData.parentName.trim())
           return "18 yaş altı için ebeveyn/vasi adı soyadı zorunludur.";
-        const pd = onlyLocal10(formData.parentPhone);
+        const pd = onlyLocal10(safeFormData.parentPhone);
         if (pd.length !== 10)
           return "Ebeveyn/vasi telefon numarası +90 dışında 10 haneli olmalıdır.";
-        if (!formData.guardianRelation) return "Yakınlık seçiniz.";
+        if (!safeFormData.guardianRelation) return "Yakınlık seçiniz.";
         if (
-          formData.guardianEmail &&
-          !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.guardianEmail)
+          safeFormData.guardianEmail &&
+          !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(safeFormData.guardianEmail)
         )
           return "Geçerli bir e-posta giriniz.";
-        if (!formData.guardianConsent)
+        if (!safeFormData.guardianConsent)
           return "Yasal veli/vasi onayı olmadan devam edemezsiniz.";
       }
     }
 
     if (currentStep === 4) {
-      if (!formData.bio.trim()) return "Biyografi zorunludur.";
-      if (!formData.experience.trim() && !cvUrl)
+      if (!safeFormData.bio.trim()) return "Biyografi zorunludur.";
+      if (!safeFormData.experience.trim() && !cvUrl)
         return "Deneyim metni boşsa bir CV yükleyin veya metin girin.";
-      if (formData.specialties.length === 0)
+      if (safeFormData.specialties.length === 0)
         return "En az bir uzmanlık alanı seçin.";
     }
     return null;
@@ -675,7 +662,7 @@ function TalentOnboardingContent() {
   /* -------------------------------------------------------------- */
 
   function handleAvatarChange(url?: string | null) {
-    setFormData((d) => ({ ...d, profilePhotoUrl: url || null }));
+    setFormData((d) => ({ ...(d ?? safeFormData), profilePhotoUrl: url || null }));
   }
 
   /* -------------------------------------------------------------- */
@@ -686,8 +673,9 @@ function TalentOnboardingContent() {
 
   const toggleSpecialty = (name: string) =>
     setFormData((f) => {
-      const has = f.specialties.includes(name);
-      return { ...f, specialties: has ? f.specialties.filter((x) => x !== name) : [...f.specialties, name] };
+      const current = f ?? safeFormData;
+      const has = current.specialties.includes(name);
+      return { ...current, specialties: has ? current.specialties.filter((x) => x !== name) : [...current.specialties, name] };
     });
 
   function renderStep1() {
@@ -709,8 +697,8 @@ function TalentOnboardingContent() {
         <div>
           <label className="text-xs opacity-80">Ad</label>
           <Input
-            value={formData.firstName}
-            onChange={(e) => setFormData({ ...formData, firstName: e.target.value })}
+            value={safeFormData.firstName}
+            onChange={(e) => setFormData(p => ({ ...(p ?? safeFormData), firstName: e.target.value }))}
             onBlur={() => onBlurTitleCase("firstName")}
             placeholder="Ad"
           />
@@ -718,8 +706,8 @@ function TalentOnboardingContent() {
         <div>
           <label className="text-xs opacity-80">Soyad</label>
           <Input
-            value={formData.lastName}
-            onChange={(e) => setFormData({ ...formData, lastName: e.target.value })}
+            value={safeFormData.lastName}
+            onChange={(e) => setFormData(p => ({ ...(p ?? safeFormData), lastName: e.target.value }))}
             onBlur={() => onBlurTitleCase("lastName")}
             placeholder="Soyad"
           />
@@ -740,7 +728,7 @@ function TalentOnboardingContent() {
         </div>
 
         <div className="md:col-span-2">
-          <AvatarInput value={formData.profilePhotoUrl} onChange={handleAvatarChange} />
+          <AvatarInput value={safeFormData.profilePhotoUrl} onChange={handleAvatarChange} />
         </div>
       </div>
     );
@@ -753,8 +741,8 @@ function TalentOnboardingContent() {
           <label className="text-xs opacity-80">Doğum Tarihi</label>
           <Input
             type="date"
-            value={formData.dateOfBirth}
-            onChange={(e) => setFormData({ ...formData, dateOfBirth: e.target.value })}
+            value={safeFormData.dateOfBirth}
+            onChange={(e) => setFormData(p => ({ ...(p ?? safeFormData), dateOfBirth: e.target.value }))}
           />
           <div className="text-[11px] opacity-70 mt-1">{Number.isFinite(age) ? `Yaş: ${age}` : ""}</div>
         </div>
@@ -763,8 +751,8 @@ function TalentOnboardingContent() {
           <label className="text-xs opacity-80">Cinsiyet</label>
           <select
             className="w-full rounded-md px-3 py-2 bg-white/90 text-black ring-1 ring-neutral-300"
-            value={formData.gender}
-            onChange={(e) => setFormData({ ...formData, gender: e.target.value as FormData["gender"] })}
+            value={safeFormData.gender}
+            onChange={(e) => setFormData(p => ({ ...(p ?? safeFormData), gender: e.target.value as FormData["gender"] }))}
           >
             <option value="">Seçiniz</option>
             <option value="MALE">Erkek</option>
@@ -776,8 +764,8 @@ function TalentOnboardingContent() {
         <div>
           <label className="text-xs opacity-80">Şehir</label>
           <Input
-            value={formData.city}
-            onChange={(e) => setFormData({ ...formData, city: e.target.value })}
+            value={safeFormData.city}
+            onChange={(e) => setFormData(p => ({ ...(p ?? safeFormData), city: e.target.value }))}
             onBlur={() => onBlurTitleCase("city")}
           />
         </div>
@@ -787,8 +775,8 @@ function TalentOnboardingContent() {
           <Input
             inputMode="numeric"
             pattern="[0-9]*"
-            value={formData.height}
-            onChange={(e) => setFormData({ ...formData, height: e.target.value.replace(/\D+/g, "") })}
+            value={safeFormData.height}
+            onChange={(e) => setFormData(p => ({ ...(p ?? safeFormData), height: e.target.value.replace(/\D+/g, "") }))}
           />
         </div>
 
@@ -797,8 +785,8 @@ function TalentOnboardingContent() {
           <Input
             inputMode="numeric"
             pattern="[0-9]*"
-            value={formData.weight}
-            onChange={(e) => setFormData({ ...formData, weight: e.target.value.replace(/\D+/g, "") })}
+            value={safeFormData.weight}
+            onChange={(e) => setFormData(p => ({ ...(p ?? safeFormData), weight: e.target.value.replace(/\D+/g, "") }))}
           />
         </div>
 
@@ -814,8 +802,8 @@ function TalentOnboardingContent() {
                 <div>
                   <label className="text-xs opacity-80">Veli/Vasi Adı Soyadı</label>
                   <Input
-                    value={formData.parentName}
-                    onChange={(e) => setFormData({ ...formData, parentName: e.target.value })}
+                    value={safeFormData.parentName}
+                    onChange={(e) => setFormData(p => ({ ...(p ?? safeFormData), parentName: e.target.value }))}
                     placeholder="Ad Soyad"
                   />
                 </div>
@@ -841,9 +829,9 @@ function TalentOnboardingContent() {
                   <label className="text-xs opacity-80">Yakınlık</label>
                   <select
                     className="w-full rounded-md px-3 py-2 bg-white/90 text-black ring-1 ring-neutral-300"
-                    value={formData.guardianRelation}
+                    value={safeFormData.guardianRelation}
                     onChange={(e) =>
-                      setFormData({ ...formData, guardianRelation: e.target.value as FormData["guardianRelation"] })
+                      setFormData(p => ({ ...(p ?? safeFormData), guardianRelation: e.target.value as FormData["guardianRelation"] }))
                     }
                   >
                     <option value="">Seçiniz</option>
@@ -858,8 +846,8 @@ function TalentOnboardingContent() {
                   <label className="text-xs opacity-80">Veli/Vasi E-posta (opsiyonel)</label>
                   <Input
                     type="email"
-                    value={formData.guardianEmail}
-                    onChange={(e) => setFormData({ ...formData, guardianEmail: e.target.value })}
+                    value={safeFormData.guardianEmail}
+                    onChange={(e) => setFormData(p => ({ ...(p ?? safeFormData), guardianEmail: e.target.value }))}
                     placeholder="ornek@eposta.com"
                   />
                 </div>
@@ -867,8 +855,8 @@ function TalentOnboardingContent() {
                 <label className="md:col-span-2 flex items-center gap-3 text-sm">
                   <input
                     type="checkbox"
-                    checked={formData.guardianConsent}
-                    onChange={(e) => setFormData({ ...formData, guardianConsent: e.target.checked })}
+                    checked={safeFormData.guardianConsent}
+                    onChange={(e) => setFormData(p => ({ ...(p ?? safeFormData), guardianConsent: e.target.checked }))}
                   />
                   <span>Yasal veli/vasi olarak onay veriyorum.</span>
                 </label>
@@ -887,8 +875,8 @@ function TalentOnboardingContent() {
           <label className="text-xs opacity-80">Biyografi</label>
           <textarea
             className="w-full rounded-md bg-white/90 text-black ring-1 ring-neutral-300 px-3 py-2 min-h-[120px]"
-            value={formData.bio}
-            onChange={(e) => setFormData({ ...formData, bio: e.target.value })}
+            value={safeFormData.bio}
+            onChange={(e) => setFormData(p => ({ ...(p ?? safeFormData), bio: e.target.value }))}
             placeholder="Kendini kısaca tanıt…"
           />
         </div>
@@ -897,8 +885,8 @@ function TalentOnboardingContent() {
           <label className="text-xs opacity-80">Deneyim</label>
           <textarea
             className="w-full rounded-md bg-white/90 text-black ring-1 ring-neutral-300 px-3 py-2 min-h-[140px]"
-            value={formData.experience}
-            onChange={(e) => setFormData({ ...formData, experience: e.target.value })}
+            value={safeFormData.experience}
+            onChange={(e) => setFormData(p => ({ ...(p ?? safeFormData), experience: e.target.value }))}
             placeholder="Sahne/ekran deneyimleri, eğitim vb."
           />
         </div>
@@ -907,7 +895,7 @@ function TalentOnboardingContent() {
           <label className="text-xs opacity-80 block mb-2">Uzmanlıklar</label>
           <div className="flex flex-wrap gap-2">
             {["Oyunculuk", "Tiyatro", "Modellik", "Müzik", "Dans", "Dublaj"].map((s) => {
-              const active = formData.specialties.includes(s);
+              const active = safeFormData.specialties.includes(s);
               return (
                 <button
                   type="button"
@@ -954,15 +942,26 @@ function TalentOnboardingContent() {
                   }
                   setCvUploading(true);
                   try {
-                    // Use presigned helper to ensure correct request format
-                    const mod = await import('@/lib/upload');
-                    const { fileUrl } = await mod.uploadWithPresigned(f, 'cv');
+                    // Get current user profile ID - use talent_profile_id
+                    const userRes = await fetch("/api/proxy/api/v1/users/me", { credentials: "include" });
+                    if (!userRes.ok) throw new Error("Kullanıcı bilgisi alınamadı");
+                    const user = await userRes.json();
                     
-                    // API already returns the full public URL
+                    // Get correct profile ID - talent_profile_id is what we need
+                    const profileId = user.talent_profile_id;
+                    if (!profileId) throw new Error("Talent profil ID bulunamadı. Lütfen önce profilinizi oluşturun.");
+
+                    // Use new presigned upload with profile fallbacks
+                    const { uploadFileWithPresigned, saveProfileCV } = await import('@/lib/upload-presigned');
+                    
+                    const fileUrl = await uploadFileWithPresigned(f, profileId, "cv", "documents");
+                    await saveProfileCV(fileUrl);
+                    
                     setCvUrl(fileUrl);
                     setMsg("CV yüklendi.");
-                  } catch {
-                    setMsg("CV yüklenemedi.");
+                  } catch (err) {
+                    console.error("CV upload error:", err);
+                    setMsg(`CV yüklenemedi: ${err instanceof Error ? err.message : "Bilinmeyen hata"}`);
                   } finally {
                     setCvUploading(false);
                   }
