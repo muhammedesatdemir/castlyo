@@ -876,3 +876,46 @@ input[type="date"] {
   color: #000; 
   background: #F6E6C3; /* açılır menü okunaklı */
 }
+
+/* Job Create Sheet - Label renkleri zorla #962901 yap */
+@layer components {
+  .job-create-sheet label {
+    color: #962901 !important;            /* tüm <label>'lar */
+  }
+  .job-create-sheet .text-muted-foreground {
+    color: #962901 !important;            /* shadcn/ui FormLabel vb. */
+  }
+}
+
+/* Jobs page filter selectors - Cream theme for dropdown options */
+@layer components {
+  /* Açılır menü arka planını ve metnini modal ile aynı krem tema yap */
+  .cream-select-trigger option {
+    background: #F6E6C3 !important;
+    color: #1a1a1a !important;
+  }
+
+  /* Select kutularının içindeki yazılar */
+  .cream-select-trigger,
+  .cream-select-trigger span,
+  .cream-select-trigger .select-value,
+  .cream-select-trigger[data-state="open"] {
+    color: #F6E6C3 !important; /* "Tümü" yazısı */
+  }
+
+  /* Label (Kategori, Şehir, Durum) yazıları - jobs sayfasındaki filtre etiketleri */
+  .jobs-form label,
+  .jobs-page label {
+    color: #962901 !important;
+  }
+
+  /* /jobs arama kutusu – yalnızca yazı ve imleç rengi */
+  .jobs-search-input,
+  .jobs-search-input[type="search"] {
+    color: #F6E6C3 !important;
+    caret-color: #F6E6C3 !important;
+  }
+  .jobs-search-input::placeholder {
+    color: rgba(246, 230, 195, 0.6) !important;
+  }
+}

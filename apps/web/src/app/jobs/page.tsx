@@ -67,7 +67,7 @@ export default function JobsPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#0B0F1A] text-[#F6E6C3] py-8">
+    <div className="jobs-page min-h-screen bg-[#0B0F1A] text-[#F6E6C3] py-8">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Header */}
         <div className="mb-8">
@@ -100,7 +100,7 @@ export default function JobsPage() {
                     placeholder="İlan başlığı, açıklama ara..."
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
-                    className="pl-10 bg-transparent text-[#F6E6C3] placeholder-[#F6E6C3]/60 border-[#F6E6C3]/30 focus:outline-none focus:ring-2 focus:ring-[#F6E6C3]/40"
+                    className="jobs-search-input pl-10 bg-transparent text-[#F6E6C3] placeholder:text-[#F6E6C3]/60 caret-[#F6E6C3] border-[#F6E6C3]/30 focus:outline-none focus:ring-2 focus:ring-[#F6E6C3]/40"
                     onKeyPress={(e) => e.key === 'Enter' && handleSearch()}
                   />
                 </div>
@@ -142,7 +142,7 @@ export default function JobsPage() {
                   <select
                     value={currentParams.jobType || ''}
                     onChange={(e) => handleFilterChange('jobType', e.target.value)}
-                    className="w-full px-3 py-2 border border-[#F6E6C3]/30 rounded-md bg-[#0B0F1A] text-[#F6E6C3]"
+                    className="cream-select-trigger w-full px-3 py-2 border border-[#F6E6C3]/30 rounded-md bg-[#0B0F1A] text-[#F6E6C3]"
                   >
                     <option value="">Tümü</option>
                     {JOB_CATEGORIES.map(cat => (
@@ -153,23 +153,7 @@ export default function JobsPage() {
                   </select>
                 </div>
 
-                <div>
-                  <label className="block text-sm font-medium text-[#F6E6C3] mb-1">
-                    Yetenek Türü
-                  </label>
-                  <select
-                    value={currentParams.jobType || ''}
-                    onChange={(e) => handleFilterChange('jobType', e.target.value)}
-                    className="w-full px-3 py-2 border border-[#F6E6C3]/30 rounded-md bg-[#0B0F1A] text-[#F6E6C3]"
-                  >
-                    <option value="">Tümü</option>
-                    {JOB_TALENT_TYPES.map(type => (
-                      <option key={type.value} value={type.value}>
-                        {type.label}
-                      </option>
-                    ))}
-                  </select>
-                </div>
+                {/* Yetenek Türü filtresi kaldırıldı */}
 
                 <div>
                   <label className="block text-sm font-medium text-[#F6E6C3] mb-1">
@@ -178,7 +162,7 @@ export default function JobsPage() {
                   <select
                     value={currentParams.city || ''}
                     onChange={(e) => handleFilterChange('city', e.target.value)}
-                    className="w-full px-3 py-2 border border-[#F6E6C3]/30 rounded-md bg-[#0B0F1A] text-[#F6E6C3]"
+                    className="cream-select-trigger w-full px-3 py-2 border border-[#F6E6C3]/30 rounded-md bg-[#0B0F1A] text-[#F6E6C3]"
                   >
                     <option value="">Tümü</option>
                     {TURKISH_CITIES.map(city => (
@@ -196,7 +180,7 @@ export default function JobsPage() {
                   <select
                     value={currentParams.status || ''}
                     onChange={(e) => handleFilterChange('status', e.target.value)}
-                    className="w-full px-3 py-2 border border-[#F6E6C3]/30 rounded-md bg-[#0B0F1A] text-[#F6E6C3]"
+                    className="cream-select-trigger w-full px-3 py-2 border border-[#F6E6C3]/30 rounded-md bg-[#0B0F1A] text-[#F6E6C3]"
                   >
                     <option value="">Tümü</option>
                     <option value="OPEN">Açık</option>

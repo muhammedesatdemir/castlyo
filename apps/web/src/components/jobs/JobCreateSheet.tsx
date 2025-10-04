@@ -166,7 +166,7 @@ export function JobCreateSheet({
   };
 
   return (
-    <>
+    <div className="job-create-sheet">
       <button
         type="button"
         onClick={handleButtonClick}
@@ -198,7 +198,7 @@ export function JobCreateSheet({
                 className="jobs-form space-y-4"
               >
                 <div className="space-y-1">
-                  <label className="text-sm text-[#F6E6C3]/90">Başlık *</label>
+                  <label className="text-sm text-[#962901]">Başlık *</label>
                   <input 
                     {...form.register("title")} 
                     placeholder="Örn: Dizi Oyuncusu (İzmir)"
@@ -213,7 +213,7 @@ export function JobCreateSheet({
                 </div>
 
                 <div className="space-y-1">
-                  <label className="text-sm text-[#F6E6C3]/90">Açıklama *</label>
+                  <label className="text-sm text-[#962901]">Açıklama *</label>
                   <textarea 
                     rows={4} 
                     {...form.register("description")} 
@@ -230,7 +230,7 @@ export function JobCreateSheet({
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="space-y-1">
-                    <label className="text-sm text-[#F6E6C3]/90">Şehir *</label>
+                    <label className="text-sm text-[#962901]">Şehir *</label>
                     <input 
                       {...form.register("city")} 
                       placeholder="İzmir"
@@ -244,7 +244,7 @@ export function JobCreateSheet({
                     )}
                   </div>
                   <div className="space-y-1">
-                    <label className="text-sm text-[#F6E6C3]/90">Tür</label>
+                    <label className="text-sm text-[#962901]">Tür</label>
                     <select
                       className="mt-1 w-full rounded-md border bg-[#0B0F1A] px-3 py-2
                                  text-[#F6E6C3]
@@ -268,7 +268,7 @@ export function JobCreateSheet({
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="space-y-1">
-                    <label className="text-sm text-[#F6E6C3]/90">Yaş (min)</label>
+                    <label className="text-sm text-[#962901]">Yaş (min)</label>
                     <input 
                       type="number" 
                       {...form.register("ageMin")} 
@@ -280,7 +280,7 @@ export function JobCreateSheet({
                     />
                   </div>
                   <div className="space-y-1">
-                    <label className="text-sm text-[#F6E6C3]/90">Yaş (max)</label>
+                    <label className="text-sm text-[#962901]">Yaş (max)</label>
                     <input 
                       type="number" 
                       {...form.register("ageMax")} 
@@ -295,7 +295,7 @@ export function JobCreateSheet({
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="space-y-1">
-                    <label className="text-sm text-[#F6E6C3]/90">Bütçe (min)</label>
+                    <label className="text-sm text-[#962901]">Bütçe (min)</label>
                     <input 
                       type="number" 
                       {...form.register("budgetMin")} 
@@ -307,7 +307,7 @@ export function JobCreateSheet({
                     />
                   </div>
                   <div className="space-y-1">
-                    <label className="text-sm text-[#F6E6C3]/90">Bütçe (max)</label>
+                    <label className="text-sm text-[#962901]">Bütçe (max)</label>
                     <input 
                       type="number" 
                       {...form.register("budgetMax")} 
@@ -322,7 +322,7 @@ export function JobCreateSheet({
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="space-y-1">
-                    <label className="text-sm text-[#F6E6C3]/90">Maks. Başvuru</label>
+                    <label className="text-sm text-[#962901]">Maks. Başvuru</label>
                     <input 
                       type="number" 
                       {...form.register("maxApplications")} 
@@ -334,7 +334,7 @@ export function JobCreateSheet({
                     />
                   </div>
                   <div className="space-y-1">
-                    <label className="text-sm text-[#F6E6C3]/90">Bitiş Tarihi *</label>
+                    <label className="text-sm text-[#962901]">Bitiş Tarihi *</label>
                     <input 
                       type="text" 
                       {...form.register("expiresAt")}
@@ -375,6 +375,6 @@ export function JobCreateSheet({
           </div>
         </div>
       )}
-    </>
+    </div>
   );
 }
