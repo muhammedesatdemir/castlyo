@@ -143,7 +143,7 @@ export declare const jobPosts: import("drizzle-orm/pg-core").PgTableWithColumns<
             tableName: "job_posts";
             dataType: "string";
             columnType: "PgEnumColumn";
-            data: "MALE" | "FEMALE" | "OTHER" | "ANY";
+            data: "ANY" | "MALE" | "FEMALE" | "OTHER";
             driverParam: string;
             notNull: false;
             hasDefault: true;
@@ -242,6 +242,40 @@ export declare const jobPosts: import("drizzle-orm/pg-core").PgTableWithColumns<
         }, {}, {}>;
         salaryMax: import("drizzle-orm/pg-core").PgColumn<{
             name: "salary_max";
+            tableName: "job_posts";
+            dataType: "number";
+            columnType: "PgInteger";
+            data: number;
+            driverParam: string | number;
+            notNull: false;
+            hasDefault: false;
+            isPrimaryKey: false;
+            isAutoincrement: false;
+            hasRuntimeDefault: false;
+            enumValues: undefined;
+            baseColumn: never;
+            identity: undefined;
+            generated: undefined;
+        }, {}, {}>;
+        ageMin: import("drizzle-orm/pg-core").PgColumn<{
+            name: "age_min";
+            tableName: "job_posts";
+            dataType: "number";
+            columnType: "PgInteger";
+            data: number;
+            driverParam: string | number;
+            notNull: false;
+            hasDefault: false;
+            isPrimaryKey: false;
+            isAutoincrement: false;
+            hasRuntimeDefault: false;
+            enumValues: undefined;
+            baseColumn: never;
+            identity: undefined;
+            generated: undefined;
+        }, {}, {}>;
+        ageMax: import("drizzle-orm/pg-core").PgColumn<{
+            name: "age_max";
             tableName: "job_posts";
             dataType: "number";
             columnType: "PgInteger";

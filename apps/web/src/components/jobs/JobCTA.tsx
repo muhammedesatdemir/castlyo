@@ -34,7 +34,11 @@ export function JobCTA({ jobId, userFlags, isVisitor, onApply }: JobCTAProps) {
   if (isVisitor) {
     return (
       <Link href={`/login?redirect=/jobs/${jobId}`}>
-        <Button size="sm" disabled>
+        <Button 
+          size="sm" 
+          disabled
+          className="bg-[#F6E6C3]/20 text-[#F6E6C3] border-[#F6E6C3]/40"
+        >
           Giriş Yap
         </Button>
       </Link>
@@ -50,7 +54,11 @@ export function JobCTA({ jobId, userFlags, isVisitor, onApply }: JobCTAProps) {
   if (userFlags?.role === 'TALENT' && !userFlags?.isTalentProfileComplete) {
     return (
       <Link href="/onboarding/talent">
-        <Button size="sm" variant="outline">
+        <Button 
+          size="sm" 
+          variant="outline"
+          className="border-[#F6E6C3]/40 text-[#F6E6C3] hover:bg-[#F6E6C3]/10"
+        >
           Profili Tamamla
         </Button>
       </Link>
@@ -64,6 +72,7 @@ export function JobCTA({ jobId, userFlags, isVisitor, onApply }: JobCTAProps) {
         size="sm" 
         onClick={handleApply}
         disabled={isApplying}
+        className="bg-[#962901] text-[#F6E6C3] hover:opacity-90 disabled:opacity-50"
       >
         {isApplying ? 'Başvuruluyor...' : 'Başvur'}
       </Button>
@@ -72,7 +81,11 @@ export function JobCTA({ jobId, userFlags, isVisitor, onApply }: JobCTAProps) {
 
   // Fallback
   return (
-    <Button size="sm" disabled>
+    <Button 
+      size="sm" 
+      disabled
+      className="bg-[#F6E6C3]/20 text-[#F6E6C3] border-[#F6E6C3]/40"
+    >
       Başvur
     </Button>
   );

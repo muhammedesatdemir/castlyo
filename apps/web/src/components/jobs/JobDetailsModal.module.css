@@ -1,0 +1,49 @@
+/* Bu dosya SADECE JobDetailsModal içinde etkili olacak */
+.theme label,
+.theme .form-label,
+.theme .field-label,
+.theme .text-muted-foreground,
+.theme .section-title,
+.theme .info-text,
+.theme a,
+.theme svg {
+  color: #962901 !important; /* kutucuk ÜSTÜ yazılar + linkler + iconlar */
+}
+
+/* Kutu İÇİ yazılar (input/textarea/select metni) */
+.theme input,
+.theme textarea,
+.theme select {
+  color: #F6E6C3 !important;
+  caret-color: #F6E6C3;
+}
+
+/* Placeholder rengi */
+.theme input::placeholder,
+.theme textarea::placeholder {
+  color: #F6E6C3 !important;
+  opacity: 0.9;
+}
+
+/* Disabled/read-only alanlarda tarayıcıların gri yapmasını engelle */
+.theme input:disabled,
+.theme textarea:disabled,
+.theme select:disabled,
+.theme input[readonly],
+.theme textarea[readonly] {
+  color: #F6E6C3 !important;
+  -webkit-text-fill-color: #F6E6C3; /* Chrome/Safari */
+  opacity: 1;
+}
+
+/* shadcn Select (trigger) veya combobox tetikleyicileri metni */
+.theme [role="combobox"],
+.theme .select-trigger,
+.theme .radix-select-trigger {
+  color: #F6E6C3 !important;
+}
+
+/* Ajans bilgi satırı linki "Web" */
+.theme a {
+  text-decoration: underline;
+}

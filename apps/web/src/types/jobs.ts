@@ -15,13 +15,17 @@ export interface Job {
   ageMin?: number;
   ageMax?: number;
   maxApplications?: number;
+  // API field names for salary and deadline
+  salary_min?: number | null;
+  salary_max?: number | null;
+  currency?: string;
+  application_deadline?: string | null;
   // Optional UI fields for backward compatibility
   category?: string;
   talentType?: string;
   location?: string;
   budgetMin?: number;
   budgetMax?: number;
-  currency?: string;
   isUrgent?: boolean;
   isFeatured?: boolean;
   views?: number;

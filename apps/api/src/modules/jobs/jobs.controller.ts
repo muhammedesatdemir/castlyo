@@ -98,9 +98,10 @@ export class JobsController {
   async getJobPosts(
     @Query(new ValidationPipe({ transform: true, whitelist: true }))
     query: JobsQueryDto,
+    @Request() req,
   ) {
     this.logger.debug(`GET /api/v1/jobs query=${JSON.stringify(query)}`);
-    const result = await this.jobsService.getJobPosts(query);
+    const result = await this.jobsService.getJobPosts(query, req.user?.id);
     this.logger.debug(`RESP /api/v1/jobs count=${result.data?.length ?? 0}`);
     return result;
   }
@@ -108,7 +109,7 @@ export class JobsController {
   @Public()
   @Get(':id')
   async getJobPost(@Param('id') id: string, @Request() req) {
-    return this.jobsService.getJobPost(id, req.user?.id);
+    return this.jobsService.getJobByIdPublic(id, req.user?.id);
   }
 
   // Protected endpoints

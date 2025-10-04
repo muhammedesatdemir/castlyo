@@ -21,19 +21,53 @@ export class CreateJobPostDto {
   @Length(20, 5000)
   description: string;
 
-  @IsEnum(['FILM', 'TV_SERIES', 'COMMERCIAL', 'THEATER', 'MUSIC_VIDEO', 'DOCUMENTARY', 'SHORT_FILM', 'OTHER'])
-  category: string;
-
-  @IsEnum(['ACTOR', 'MODEL', 'MUSICIAN', 'DANCER', 'PRESENTER', 'VOICE_ACTOR', 'INFLUENCER', 'OTHER'])
-  talentType: string;
-
   @IsString()
-  location: string;
+  city: string;
+
+  @IsEnum(['FILM', 'TV_SERIES', 'COMMERCIAL', 'THEATER', 'MUSIC_VIDEO', 'DOCUMENTARY', 'SHORT_FILM', 'FASHION', 'PHOTO_SHOOT', 'OTHER'])
+  job_type: string;
 
   @IsOptional()
   @IsString()
   @Length(0, 1000)
   requirements?: string;
+
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  age_min?: number;
+
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  age_max?: number;
+
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  salary_min?: number;
+
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  salary_max?: number;
+
+  @IsOptional()
+  @IsString()
+  currency?: string;
+
+  @IsDateString()
+  application_deadline: string;
+
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  max_applications?: number;
+
+  // Legacy fields for backward compatibility
+  @IsOptional()
+  @IsString()
+  budget_range?: string;
 
   @IsOptional()
   @IsNumber()
@@ -44,13 +78,6 @@ export class CreateJobPostDto {
   @IsNumber()
   @Min(0)
   budgetMax?: number;
-
-  @IsOptional()
-  @IsString()
-  currency?: string;
-
-  @IsDateString()
-  applicationDeadline: string;
 
   @IsOptional()
   @IsDateString()

@@ -61,6 +61,11 @@ const jobPostSelectBase = {
   ageMin: sql`"job_posts"."age_min"`,
   ageMax: sql`"job_posts"."age_max"`,
   maxApplications: sql`"job_posts"."max_applications"`,
+  // API field names
+  salary_min: jobPosts.salaryMin,
+  salary_max: jobPosts.salaryMax,
+  currency: jobPosts.currency,
+  application_deadline: jobPosts.applicationDeadline,
 } as const;
 
 @Injectable()
@@ -98,22 +103,16 @@ export class JobsService {
         agencyId: agencyProfile[0].id,
         title: jobData.title,
         description: jobData.description,
-        jobType: jobData.category as any,
-        // requirements: jobData.requirements, // Field doesn't exist in schema
-        // ageMin: jobData.ageMin, // field doesn't exist in schema
-        // ageMax: jobData.ageMax, // field doesn't exist in schema
+        jobType: jobData.job_type as any,
         genderRequirement: (jobData.genderPreference?.[0] ?? 'ANY') as 'ANY'|'MALE'|'FEMALE',
-        // heightMin: jobData.heightMin, // field doesn't exist in schema
-        // heightMax: jobData.heightMax, // field doesn't exist in schema
-        // skills: jobData.skills || [], // field doesn't exist in schema
-        // languages: jobData.languages || [], // field doesn't exist in schema
-        city: jobData.location,
-        // expires_at is the DB column; set via raw SQL to avoid TS mismatch
-        // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-        // @ts-ignore
-        // not setting expires_at here due to schema mismatch; handled separately if needed
+        city: jobData.city,
+        applicationDeadline: jobData.application_deadline ? new Date(jobData.application_deadline) : null,
+        salaryMin: jobData.salary_min ?? jobData.budgetMin,
+        salaryMax: jobData.salary_max ?? jobData.budgetMax,
+        currency: jobData.currency || 'TRY',
+        ageMin: jobData.age_min ?? jobData.ageMin ?? null,
+        ageMax: jobData.age_max ?? jobData.ageMax ?? null,
         status: 'DRAFT',
-        // tags: jobData.tags || [], // field doesn't exist in schema
       })
       .returning();
 
@@ -150,7 +149,7 @@ export class JobsService {
     return updatedJobPost[0];
   }
 
-  async getJobPosts({ q, city, jobType, status, page = 1, limit = 20 }: JobsQueryDto) {
+  async getJobPosts({ q, city, jobType, status, page = 1, limit = 20 }: JobsQueryDto, viewerId?: string) {
     const offset = (page - 1) * limit;
 
     const conditions = [];
@@ -174,6 +173,22 @@ export class JobsService {
       conditions.push(eq(jobPosts.status, status as any));
     }
     
+    // Access control: DRAFT ilanları sadece sahibine göster
+    if (viewerId) {
+      // Ajans sahibi ise kendi + açık ilanları görebilir
+      conditions.push(or(
+        sql`${jobPosts.status} = 'OPEN'`,
+        eq(jobPosts.status, 'PUBLISHED'),
+        sql`${jobPosts.agencyId} IN (SELECT id FROM agency_profiles WHERE user_id = ${viewerId})`
+      ));
+    } else {
+      // Ziyaretçi ise sadece açık ilanları görebilir
+      conditions.push(or(
+        sql`${jobPosts.status} = 'OPEN'`,
+        eq(jobPosts.status, 'PUBLISHED')
+      ));
+    }
+    
     const where = conditions.length > 0 ? and(...conditions) : undefined;
 
     const [rows, [{ total }]] = await Promise.all([
@@ -194,8 +209,22 @@ export class JobsService {
         ageMin: sql`"job_posts"."age_min"`,
         ageMax: sql`"job_posts"."age_max"`,
         maxApplications: sql`"job_posts"."max_applications"`,
+        // API field names
+        salary_min: jobPosts.salaryMin,
+        salary_max: jobPosts.salaryMax,
+        currency: jobPosts.currency,
+        application_deadline: jobPosts.applicationDeadline,
+        // Agency data
+        agency: sql`json_build_object(
+          'id', "agency_profiles"."id",
+          'name', "agency_profiles"."company_name",
+          'city', "agency_profiles"."city",
+          'verified', "agency_profiles"."is_verified",
+          'website', "agency_profiles"."website"
+        )`,
       })
       .from(jobPosts)
+      .leftJoin(agencyProfiles, eq(jobPosts.agencyId, agencyProfiles.id))
       .where(where)
       .orderBy(desc(jobPosts.publishedAt))
       .limit(limit)
@@ -214,6 +243,58 @@ export class JobsService {
     return { data, meta: { page, limit, total } };
   }
 
+  async getJobByIdPublic(jobId: string, viewerId?: string | null) {
+    const jobPost = await this.db.select({
+      id: jobPosts.id,
+      title: jobPosts.title,
+      description: jobPosts.description,
+      status: jobPosts.status,
+      jobType: jobPosts.jobType,
+      city: jobPosts.city,
+      salaryMin: jobPosts.salaryMin,
+      salaryMax: jobPosts.salaryMax,
+      currency: jobPosts.currency,
+      applicationDeadline: jobPosts.applicationDeadline,
+      ageMin: sql`"job_posts"."age_min"`,
+      ageMax: sql`"job_posts"."age_max"`,
+      createdAt: jobPosts.createdAt,
+      updatedAt: jobPosts.updatedAt,
+      agencyId: jobPosts.agencyId,
+      agencyUserId: agencyProfiles.userId,
+      agencyName: agencyProfiles.companyName,
+      agencyCity: agencyProfiles.city,
+      agencyWebsite: agencyProfiles.website,
+      agencyVerified: agencyProfiles.isVerified,
+      agencyAbout: agencyProfiles.about,
+    })
+      .from(jobPosts)
+      .leftJoin(agencyProfiles, eq(jobPosts.agencyId, agencyProfiles.id))
+      .where(eq(jobPosts.id, jobId))
+      .limit(1);
+
+    if (!jobPost.length) {
+      throw new NotFoundException('Job not found');
+    }
+
+    const post = jobPost[0];
+    const isOwner = !!viewerId && post.agencyUserId === viewerId;
+
+    // Detay herkese açık. Sadece log tutuyoruz:
+    console.log(`Job ${jobId} details served publicly (status=${post.status}) viewer=${viewerId ?? 'anon'}`);
+
+    return {
+      ...post,
+      isOwner,
+      agency: {
+        id: post.agencyId,
+        name: post.agencyName,
+        city: post.agencyCity,
+        website: post.agencyWebsite,
+        verified: post.agencyVerified,
+      },
+    };
+  }
+
   async getJobPost(jobId: string, viewerId?: string) {
     const jobPost = await this.db.select({
       ...jobPostSelectBase,
@@ -221,6 +302,14 @@ export class JobsService {
       agencyLogo: agencyProfiles.logo,
       agencyIsVerified: agencyProfiles.isVerified,
       agencyUserId: agencyProfiles.userId,
+      // Agency data in same format as getJobPosts
+      agency: sql`json_build_object(
+        'id', "agency_profiles"."id",
+        'name', "agency_profiles"."company_name",
+        'city', "agency_profiles"."city",
+        'verified', "agency_profiles"."is_verified",
+        'website', "agency_profiles"."website"
+      )`,
     })
       .from(jobPosts)
       .leftJoin(agencyProfiles, eq(jobPosts.agencyId, agencyProfiles.id))
@@ -233,9 +322,18 @@ export class JobsService {
 
     const post = jobPost[0];
 
-    // Check if job is active or if viewer is the owner
-    if (post.status !== 'PUBLISHED' && post.agencyUserId !== viewerId) {
-      throw new ForbiddenException('Job post is not available');
+    // Check if job is accessible: OPEN/PUBLISHED status or owner can see any status
+    const isOwner = !!viewerId && post.agencyUserId === viewerId;
+    
+    // Type fix: Handle status type mismatch
+    const status = post.status as unknown as ('OPEN' | 'PUBLISHED' | 'DRAFT' | 'CLOSED');
+    const isPublic = status === 'OPEN' || status === 'PUBLISHED';
+    
+    // Debug logging
+    console.log(`Job ${jobId} - Status: ${status}, isOwner: ${isOwner}, isPublic: ${isPublic}, viewerId: ${viewerId}`);
+    
+    if (!isOwner && !isPublic) {
+      throw new ForbiddenException('Job post is not accessible');
     }
 
     // Increment view count if viewer is not the owner
@@ -249,7 +347,11 @@ export class JobsService {
         .onConflictDoNothing();
     }
 
-    return post;
+    // Add isOwner flag to response
+    return {
+      ...post,
+      isOwner
+    };
   }
 
   async updateJobPost(jobId: string, userId: string, jobData: UpdateJobPostDto) {
@@ -272,8 +374,8 @@ export class JobsService {
         description: jobData.description,
         jobType: jobData.category as any,
         // requirements: jobData.requirements, // Field doesn't exist in schema
-        // ageMin: jobData.ageMin, // field doesn't exist in schema
-        // ageMax: jobData.ageMax, // field doesn't exist in schema
+        ageMin: jobData.ageMin ?? null,
+        ageMax: jobData.ageMax ?? null,
         genderRequirement: (jobData.genderPreference?.[0] ?? 'ANY') as 'ANY'|'MALE'|'FEMALE',
         // heightMin: jobData.heightMin, // field doesn't exist in schema
         // heightMax: jobData.heightMax, // field doesn't exist in schema

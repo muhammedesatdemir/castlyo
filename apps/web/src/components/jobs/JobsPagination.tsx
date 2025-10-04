@@ -45,6 +45,7 @@ export function JobsPagination({ currentPage, totalPages, onPageChange }: JobsPa
         size="sm"
         onClick={() => onPageChange(currentPage - 1)}
         disabled={currentPage === 1}
+        className="border-[#F6E6C3]/40 text-[#F6E6C3] hover:bg-[#F6E6C3]/10 disabled:opacity-50"
       >
         <ChevronLeft className="h-4 w-4" />
         Önceki
@@ -57,7 +58,12 @@ export function JobsPagination({ currentPage, totalPages, onPageChange }: JobsPa
           size="sm"
           onClick={() => typeof page === 'number' && onPageChange(page)}
           disabled={page === '...'}
-          className={page === '...' ? 'cursor-default' : ''}
+          className={page === '...' 
+            ? 'cursor-default text-[#F6E6C3]/60' 
+            : page === currentPage 
+              ? 'bg-[#962901] text-[#F6E6C3] hover:opacity-90' 
+              : 'border-[#F6E6C3]/40 text-[#F6E6C3] hover:bg-[#F6E6C3]/10'
+          }
         >
           {page}
         </Button>
@@ -68,6 +74,7 @@ export function JobsPagination({ currentPage, totalPages, onPageChange }: JobsPa
         size="sm"
         onClick={() => onPageChange(currentPage + 1)}
         disabled={currentPage === totalPages}
+        className="border-[#F6E6C3]/40 text-[#F6E6C3] hover:bg-[#F6E6C3]/10 disabled:opacity-50"
       >
         Sonraki
         <ChevronRight className="h-4 w-4" />

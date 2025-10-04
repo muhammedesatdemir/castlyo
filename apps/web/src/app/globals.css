@@ -811,3 +811,68 @@ input[type="date"] {
     font-weight: 600;
   }
 }
+
+/* /jobs paneli form yazıları: KESİN zorlamalar */
+.jobs-form input,
+.jobs-form textarea,
+.jobs-form select {
+  color: #F6E6C3 !important;      /* yazı */
+  caret-color: #F6E6C3 !important; /* imleç rengi */
+  background-color: transparent;   /* koyu paneli koru */
+}
+
+/* placeholder tonu */
+.jobs-form input::placeholder,
+.jobs-form textarea::placeholder {
+  color: #F6E6C3CC !important;  /* %80 opak */
+}
+
+/* odak ringleri rahatsız etmesin */
+.jobs-form input:focus,
+.jobs-form textarea:focus,
+.jobs-form select:focus {
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(246, 230, 195, 0.4);
+  border-color: rgba(246, 230, 195, 0.3);
+}
+
+/* tarih inputları açık temayı zorla beyaz yapmasın */
+.jobs-form input[type="date"] {
+  color-scheme: dark;
+}
+
+/* Chrome autofill siyah yazı/beyaz zeminini kır */
+.jobs-form input:-webkit-autofill,
+.jobs-form input:-webkit-autofill:hover,
+.jobs-form input:-webkit-autofill:focus {
+  -webkit-text-fill-color: #F6E6C3 !important;
+  transition: background-color 9999s ease-out 0s; /* autofill sarısını gizle */
+  box-shadow: 0 0 0px 1000px transparent inset;
+}
+
+/* Select içindeki option metinleri (açık listede) */
+.jobs-form select option {
+  color: #0B0F1A;           /* dropdown sistem menüsünde okunurluk */
+  background: #F6E6C3;      /* native açılır menüde kontrast */
+}
+
+/* Job Details Modal specific styles */
+.job-modal label { 
+  color: #962901; 
+}
+
+.job-modal input,
+.job-modal textarea,
+.job-modal select,
+.job-modal .text-value { 
+  color: #F6E6C3; 
+}
+
+.job-modal ::placeholder { 
+  color: #F6E6C3CC; /* %80 opaklık */
+}
+
+.job-modal option { 
+  color: #000; 
+  background: #F6E6C3; /* açılır menü okunaklı */
+}

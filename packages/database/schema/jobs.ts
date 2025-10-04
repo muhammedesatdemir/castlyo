@@ -18,6 +18,8 @@ export const jobPosts = pgTable('job_posts', {
   publishedAt: timestamp('published_at'),
   salaryMin: integer('salary_min'),
   salaryMax: integer('salary_max'),
+  ageMin: integer('age_min'),
+  ageMax: integer('age_max'),
   currency: text('currency').default('TRY'),
   specialties: text('specialties').array().default([]),
   status: jobStatusEnum('status').default('DRAFT'),
