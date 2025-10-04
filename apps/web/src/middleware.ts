@@ -1,79 +1,61 @@
-import { withAuth } from 'next-auth/middleware'
-import { NextResponse } from 'next/server'
-import type { NextRequest } from 'next/server'
+import type { NextRequest } from 'next/server';
+import { NextResponse } from 'next/server';
 
-export default withAuth(
-  function middleware(req: NextRequest) {
-    const token = req.nextauth.token
-    const { pathname } = req.nextUrl
+export async function middleware(req: NextRequest) {
+  const { pathname, origin } = req.nextUrl;
 
-    // Statik asset ve Next.js internal yolları erken bypass et
-    if (
-      pathname.startsWith('/_next') ||
-      pathname.startsWith('/api/auth') ||
-      /\.(?:png|jpg|jpeg|gif|svg|webp|mp4|mov|mp3|woff2|ttf)$/i.test(pathname) ||
-      pathname === '/favicon.ico' ||
-      pathname === '/robots.txt' ||
-      pathname === '/sitemap.xml'
-    ) {
-      return NextResponse.next()
-    }
-
-    // API yollarını bypass et - middleware dokunmasın
-    if (pathname.startsWith('/api/')) {
-      return NextResponse.next()
-    }
-
-    console.log(`[Middleware] ${req.method} ${pathname} | Authenticated: ${!!token}`)
-
-    // Kural-1: Session yoksa onboarding'e erişim engelle
-    if (pathname.startsWith('/onboarding')) {
-      if (!token) {
-        const loginUrl = new URL('/auth', req.url)
-        loginUrl.searchParams.set('next', pathname)
-        console.log(`[Middleware] Redirecting unauthenticated user to login: ${loginUrl.toString()}`)
-        return NextResponse.redirect(loginUrl)
-      }
-
-      // Kural-2: Session var ve onboarding tamamlanmışsa profile'a yönlendir
-      // TODO: Gerçek onboarding durumu API'dan alınacak
-      const onboardingCompleted = false // Bu user profile API'dan gelecek
-      if (onboardingCompleted) {
-        console.log(`[Middleware] Redirecting completed user to profile`)
-        return NextResponse.redirect(new URL('/profile', req.url))
-      }
-    }
-
-    // Kural-3: Auth sayfası açıkken session varsa ana sayfaya yönlendir
-    if (pathname.startsWith('/auth') && token) {
-      console.log(`[Middleware] Redirecting authenticated user to home`)
-      return NextResponse.redirect(new URL('/', req.url))
-    }
-
-    // Korumalı sayfalar - auth gerekli
-    const protectedPaths = ['/profile', '/settings', '/jobs', '/search']
-    if (protectedPaths.some(path => pathname.startsWith(path))) {
-      if (!token) {
-        const loginUrl = new URL('/auth', req.url)
-        loginUrl.searchParams.set('next', pathname)
-        console.log(`[Middleware] Protecting ${pathname}, redirecting to login`)
-        return NextResponse.redirect(loginUrl)
-      }
-    }
-
+  // Statik asset ve Next.js internal yolları erken bypass et
+  if (
+    pathname.startsWith('/_next') ||
+    pathname.startsWith('/api/auth') ||
+    /\.(?:png|jpg|jpeg|gif|svg|webp|mp4|mov|mp3|woff2|ttf)$/i.test(pathname) ||
+    pathname === '/favicon.ico' ||
+    pathname === '/robots.txt' ||
+    pathname === '/sitemap.xml'
+  ) {
     return NextResponse.next()
-  },
-  {
-    callbacks: {
-      authorized: ({ token, req }) => {
-        // Bu callback tüm istekleri geçirir, gerçek kontrol yukarıdaki middleware function'da
-        return true
-      },
-    },
   }
-)
 
-// Middleware'in çalışacağı route'ları belirt
-export const config = {
-  matcher: ['/((?!api/proxy).*)'], // proxy hariç
+  // API yollarını bypass et - middleware dokunmasın
+  if (pathname.startsWith('/api/')) {
+    return NextResponse.next()
+  }
+
+  // Sadece onboarding rotalarını koru
+  if (!pathname.startsWith('/onboarding')) return NextResponse.next();
+
+  console.log(`[Middleware] ${req.method} ${pathname} | Checking role-based access`)
+
+  // Kullanıcının güncel rolünü backend'den al (proxy cookie'leri geçir)
+  const meRes = await fetch(`${origin}/api/proxy/api/v1/users/me`, {
+    headers: { cookie: req.headers.get('cookie') ?? '' },
+    cache: 'no-store',
+  });
+
+  // Kullanıcı yoksa ana sayfaya
+  if (!meRes.ok) {
+    console.log(`[Middleware] User not authenticated, redirecting to home`)
+    return NextResponse.redirect(new URL('/', req.url));
+  }
+
+  const me = (await meRes.json()) as { role: 'AGENCY' | 'TALENT' | 'ADMIN' };
+  console.log(`[Middleware] User role: ${me.role}`)
+
+  // Rol ile rota eşleşmesi
+  if (pathname.startsWith('/onboarding/agency') && me.role !== 'AGENCY') {
+    console.log(`[Middleware] Role mismatch: ${me.role} trying to access agency onboarding, redirecting to home`)
+    return NextResponse.redirect(new URL('/', req.url));
+  }
+  if (pathname.startsWith('/onboarding/talent') && me.role !== 'TALENT') {
+    console.log(`[Middleware] Role mismatch: ${me.role} trying to access talent onboarding, redirecting to home`)
+    return NextResponse.redirect(new URL('/', req.url));
+  }
+
+  console.log(`[Middleware] Role check passed for ${me.role} accessing ${pathname}`)
+  return NextResponse.next();
 }
+
+// Sadece ilgili yolları yakala
+export const config = {
+  matcher: ['/onboarding/:path*'],
+};

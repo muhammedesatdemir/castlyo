@@ -5,6 +5,7 @@ import { useSession, signIn, signOut } from 'next-auth/react'
 import { Menu, X } from 'lucide-react'
 import { useState } from 'react'
 import RoleGateCTA from '@/components/shared/RoleGateCTA'
+import { useMe } from '@/hooks/useMe'
 import { MENU } from '@/constants/menu'
 
 interface HeaderProps {
@@ -13,8 +14,9 @@ interface HeaderProps {
 
 export default function Header({ onSignup }: HeaderProps) {
   const { data: session, status } = useSession()
+  const { data: me } = useMe()
   const isLoggedIn = status === 'authenticated'
-  const isTalent = (session?.user as any)?.role === "TALENT"
+  const isTalent = me?.role === "TALENT"
   const [open, setOpen] = useState(false)
   
   // Filter menu items based on authentication status and role

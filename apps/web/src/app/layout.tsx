@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from 'next'
 import { Inter, Cinzel } from 'next/font/google'
 import { AuthProvider } from '@/providers/auth-provider'
+import QueryProvider from '@/providers/query-provider'
 import { ToastContainer } from '@/components/ui/toast'
 import { ApiHealthCheck } from '@/components/dev/ApiHealthCheck'
 import RoleGateGlobalGuard from '@/components/auth/RoleGateGlobalGuard'
@@ -47,14 +48,16 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       </head>
       {/* bundan sonra default fontu Tailwind 'sans' üzerinden vereceğiz */}
       <body className="font-sans antialiased bg-[#0b0b0f] text-white">
-        <AuthProvider>
-          <div className="min-h-screen">
-            {children}
-          </div>
-          <ToastContainer />
-          <RoleGateGlobalGuard />
-          {process.env.NODE_ENV === 'development' && <ApiHealthCheck />}
-        </AuthProvider>
+        <QueryProvider>
+          <AuthProvider>
+            <div className="min-h-screen">
+              {children}
+            </div>
+            <ToastContainer />
+            <RoleGateGlobalGuard />
+            {process.env.NODE_ENV === 'development' && <ApiHealthCheck />}
+          </AuthProvider>
+        </QueryProvider>
       </body>
     </html>
   )

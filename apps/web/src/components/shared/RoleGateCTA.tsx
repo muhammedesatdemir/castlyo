@@ -1,6 +1,7 @@
 'use client'
-import { useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
+import { useMe } from '@/hooks/useMe'
+import { toast } from '@/components/ui/toast'
 import clsx from 'clsx'
 import React from 'react'
 
@@ -14,29 +15,29 @@ type Props = {
 
 export default function RoleGateCTA({ targetRole, to, className, children }: Props) {
   const router = useRouter()
-  const { data: session, status } = useSession()
-  const userRole = (session?.user as any)?.role as Role | undefined
-  const isAuthed = status === 'authenticated' && !!userRole
-  const isMismatch = isAuthed && userRole !== targetRole
+  const { data: me } = useMe()
+  const userRole = me?.role
+  const isMismatch = !!userRole && userRole !== targetRole
 
-  const onClickCapture = (e: React.MouseEvent<HTMLButtonElement>) => {
+  const onClick = (e: React.MouseEvent<HTMLButtonElement>) => {
     if (isMismatch) {
       e.preventDefault()
       e.stopPropagation()
-      // ❌ toast yok — guard gösterecek
+      
+      const message = userRole === 'TALENT'
+        ? 'Yetenek hesabıyla Ajans onboardingine erişemezsiniz.'
+        : 'Ajans hesabıyla Yetenek onboardingine erişemezsiniz.'
+      
+      toast.error('Erişim engellendi', message, 5000, 'role-mismatch')
       return
     }
-  }
-
-  const onClick = (e: React.MouseEvent<HTMLButtonElement>) => {
-    if (isMismatch) return
+    
     if (to) router.push(to)
   }
 
   return (
     <button
       type="button"
-      onClickCapture={onClickCapture}
       onClick={onClick}
       aria-disabled={isMismatch}
       data-role-user={userRole ?? ''}

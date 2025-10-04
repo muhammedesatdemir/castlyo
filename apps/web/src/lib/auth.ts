@@ -20,24 +20,23 @@ export const authOptions: NextAuthOptions = {
         return {
           id: credentials.email, // Email'i ID olarak kullan
           email: credentials.email,
-          role: 'TALENT', // Default role, gerçek role backend'den alınacak
+          // Role'ü burada hardcode etme - gerçek role backend'den /users/me ile alınacak
         };
       },
     }),
   ],
   callbacks: {
     async jwt({ token, user }) {
-      // İlk login'de user gelir → role'ü JWT'ye yaz
+      // İlk login'de user gelir → access token'ları JWT'ye yaz
       if (user) {
-        token.role = (user as any).role ?? null;            // <— KRİTİK
         (token as any).accessToken  = (user as any).accessToken;
         (token as any).refreshToken = (user as any).refreshToken;
       }
       return token;
     },
     async session({ session, token }) {
-      // Her session'da role'ü user'a koy
-      (session.user as any).role = (token as any)?.role ?? null;  // <— KRİTİK
+      // Session'a sadece access token'ları koy
+      // Role bilgisi /users/me endpoint'inden alınacak
       (session as any).accessToken  = (token as any)?.accessToken;
       (session as any).refreshToken = (token as any)?.refreshToken;
       return session;

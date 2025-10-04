@@ -2,7 +2,8 @@
 
 import { useRouter } from 'next/navigation'
 import { useSession } from 'next-auth/react'
-import { showRoleMismatchToast } from '@/lib/role-toast'
+import { useMe } from '@/hooks/useMe'
+import { toast } from '@/components/ui/toast'
 import Header from '@/components/layout/Header'
 import HeroShowreel from '@/components/hero/HeroShowreel'
 import LogoMarquee from '@/components/sections/LogoMarquee'
@@ -18,38 +19,43 @@ import ToastHandler from '@/components/shared/ToastHandler'
 export default function Home() {
   const router = useRouter()
   const { data: session, status } = useSession()
+  const { data: me, isLoading: isMeLoading } = useMe()
+  
   const isLoggedIn = status === 'authenticated'
-  const isTalent = (session?.user as any)?.role === "TALENT"
-
+  const isTalent = me?.role === "TALENT"
 
   const handleSignup = (type: "talent" | "agency") => {
-    const userRole = (session?.user as any)?.role as "TALENT" | "AGENCY" | undefined
-    const isAuthed = status === "authenticated" && !!userRole
     const targetRole = type === "talent" ? "TALENT" : "AGENCY"
-
-    if (isAuthed && userRole !== targetRole) {
-      showRoleMismatchToast(userRole!)
-      return
+    
+    if (me?.role === targetRole) {
+      router.push(`/onboarding/${type}`)
+    } else if (me?.role) {
+      const message = me.role === 'TALENT'
+        ? 'Yetenek hesabıyla Ajans onboardingine erişemezsiniz.'
+        : 'Ajans hesabıyla Yetenek onboardingine erişemezsiniz.'
+      toast.error('Erişim engellendi', message, 5000, 'role-mismatch')
+    } else {
+      router.push(`/onboarding/${type}`)
     }
-
-    router.push(`/onboarding/${type}`)
   }
 
   const handleStartOnboarding = (type: "talent" | "agency") => {
-    const userRole = (session?.user as any)?.role as "TALENT" | "AGENCY" | undefined
-    const isAuthed = status === "authenticated" && !!userRole
     const targetRole = type === "talent" ? "TALENT" : "AGENCY"
-
-    if (isAuthed && userRole !== targetRole) {
-      showRoleMismatchToast(userRole!)
-      return
+    
+    if (me?.role === targetRole) {
+      router.push(`/onboarding/${type}`)
+    } else if (me?.role) {
+      const message = me.role === 'TALENT'
+        ? 'Yetenek hesabıyla Ajans onboardingine erişemezsiniz.'
+        : 'Ajans hesabıyla Yetenek onboardingine erişemezsiniz.'
+      toast.error('Erişim engellendi', message, 5000, 'role-mismatch')
+    } else {
+      router.push(`/onboarding/${type}`)
     }
-
-    router.push(`/onboarding/${type}`)
   }
 
   // Loading state
-  if (status === 'loading') {
+  if (status === 'loading' || isMeLoading) {
     return (
       <div className="min-h-screen bg-black flex items-center justify-center">
         <div className="text-white">Yükleniyor...</div>

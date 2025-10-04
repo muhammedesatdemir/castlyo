@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { signIn } from 'next-auth/react'
+import { useQueryClient } from '@tanstack/react-query'
 import { Button } from '@/components/ui/button'
 import { logger } from '@/lib/logger'
 import { Input } from '@/components/ui/input'
@@ -18,6 +19,7 @@ type UserRole = 'talent' | 'agency'
 export default function AuthPage() {
   const router = useRouter()
   const searchParams = useSearchParams()
+  const queryClient = useQueryClient()
   
   const [mode, setMode] = useState<AuthMode>('login')
   const [role, setRole] = useState<UserRole>('talent')
@@ -320,11 +322,19 @@ export default function AuthPage() {
           if (result?.ok && result.url) {
             logger.info('AUTH', 'Login successful', { email: formData.email })
             logger.info('NAVIGATION', 'Redirecting after login', { destination: result.url })
+            
+            // Invalidate me query to get fresh role data
+            queryClient.invalidateQueries({ queryKey: ['me'] })
+            
             // Login başarılı, NextAuth'ın önerdiği URL'e yönlendir
             router.replace(result.url)
           } else if (result?.ok) {
             logger.info('AUTH', 'Login successful', { email: formData.email })
             logger.info('NAVIGATION', 'Redirecting after login', { destination: nextUrl || '/' })
+            
+            // Invalidate me query to get fresh role data
+            queryClient.invalidateQueries({ queryKey: ['me'] })
+            
             // Fallback: callbackUrl'e yönlendir (ana sayfaya, role'e göre onboarding'e yönlendirilir)
             router.replace(nextUrl || '/')
           }

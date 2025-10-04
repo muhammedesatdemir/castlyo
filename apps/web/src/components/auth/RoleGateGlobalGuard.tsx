@@ -1,18 +1,29 @@
 'use client';
 
 import { useEffect } from 'react';
-import { showRoleMismatchToast } from '@/lib/role-toast';
-
-// Dedupe logic: prevent multiple toasts within 400ms
-let lastToastAt = 0;
-const shouldSkip = (gap = 400) => {
-  const now = Date.now();
-  if (now - lastToastAt < gap) return true;
-  lastToastAt = now;
-  return false;
-};
+import { usePathname } from 'next/navigation';
+import { useMe } from '@/hooks/useMe';
+import { toast } from '@/components/ui/toast';
 
 export default function RoleGateGlobalGuard() {
+  const pathname = usePathname();
+  const { data: me, isLoading: isMeLoading } = useMe();
+
+  // Role mismatch toast logic based on current path
+  useEffect(() => {
+    if (isMeLoading || !me?.role) return;
+
+    const mismatch =
+      (pathname.startsWith('/onboarding/agency') && me.role === 'TALENT') ||
+      (pathname.startsWith('/onboarding/talent') && me.role === 'AGENCY');
+
+    if (mismatch) {
+      toast.error('Erişim engellendi', 'Yetenek hesabıyla Ajans onboardingine erişemezsiniz.', 5000, 'role-mismatch');
+    } else {
+      toast.dismiss('role-mismatch');
+    }
+  }, [isMeLoading, pathname, me?.role]);
+
   useEffect(() => {
     const handler = (e: MouseEvent) => {
       const target = e.target as HTMLElement | null;
@@ -35,10 +46,12 @@ export default function RoleGateGlobalGuard() {
       e.preventDefault();
       e.stopPropagation();
 
-      // 🔒 çift olayı sustur
-      if (shouldSkip()) return;
-
-      showRoleMismatchToast(userRole);
+      // Show appropriate error message
+      const message = userRole === 'TALENT'
+        ? 'Yetenek hesabıyla Ajans onboardingine erişemezsiniz.'
+        : 'Ajans hesabıyla Yetenek onboardingine erişemezsiniz.';
+      
+      toast.error('Erişim engellendi', message, 5000, 'role-mismatch');
     };
 
     // capture fazında hem sol tık hem orta tık

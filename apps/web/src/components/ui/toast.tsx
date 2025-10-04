@@ -74,25 +74,41 @@ const notifyListeners = () => {
 }
 
 export const toast = {
-  success: (title: string, message?: string, duration?: number) => {
-    const id = Math.random().toString(36).substr(2, 9)
+  success: (title: string, message?: string, duration?: number, customId?: string) => {
+    const id = customId || Math.random().toString(36).substr(2, 9)
+    // Remove existing toast with same ID if it exists
+    if (customId) {
+      toasts = toasts.filter(toast => toast.id !== customId)
+    }
     toasts.push({ id, type: 'success', title, message, duration })
     notifyListeners()
     return id
   },
-  error: (title: string, message?: string, duration?: number) => {
-    const id = Math.random().toString(36).substr(2, 9)
+  error: (title: string, message?: string, duration?: number, customId?: string) => {
+    const id = customId || Math.random().toString(36).substr(2, 9)
+    // Remove existing toast with same ID if it exists
+    if (customId) {
+      toasts = toasts.filter(toast => toast.id !== customId)
+    }
     toasts.push({ id, type: 'error', title, message, duration })
     notifyListeners()
     return id
   },
-  info: (title: string, message?: string, duration?: number) => {
-    const id = Math.random().toString(36).substr(2, 9)
+  info: (title: string, message?: string, duration?: number, customId?: string) => {
+    const id = customId || Math.random().toString(36).substr(2, 9)
+    // Remove existing toast with same ID if it exists
+    if (customId) {
+      toasts = toasts.filter(toast => toast.id !== customId)
+    }
     toasts.push({ id, type: 'info', title, message, duration })
     notifyListeners()
     return id
   },
   remove: (id: string) => {
+    toasts = toasts.filter(toast => toast.id !== id)
+    notifyListeners()
+  },
+  dismiss: (id: string) => {
     toasts = toasts.filter(toast => toast.id !== id)
     notifyListeners()
   }

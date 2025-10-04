@@ -1,9 +1,17 @@
-import { toast } from '@/components/ui/toast'
+'use client';
+import { toast } from '@/components/ui/toast';
+
+const ROLE_TOAST_ID = 'role-mismatch';
 
 export function showRoleMismatchToast(userRole: 'TALENT' | 'AGENCY') {
   const message = userRole === 'TALENT'
-    ? 'Yetenek olarak giriş yaptınız. Ajans olarak başlamak için lütfen çıkış yapıp farklı bir e-posta ile ajans kaydı oluşturun.'
-    : 'Ajans olarak giriş yaptınız. Yetenek olarak başlamak için lütfen çıkış yapıp farklı bir e-posta ile yetenek kaydı oluşturun.'
+    ? 'Yetenek hesabıyla Ajans onboardingine erişemezsiniz.'
+    : 'Ajans hesabıyla Yetenek onboardingine erişemezsiniz.';
   
-  toast.error('Rolüne uygun olmayan işlem', message, 5000)
+  // Aynı toast'ı iki kez basmayı önlemek için id kullan
+  toast.error('Erişim engellendi', message, 5000, ROLE_TOAST_ID);
+}
+
+export function dismissRoleMismatchToast() {
+  toast.dismiss(ROLE_TOAST_ID);
 }

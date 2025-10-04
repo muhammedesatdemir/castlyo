@@ -6,6 +6,7 @@ import useSWR from "swr";
 import ProfileClient from "./ProfileClient";
 import { mapApiSpecialtiesToUI } from "@/lib/profile-mapper";
 import { guardApiUser } from "@/lib/api-guard";
+import { useMe } from "@/hooks/useMe";
 
 /** Sunucudan dönen profil tipi — ProfileClient de bunu kullanır */
 export type Profile = {
@@ -51,11 +52,16 @@ export type Profile = {
 const THEME = { light: "#F6E6C3", dark: "#962901", black: "#000000" };
 
 /* ---------- SWR fetcher ---------- */
-async function fetchProfileData(): Promise<Profile> {
+async function fetchProfileData(userRole?: string): Promise<Profile> {
   try {
+    // Role'e göre doğru endpoint'i seç
+    const profileEndpoint = userRole === 'AGENCY' 
+      ? '/api/proxy/api/v1/profiles/agency/me'
+      : '/api/proxy/api/v1/profiles/talent/me';
+    
     const [uRes, pRes] = await Promise.all([
       fetch('/api/proxy/api/v1/users/me', { credentials: 'include' }),
-      fetch('/api/proxy/api/v1/profiles/talent/me', { credentials: 'include' }),
+      fetch(profileEndpoint, { credentials: 'include' }),
     ]);
 
     const user = uRes.ok ? await uRes.json() : {};
@@ -179,6 +185,7 @@ function mapApiToProfile(api: any): Profile {
 
 export default function ProfilePage() {
   const router = useRouter();
+  const { data: me, isLoading: isMeLoading } = useMe();
 
   // Guard: Check session sync on page load
   useEffect(() => {
@@ -190,8 +197,8 @@ export default function ProfilePage() {
 
   // Use SWR with keepPreviousData to prevent form clearing during revalidation
   const { data, error, isLoading, isValidating, mutate } = useSWR(
-    'profile-data',
-    fetchProfileData,
+    me?.role ? ['profile-data', me.role] : null,
+    () => fetchProfileData(me?.role),
     {
       revalidateOnFocus: false,
       keepPreviousData: true,     // SWR v2 - prevents data from becoming undefined during revalidation
@@ -228,7 +235,7 @@ export default function ProfilePage() {
       </header>
 
       <div className="mx-auto max-w-6xl px-4 py-8">
-        {isLoading && (
+        {(isMeLoading || isLoading) && (
           <div className="flex items-center justify-center py-12">
             <div className="text-center">
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 mx-auto mb-4" style={{ borderColor: THEME.dark }}></div>
