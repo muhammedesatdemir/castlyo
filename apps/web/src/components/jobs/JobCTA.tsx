@@ -4,15 +4,17 @@ import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { UsersMeFlags } from '../../types/jobs';
 import Link from 'next/link';
+import { toast } from '@/components/ui/toast';
 
 interface JobCTAProps {
   jobId: string;
   userFlags: UsersMeFlags | null;
   isVisitor: boolean;
   onApply?: () => void;
+  onApplicationSuccess?: () => void;
 }
 
-export function JobCTA({ jobId, userFlags, isVisitor, onApply }: JobCTAProps) {
+export function JobCTA({ jobId, userFlags, isVisitor, onApply, onApplicationSuccess }: JobCTAProps) {
   const [isApplying, setIsApplying] = useState(false);
 
   const handleApply = async () => {
@@ -20,11 +22,60 @@ export function JobCTA({ jobId, userFlags, isVisitor, onApply }: JobCTAProps) {
     
     try {
       setIsApplying(true);
-      // TODO: Implement actual application logic
       console.log('Applying to job:', jobId);
+      
+      const response = await fetch('/api/proxy/api/v1/jobs/applications', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include',
+        body: JSON.stringify({
+          jobId,
+          coverLetter: 'Bu işe başvurmak istiyorum.',
+        }),
+      });
+
+      if (!response.ok) {
+        const errJson = await response.json().catch(() => ({} as any));
+        const msg = (errJson?.message as string) || 'İşlem başarısız';
+        const status = response.status;
+
+        if (status === 409) {
+          toast.info('Zaten başvurmuşsunuz', 'Bu ilana daha önce başvurdunuz.');
+          return;
+        }
+        if (status === 404 || status === 410) {
+          toast.error('İlan kapalı veya bulunamadı', 'Başvuruya açık değil.');
+          return;
+        }
+        if (status === 401) {
+          toast.error('Giriş gerekli', 'Lütfen oturum açın.');
+          return;
+        }
+        if (status === 403) {
+          toast.error('Yetkiniz yok', 'Bu işlem için izniniz bulunmuyor.');
+          return;
+        }
+        if (status === 400 || status === 422) {
+          toast.error('Başvuru alınamadı', msg || 'Profilini kontrol et (eksik/uygunsuz veri).');
+          return;
+        }
+
+        toast.error('Başvuru alınamadı', msg);
+        return;
+      }
+
+      const result = await response.json();
+      console.log('Application successful:', result);
+      
+      toast.success('Başvurunuz alındı', 'Başvurunuz başarıyla gönderildi!');
       onApply?.();
+      onApplicationSuccess?.();
+      
     } catch (error) {
       console.error('Failed to apply to job:', error);
+      toast.error('Başvuru alınamadı', 'Beklenmeyen bir hata oluştu.');
     } finally {
       setIsApplying(false);
     }

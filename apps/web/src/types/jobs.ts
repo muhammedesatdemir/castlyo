@@ -66,8 +66,18 @@ export interface UsersMeFlags {
   emailVerified: boolean;
   createdAt: string;
   updatedAt: string;
+  agencyProfileId?: string | null;
   isAgencyProfileComplete: boolean;
   isTalentProfileComplete: boolean;
   canPostJobs: boolean;
   canApplyJobs: boolean;
 }
+
+export type JobApplicant = {
+  applicationId: string;
+  applicantUserId: string;
+  talentId: string | null;
+  fullName: string;
+  hasTalentProfile: boolean;
+  createdAt: string;
+};

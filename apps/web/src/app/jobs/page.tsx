@@ -248,7 +248,7 @@ export default function JobsPage() {
               currentUser={userFlags ? { 
                 id: userFlags.id, 
                 role: userFlags.role as 'AGENCY' | 'TALENT' | 'ADMIN',
-                agencyProfileId: (userFlags as any).agencyProfileId 
+                agencyProfileId: userFlags.agencyProfileId 
               } : undefined}
             />
           ))}

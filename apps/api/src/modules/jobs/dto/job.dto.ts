@@ -266,8 +266,13 @@ export class UpdateJobPostDto {
 }
 
 export class CreateJobApplicationDto {
+  @IsOptional()
   @IsString()
-  jobPostId: string;
+  jobId?: string;
+
+  @IsOptional()
+  @IsString()
+  jobPostId?: string;
 
   @IsOptional()
   @IsString()
@@ -286,6 +291,15 @@ export class CreateJobApplicationDto {
   @IsOptional()
   @IsString()
   availability?: string;
+
+  // Flexible profile nested ref
+  @IsOptional()
+  profile?: { talentProfileId?: string };
+
+  // Root alternative
+  @IsOptional()
+  @IsString()
+  talentProfileId?: string;
 }
 
 export class UpdateJobApplicationDto {

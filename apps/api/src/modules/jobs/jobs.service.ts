@@ -3,9 +3,11 @@ import {
   Inject, 
   NotFoundException, 
   ForbiddenException, 
-  BadRequestException 
+  BadRequestException,
+  ConflictException,
+  InternalServerErrorException,
 } from '@nestjs/common';
-import { eq, and, desc, sql, ilike, or, count } from 'drizzle-orm';
+import { eq, and, desc, asc, sql, ilike, or, inArray, count } from 'drizzle-orm';
 // DATABASE_CONNECTION import removed - using 'DRIZZLE' directly
 import { 
   users,
@@ -25,6 +27,7 @@ import {
 } from './dto/job.dto';
 import { JobsQueryDto } from './dto/jobs-query.dto';
 import type { Database } from '@castlyo/database';
+import { JOB_VISIBLE_STATUSES, JOB_APPLYABLE_STATUSES } from '../../config/jobs.config';
 
 // ISO date conversion helper
 function toIso(x?: string | Date | null) {
@@ -175,18 +178,14 @@ export class JobsService {
     
     // Access control: DRAFT ilanları sadece sahibine göster
     if (viewerId) {
-      // Ajans sahibi ise kendi + açık ilanları görebilir
+      // Ajans sahibi ise kendi + yayımlanmış ilanları görebilir
       conditions.push(or(
-        sql`${jobPosts.status} = 'OPEN'`,
-        eq(jobPosts.status, 'PUBLISHED'),
+        inArray(jobPosts.status, JOB_VISIBLE_STATUSES as any),
         sql`${jobPosts.agencyId} IN (SELECT id FROM agency_profiles WHERE user_id = ${viewerId})`
       ));
     } else {
-      // Ziyaretçi ise sadece açık ilanları görebilir
-      conditions.push(or(
-        sql`${jobPosts.status} = 'OPEN'`,
-        eq(jobPosts.status, 'PUBLISHED')
-      ));
+      // Ziyaretçi ise sadece yayımlanmış ilanları görebilir
+      conditions.push(inArray(jobPosts.status, JOB_VISIBLE_STATUSES as any));
     }
     
     const where = conditions.length > 0 ? and(...conditions) : undefined;
@@ -214,6 +213,7 @@ export class JobsService {
         salary_max: jobPosts.salaryMax,
         currency: jobPosts.currency,
         application_deadline: jobPosts.applicationDeadline,
+        applicationsCount: sql<number>`COALESCE((SELECT COUNT(*) FROM job_applications ja WHERE ja.job_id = ${jobPosts.id}), 0)`,
         // Agency data
         agency: sql`json_build_object(
           'id', "agency_profiles"."id",
@@ -266,6 +266,7 @@ export class JobsService {
       agencyWebsite: agencyProfiles.website,
       agencyVerified: agencyProfiles.isVerified,
       agencyAbout: agencyProfiles.about,
+      applicationsCount: sql<number>`COALESCE((SELECT COUNT(*) FROM job_applications ja WHERE ja.job_id = ${jobPosts.id}), 0)`,
     })
       .from(jobPosts)
       .leftJoin(agencyProfiles, eq(jobPosts.agencyId, agencyProfiles.id))
@@ -277,6 +278,17 @@ export class JobsService {
     }
 
     const post = jobPost[0];
+    // Status visibility: only allow public statuses
+    if (!(JOB_VISIBLE_STATUSES as readonly string[]).includes(post.status as any)) {
+      throw new NotFoundException('Job post is not available');
+    }
+
+    // Deadline logic: consider null as not expired
+    const now = new Date();
+    const deadline = post.applicationDeadline as any as string | Date | null;
+    if (deadline && new Date(deadline) < now) {
+      throw new NotFoundException('Job post is not available');
+    }
     const isOwner = !!viewerId && post.agencyUserId === viewerId;
 
     // Detay herkese açık. Sadece log tutuyoruz:
@@ -322,15 +334,13 @@ export class JobsService {
 
     const post = jobPost[0];
 
-    // Check if job is accessible: OPEN/PUBLISHED status or owner can see any status
+    // Check if job is accessible: PUBLISHED status or owner can see any status
     const isOwner = !!viewerId && post.agencyUserId === viewerId;
     
-    // Type fix: Handle status type mismatch
-    const status = post.status as unknown as ('OPEN' | 'PUBLISHED' | 'DRAFT' | 'CLOSED');
-    const isPublic = status === 'OPEN' || status === 'PUBLISHED';
+    const isPublic = post.status === 'PUBLISHED';
     
     // Debug logging
-    console.log(`Job ${jobId} - Status: ${status}, isOwner: ${isOwner}, isPublic: ${isPublic}, viewerId: ${viewerId}`);
+    console.log(`Job ${jobId} - Status: ${post.status}, isOwner: ${isOwner}, isPublic: ${isPublic}, viewerId: ${viewerId}`);
     
     if (!isOwner && !isPublic) {
       throw new ForbiddenException('Job post is not accessible');
@@ -428,68 +438,91 @@ export class JobsService {
       throw new ForbiddenException('Only talents can apply to jobs');
     }
 
-    // Check if talent profile exists
-    const talentProfile = await this.db.select({ id: talentProfiles.id, userId: talentProfiles.userId })
-      .from(talentProfiles)
-      .where(eq(talentProfiles.userId, userId))
-      .limit(1);
-
-    if (!talentProfile.length) {
+    // Flexible talentProfile selection
+    const providedTalentProfileId = (applicationData as any).talentProfileId || (applicationData as any)?.profile?.talentProfileId || null;
+    let effectiveTalentProfileId: string | null = providedTalentProfileId;
+    if (!effectiveTalentProfileId) {
+      const prof = await this.db.select({ id: talentProfiles.id })
+        .from(talentProfiles)
+        .where(eq(talentProfiles.userId, userId))
+        .orderBy(asc(talentProfiles.createdAt as any))
+        .limit(1);
+      effectiveTalentProfileId = prof[0]?.id ?? null;
+    }
+    if (!effectiveTalentProfileId) {
       throw new BadRequestException('Talent profile must be created first');
     }
 
-    // Check if job post exists and is published
-    const jobPost = await this.db.select({ status: jobPosts.status, expiresAt: sql`"job_posts"."expires_at"` })
+    // Check if job post exists and is appliable
+    const jobPost = await this.db.select({ 
+      status: jobPosts.status, 
+      applicationDeadline: jobPosts.applicationDeadline,
+      agencyId: jobPosts.agencyId
+    })
       .from(jobPosts)
-      .where(eq(jobPosts.id, applicationData.jobPostId))
+      .where(eq(jobPosts.id, (applicationData as any).jobId || applicationData.jobPostId))
       .limit(1);
-
-    if (!jobPost.length || jobPost[0].status !== 'PUBLISHED') {
-      throw new NotFoundException('Job post not found or not available');
+    
+    if (!jobPost.length) {
+      throw new NotFoundException('Job post not found');
+    }
+    
+    if (!(JOB_APPLYABLE_STATUSES as readonly string[]).includes(jobPost[0].status as any)) {
+      throw new NotFoundException('Job post is not available for applications');
     }
 
-    // Check if application deadline has passed
-    const deadline = new Date((jobPost[0] as any).expiresAt as any);
-    if (deadline < new Date()) {
-      throw new BadRequestException('Application deadline has passed');
+    // Check if user is trying to apply to their own job
+    if (jobPost[0].agencyId === userId) {
+      throw new BadRequestException('You cannot apply to your own job');
+    }
+
+    // (optional) Check if application deadline has passed
+    if (jobPost[0].applicationDeadline && new Date(jobPost[0].applicationDeadline) < new Date()) {
+      throw new NotFoundException('Job post is not available for applications');
     }
 
     // Check if user has already applied
     const existingApplication = await this.db.select({ id: jobApplications.id })
       .from(jobApplications)
       .where(and(
-        eq(jobApplications.jobId, applicationData.jobPostId),
-        eq(jobApplications.talentProfileId, talentProfile[0].id)
+        eq(jobApplications.jobId, (applicationData as any).jobId || applicationData.jobPostId),
+        eq(jobApplications.talentProfileId, effectiveTalentProfileId)
       ))
       .limit(1);
 
     if (existingApplication.length > 0) {
-      throw new BadRequestException('You have already applied to this job');
+      // Aynı ilana tekrar başvuru denemesi
+      throw new ConflictException('Bu ilana zaten başvurmuşsunuz.');
     }
 
     // TODO: Check application quota/entitlement here
 
-    const newApplication = await this.db.insert(jobApplications)
-      .values({
-        jobId: applicationData.jobPostId,
-        talentProfileId: talentProfile[0].id,
-        applicantUserId: userId,
-        coverLetter: applicationData.coverLetter,
-        // selectedMedia: applicationData.portfolioItems || [], // Field doesn't exist in schema
-        // additionalNotes: undefined, // Field doesn't exist in schema
-        status: 'SUBMITTED',
-      })
-      .returning();
+    try {
+      const newApplication = await this.db.insert(jobApplications)
+        .values({
+          jobId: (applicationData as any).jobId || applicationData.jobPostId,
+          talentProfileId: effectiveTalentProfileId,
+          applicantUserId: userId,
+          coverLetter: applicationData.coverLetter,
+          status: 'SUBMITTED',
+        })
+        .returning();
 
-    // Update application count
-    await this.db.update(jobPosts)
-      .set({
-        currentApplications: sql`${jobPosts.currentApplications} + 1`,
-        updatedAt: new Date()
-      })
-      .where(eq(jobPosts.id, applicationData.jobPostId));
+      // Do not update any counter column here; counts will be computed dynamically.
 
-    return newApplication[0];
+      return newApplication[0];
+    } catch (e: any) {
+      const code = e?.code;
+      const constraint = e?.constraint;
+      // PG unique violation -> tekilleştirme hatası
+      if (code === '23505' && constraint === 'uq_job_applications_job_user') {
+        throw new ConflictException('Bu ilana zaten başvurmuşsunuz.');
+      }
+      if (code === '23503' || code === '23502') {
+        throw new BadRequestException('Geçersiz istek (FK/NULL ihlali).');
+      }
+      throw new InternalServerErrorException();
+    }
   }
 
   async getJobApplications(jobId: string, userId: string, page = 1, limit = 20) {
@@ -575,11 +608,12 @@ export class JobsService {
       status: jobApplications.status,
       coverLetter: jobApplications.coverLetter,
       reviewedAt: jobApplications.reviewedAt,
+      createdAt: jobApplications.createdAt,
       jobId: jobPosts.id,
       jobTitle: jobPosts.title,
       jobType: jobPosts.jobType,
       jobCity: jobPosts.city,
-      expiresAt: sql`"job_posts"."expires_at"`,
+      applicationDeadline: jobPosts.applicationDeadline,
       agencyCompanyName: agencyProfiles.companyName,
     })
       .from(jobApplications)

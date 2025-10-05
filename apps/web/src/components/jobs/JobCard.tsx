@@ -15,6 +15,7 @@ import {
 import Link from 'next/link';
 import { Job, UsersMeFlags } from '../../types/jobs';
 import { JobCTA } from './JobCTA';
+import { ApplicantsPopover } from './ApplicantsPopover';
 import JobDetailsModal from './JobDetailsModal';
 
 interface JobCardProps {
@@ -26,6 +27,28 @@ interface JobCardProps {
 
 export function JobCard({ job, userFlags, isVisitor, currentUser }: JobCardProps) {
   const [open, setOpen] = useState(false);
+  const initialApplications =
+    (job as any).applicationsCount ??
+    (job as any).applications_count ??
+    (job as any).currentApplications ??
+    (job as any).current_applications ??
+    0;
+  const [applicationCount, setApplicationCount] = useState(initialApplications);
+
+  // Debug logging for popover enablement
+  const isAgencyOwner = Boolean(
+    currentUser && 
+    currentUser.role === 'AGENCY' && 
+    currentUser.agencyProfileId === job.agencyId
+  );
+  
+  console.debug('[Applicants] check', {
+    jobId: job.id,
+    jobAgencyId: job.agencyId,
+    myAgencyId: currentUser?.agencyProfileId,
+    role: currentUser?.role,
+    enabled: isAgencyOwner
+  });
 
   const getTimeLeft = (deadline: string) => {
     const now = new Date();
@@ -130,7 +153,11 @@ export function JobCard({ job, userFlags, isVisitor, currentUser }: JobCardProps
             </div>
             <div className="flex items-center gap-1">
               <Users className="h-3 w-3" />
-              <span>{job.applicationCount || 0} başvuru</span>
+              <ApplicantsPopover
+                jobId={job.id}
+                count={applicationCount}
+                enabled={isAgencyOwner}
+              />
             </div>
           </div>
           
@@ -149,6 +176,7 @@ export function JobCard({ job, userFlags, isVisitor, currentUser }: JobCardProps
               jobId={job.id}
               userFlags={userFlags}
               isVisitor={isVisitor}
+              onApplicationSuccess={() => setApplicationCount((prev: number) => prev + 1)}
             />
           </div>
         </div>

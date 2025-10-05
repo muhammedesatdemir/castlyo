@@ -143,7 +143,7 @@ export declare const jobPosts: import("drizzle-orm/pg-core").PgTableWithColumns<
             tableName: "job_posts";
             dataType: "string";
             columnType: "PgEnumColumn";
-            data: "ANY" | "MALE" | "FEMALE" | "OTHER";
+            data: "MALE" | "FEMALE" | "OTHER" | "ANY";
             driverParam: string;
             notNull: false;
             hasDefault: true;

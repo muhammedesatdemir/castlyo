@@ -4,7 +4,7 @@ import { locationTypeEnum, jobTypeEnum, experienceLevelEnum, genderRequirementEn
 
 export const jobPosts = pgTable('job_posts', {
   id: uuid('id').defaultRandom().primaryKey(),
-  agencyId: uuid('agency_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  agencyId: uuid('agency_id').notNull().references(() => agencyProfiles.id, { onDelete: 'cascade' }),
   title: text('title').notNull(),
   description: text('description').notNull(),
   city: text('city'),

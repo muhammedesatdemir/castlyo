@@ -15,6 +15,7 @@ import {
   Logger
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiQuery, ApiResponse } from '@nestjs/swagger';
+import { JobStatus } from '@castlyo/types/src/enums';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { Public } from '../auth/decorators/public.decorator';
 import { JobsService } from './jobs.service';
@@ -57,7 +58,7 @@ export class JobsController {
     required: false, 
     type: String, 
     description: 'Filter by job status', 
-    enum: ['DRAFT', 'PUBLISHED', 'CLOSED', 'OPEN'],
+    enum: ['DRAFT', 'PUBLISHED', 'OPEN', 'CLOSED', 'CANCELLED'] as JobStatus[],
     example: 'PUBLISHED'
   })
   @ApiResponse({ 

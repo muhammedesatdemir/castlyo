@@ -1,7 +1,7 @@
 import { Injectable, Inject, Logger, NotFoundException } from '@nestjs/common';
 import { DRIZZLE } from '@/config/database.module';
 import { eq } from 'drizzle-orm';
-import { users, talentProfiles } from '@castlyo/database';
+import { users, talentProfiles, agencyProfiles } from '@castlyo/database';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { TALENT_REQUIRED_FIELDS, AGENCY_REQUIRED_FIELDS } from '@/common/constants/profile-completeness';
 
@@ -97,6 +97,17 @@ export class UsersService {
     const userData = user[0];
     const role = userData.role;
 
+    // Get agency profile ID if user is an agency
+    let agencyProfileId = null;
+    if (role === 'AGENCY') {
+      const agencyProfile = await this.db
+        .select({ id: agencyProfiles.id })
+        .from(agencyProfiles)
+        .where(eq(agencyProfiles.userId, userId))
+        .limit(1);
+      agencyProfileId = agencyProfile[0]?.id || null;
+    }
+
     // Check profile completeness in parallel
     const [talentComplete, agencyComplete] = await Promise.all([
       this.isTalentProfileComplete(userId),
@@ -107,10 +118,11 @@ export class UsersService {
     const canPostJobs = role === 'AGENCY' && agencyComplete;
     const canApplyJobs = role === 'TALENT' && talentComplete;
 
-    this.logger.debug(`[getMe] User ${userId} - Role: ${role}, Talent Complete: ${talentComplete}, Agency Complete: ${agencyComplete}, Can Post: ${canPostJobs}, Can Apply: ${canApplyJobs}`);
+    this.logger.debug(`[getMe] User ${userId} - Role: ${role}, Agency Profile ID: ${agencyProfileId}, Talent Complete: ${talentComplete}, Agency Complete: ${agencyComplete}, Can Post: ${canPostJobs}, Can Apply: ${canApplyJobs}`);
     
     return {
       ...userData,
+      agencyProfileId,
       isAgencyProfileComplete: agencyComplete,
       isTalentProfileComplete: talentComplete,
       canPostJobs,
