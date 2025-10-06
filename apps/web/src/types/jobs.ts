@@ -29,7 +29,7 @@ export interface Job {
   isUrgent?: boolean;
   isFeatured?: boolean;
   views?: number;
-  applicationCount?: number;
+  applicationCount: number; // Always a number after normalization
   images?: string[];
   agency?: {
     companyName: string;

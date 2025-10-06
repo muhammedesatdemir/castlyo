@@ -16,5 +16,6 @@ export * from './schema/payments';
 export * from './schema/audit';
 export * from './schema/verification';
 export * from './schema/consent';
+export * from './schema/talent-access-requests';
 export type Database = typeof db;
 export type Schema = typeof schema;

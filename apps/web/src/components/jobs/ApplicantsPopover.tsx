@@ -49,12 +49,12 @@ export function ApplicantsPopover({
   }, [open]);
 
   if (!enabled) {
-    return <span className="text-muted-foreground">{count} başvuru</span>;
+    return <span className="text-[#F6E6C3]">{count} başvuru</span>;
   }
 
   return (
     <div className="relative" ref={ref}>
-      <Button variant="link" className="p-0 h-auto underline underline-offset-4" onClick={() => setOpen(v => !v)}>
+      <Button variant="link" className="p-0 h-auto underline underline-offset-4 text-[#F6E6C3]" onClick={() => setOpen(v => !v)}>
         {count} başvuru
       </Button>
       {open && (

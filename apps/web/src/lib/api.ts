@@ -1,5 +1,6 @@
 import axios from 'axios'
 import { getSession } from 'next-auth/react'
+import { toast } from '@/components/ui/toast'
 
 // güvenli join
 const join = (...parts: string[]) =>
@@ -32,15 +33,132 @@ export const api = axios.create({
 api.interceptors.response.use(
   (response) => response,
   async (error) => {
-    if (error.response?.status === 401) {
-      // Token expired, redirect to login
-      if (typeof window !== 'undefined') {
-        window.location.href = '/auth'
+    if (typeof window !== 'undefined') {
+      const status = error?.response?.status
+      const url: string | undefined = error?.config?.url
+      if (!__SESSION_KILLED__ && (status === 401 || (status === 404 && isUsersMe(url)))) {
+        killSessionAndRedirect('axios')
+        return Promise.reject(new Error('SESSION_INVALID'))
       }
     }
     return Promise.reject(error)
   }
 )
+
+// Client-side auth cleanup utility
+export function clearClientAuth() {
+  try {
+    if (typeof window !== 'undefined') {
+      // 0) Sunucu logout'unu dene (httpOnly cookie'leri düşürür)
+      try { fetch('/api/proxy/api/v1/session/logout', { method: 'POST', credentials: 'include' }); } catch {}
+
+      // 1) Bilinen anahtarlar
+      const explicitKeys = [
+        'role','accountType','isTalent',
+        'talentProfileId','agencyProfileId',
+        'onboardingRole','onboardingStep',
+        'appliedJobs','appliedJobIds',
+        'savedJobs','savedTalents','favorites',
+        'nextauth.message','castlyo_notification_permission','ally-supports-cache',
+        // legacy
+        'accessToken','refreshToken','user','castlyo_user'
+      ];
+      explicitKeys.forEach((k) => { try { localStorage.removeItem(k); } catch {} });
+
+      // 2) Heuristik: isimde belirli parçaları geçen TÜM anahtarları sil
+      try {
+        const patterns = /(zustand|apply|applied|basvur|favorite|saved|bookmark|profile|me:|user:|castlyo:)/i;
+        for (let i = localStorage.length - 1; i >= 0; i--) {
+          const k = localStorage.key(i) || '';
+          if (patterns.test(k)) {
+            try { localStorage.removeItem(k); } catch {}
+          }
+        }
+      } catch {}
+
+      // 3) Cache'leri boşalt
+      try { (globalThis as any)?.queryClient?.clear?.(); } catch {}
+      try {
+        const { mutate } = require('swr');
+        mutate((key: any) => typeof key === 'string' && key.includes('/users/me'), null, { revalidate: false });
+      } catch {}
+
+      // 4) Kill-switch sıfırla
+      try { (globalThis as any).__SESSION_KILLED__ = false; } catch {}
+
+      // 5) Görünür cookie'leri temizlemeyi dene (httpOnly olmayanlar)
+      try {
+        const cookieNames = document.cookie.split(';').map((c) => c.split('=')[0].trim());
+        cookieNames.forEach((name) => {
+          try { document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/`; } catch {}
+        });
+      } catch {}
+    }
+  } catch {}
+}
+
+// Prefer '/auth' if available, otherwise known alternatives, fall back to '/'
+let __SESSION_REDIRECTING__ = false;
+
+export function redirectToAuth() {
+  try {
+    if (__SESSION_REDIRECTING__) return;
+    __SESSION_REDIRECTING__ = true;
+
+    const current = typeof window !== 'undefined' ? window.location.pathname : '/';
+    const candidates = ['/auth', '/signin', '/giris', '/login', '/'];
+    const target = candidates.find(Boolean) || '/';
+
+    if (current === target) {
+      __SESSION_REDIRECTING__ = false; // allow auth page to work normally
+      return;
+    }
+
+    window.location.replace(target)
+  } catch {
+    try { window.location.replace('/') } catch {}
+  }
+}
+
+// --- Global session kill-switch & helpers ---
+export let __SESSION_KILLED__ = false;
+
+function isUsersMe(url: string | undefined) {
+  if (!url) return false;
+  try {
+    const clean = url.split('?')[0];
+    return clean.endsWith('/users/me');
+  } catch {
+    return false;
+  }
+}
+
+function killSessionAndRedirect(_reason?: string) {
+  if (__SESSION_KILLED__) return;
+  __SESSION_KILLED__ = true;
+  try { clearClientAuth(); } catch {}
+  try {
+    toast.error(
+      'Oturum geçersiz',
+      'Hesabınız silinmiş olabilir veya oturum süresi doldu. Lütfen yeniden giriş yapın.',
+      3000,
+      'session-invalid'
+    );
+  } catch {}
+  try { redirectToAuth(); } catch {}
+}
+
+// Axios request interceptor: short-circuit users/me when killed
+api.interceptors.request.use((config) => {
+  if (typeof window !== 'undefined') {
+    if (__SESSION_KILLED__ && isUsersMe(config?.url as string | undefined)) {
+      const err: any = new Error('SESSION_KILLED');
+      (err as any).status = 401;
+      throw err;
+    }
+  }
+  return config;
+});
 
 // API functions
 export const profileApi = {
@@ -128,12 +246,29 @@ export async function apiFetch<T>(
 
   // KRİTİK: Authorization header'ını asla ekleme - cookie tabanlı kimlik doğrulama kullan
 
-  const res = await fetch(`${API_BASE}${path}`, {
+  const url = `${API_BASE}${path}`
+  if (typeof window !== 'undefined') {
+    if (__SESSION_KILLED__ && isUsersMe(url)) {
+      const e: any = new Error('SESSION_KILLED');
+      (e as any).status = 401;
+      throw e;
+    }
+  }
+
+  const res = await fetch(url, {
     ...opts,
     headers,
     body: opts.json !== undefined ? JSON.stringify(opts.json) : (opts.body as BodyInit | null | undefined),
     credentials: opts.credentials ?? 'include',
   });
+
+  // Global oturum kontrolü (yalnızca client)
+  if (typeof window !== 'undefined') {
+    if (!__SESSION_KILLED__ && (res.status === 401 || (url.endsWith('/users/me') && res.status === 404))) {
+      killSessionAndRedirect('fetch')
+      throw new Error('SESSION_INVALID')
+    }
+  }
 
   // 404'u "profil yok" olarak ele al - hata fırlatma
   if (res.status === 404) {

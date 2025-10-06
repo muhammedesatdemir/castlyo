@@ -27,13 +27,16 @@ interface JobCardProps {
 
 export function JobCard({ job, userFlags, isVisitor, currentUser }: JobCardProps) {
   const [open, setOpen] = useState(false);
-  const initialApplications =
+  // Ensure application count is always a number
+  const initialApplications = Number(
+    job.applicationCount ??
     (job as any).applicationsCount ??
     (job as any).applications_count ??
     (job as any).currentApplications ??
     (job as any).current_applications ??
-    0;
-  const [applicationCount, setApplicationCount] = useState(initialApplications);
+    0
+  );
+  const [applicationCount, setApplicationCount] = useState<number>(initialApplications);
 
   // Debug logging for popover enablement
   const isAgencyOwner = Boolean(

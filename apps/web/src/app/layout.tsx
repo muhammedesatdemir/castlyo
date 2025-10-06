@@ -3,8 +3,8 @@ import { Inter, Cinzel } from 'next/font/google'
 import { AuthProvider } from '@/providers/auth-provider'
 import QueryProvider from '@/providers/query-provider'
 import { ToastContainer } from '@/components/ui/toast'
-import { ApiHealthCheck } from '@/components/dev/ApiHealthCheck'
 import RoleGateGlobalGuard from '@/components/auth/RoleGateGlobalGuard'
+import SessionGuard from '@/components/auth/SessionGuard'
 import './globals.css'
 
 const inter = Inter({
@@ -50,12 +50,13 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <body className="font-sans antialiased bg-[#0b0b0f] text-white">
         <QueryProvider>
           <AuthProvider>
-            <div className="min-h-screen">
-              {children}
-            </div>
+            <SessionGuard>
+              <div className="min-h-screen">
+                {children}
+              </div>
+            </SessionGuard>
             <ToastContainer />
             <RoleGateGlobalGuard />
-            {process.env.NODE_ENV === 'development' && <ApiHealthCheck />}
           </AuthProvider>
         </QueryProvider>
       </body>

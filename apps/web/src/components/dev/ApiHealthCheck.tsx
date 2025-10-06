@@ -4,6 +4,8 @@ import { useState, useEffect, useRef } from 'react'
 import { checkApiHealth, getApiDisplayUrl } from '@/lib/health'
 
 export function ApiHealthCheck() {
+  const SHOW = process.env.NEXT_PUBLIC_SHOW_HEALTH_WIDGET === '1'
+  if (!SHOW) return null as any
   const [status, setStatus] = useState<'loading' | 'connected' | 'error'>('loading')
   const [apiUrl, setApiUrl] = useState<string>('')
   const [errorMessage, setErrorMessage] = useState<string>('')
@@ -56,7 +58,7 @@ export function ApiHealthCheck() {
   }
 
   return (
-    <div className="fixed top-4 right-4 z-50 bg-white border border-gray-300 rounded-lg p-4 shadow-lg max-w-sm">
+    <div data-component="api-health-check" className="fixed top-4 right-4 z-50 bg-white border border-gray-300 rounded-lg p-4 shadow-lg max-w-sm">
       <h3 className="font-semibold text-sm mb-2">API Health Check</h3>
       <div className="text-xs space-y-1">
         <div>

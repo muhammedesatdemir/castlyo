@@ -13,3 +13,4 @@ export declare const subscriptionAudienceEnum: import("drizzle-orm/pg-core").PgE
 export declare const paymentProviderEnum: import("drizzle-orm/pg-core").PgEnum<["STRIPE", "IYZICO", "MOCK"]>;
 export declare const paymentStatusEnum: import("drizzle-orm/pg-core").PgEnum<["PENDING", "SUCCEEDED", "FAILED", "REFUNDED"]>;
 export declare const auditActionEnum: import("drizzle-orm/pg-core").PgEnum<["CREATE", "UPDATE", "DELETE", "LOGIN", "LOGOUT", "VIEW", "DOWNLOAD", "EXPORT", "DATA_SHARED", "CONTACT_GRANTED", "CONTACT_REQUESTED", "CONTACT_REVOKED", "CONSENT_GRANTED", "CONSENT_REVOKED", "DATA_SHARING_RESTRICTED", "MARKETING_STOPPED", "COMMUNICATION_RESTRICTED"]>;
+export declare const accessStatusEnum: import("drizzle-orm/pg-core").PgEnum<["PENDING", "ACCEPTED", "REJECTED", "EXPIRED"]>;

@@ -1,6 +1,8 @@
 "use client";
 import { useRef, useState } from "react";
 import { useSession } from "next-auth/react";
+import { useRouter } from "next/navigation";
+import { toast } from "@/components/ui/toast";
 
 type Props = {
   value?: string | null;
@@ -14,14 +16,19 @@ export default function AvatarInput({ value, onChange, label = "Profil Fotoğraf
   const [preview, setPreview] = useState<string | null>(value ?? null);
   const [busy, setBusy] = useState(false);
   const inp = useRef<HTMLInputElement>(null);
+  const router = useRouter();
 
   async function selectFile(e: React.ChangeEvent<HTMLInputElement>) {
     const f = e.target.files?.[0];
     if (!f) return;
     if (!["image/jpeg","image/png","image/webp"].includes(f.type)) {
-      alert("JPEG/PNG/WEBP yükleyin."); return;
+      toast.info("Geçersiz dosya türü", "Lütfen JPEG/PNG/WEBP yükleyin.", 3500);
+      return;
     }
-    if (f.size > 2 * 1024 * 1024) { alert("Maksimum 2 MB."); return; }
+    if (f.size > 2 * 1024 * 1024) {
+      toast.info("Dosya çok büyük", "Maksimum 2 MB olmalıdır.", 3500);
+      return;
+    }
 
     const localUrl = URL.createObjectURL(f);
     setPreview(localUrl);
@@ -39,17 +46,30 @@ export default function AvatarInput({ value, onChange, label = "Profil Fotoğraf
         if (!userRes.ok) throw new Error("Kullanıcı bilgisi alınamadı");
         const user = await userRes.json();
         const fallbackProfileId = user.talent_profile_id;
-        if (!fallbackProfileId) throw new Error("Talent profil ID bulunamadı. Lütfen önce profilinizi oluşturun.");
+        if (!fallbackProfileId) {
+          toast.error(
+            "Profil Gerekli",
+            "Fotoğraf yüklemeden önce profilinizi oluşturmanız gerekiyor.",
+            2000,
+            "avatar-missing-profile"
+          );
+          setTimeout(() => router.push("/profile"), 2000);
+          // Revert optimistic preview/state and stop further processing
+          URL.revokeObjectURL(localUrl);
+          setPreview(value ?? null);
+          onChange(value ?? null);
+          return;
+        }
         return await uploadWithProfileId(f, fallbackProfileId);
       }
 
       await uploadWithProfileId(f, profileId);
     } catch (err) {
-      console.error("Avatar upload error:", err);
       URL.revokeObjectURL(localUrl);
       setPreview(value ?? null);
       onChange(value ?? null);
-      alert(`Yükleme sırasında hata: ${err instanceof Error ? err.message : "Bilinmeyen hata"}`);
+      const message = err instanceof Error ? err.message : "Bilinmeyen hata";
+      toast.error("Yükleme sırasında hata", message, 4000);
     } finally {
       setBusy(false);
       if (inp.current) inp.current.value = "";

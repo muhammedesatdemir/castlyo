@@ -533,7 +533,7 @@ export declare const jobApplications: import("drizzle-orm/pg-core").PgTableWithC
             tableName: "job_applications";
             dataType: "string";
             columnType: "PgText";
-            data: "SUBMITTED" | "REVIEWING" | "REJECTED" | "OFFERED" | "HIRED";
+            data: "REJECTED" | "SUBMITTED" | "REVIEWING" | "OFFERED" | "HIRED";
             driverParam: string;
             notNull: false;
             hasDefault: true;
@@ -545,7 +545,7 @@ export declare const jobApplications: import("drizzle-orm/pg-core").PgTableWithC
             identity: undefined;
             generated: undefined;
         }, {}, {
-            $type: "SUBMITTED" | "REVIEWING" | "REJECTED" | "OFFERED" | "HIRED";
+            $type: "REJECTED" | "SUBMITTED" | "REVIEWING" | "OFFERED" | "HIRED";
         }>;
         coverLetter: import("drizzle-orm/pg-core").PgColumn<{
             name: "cover_letter";

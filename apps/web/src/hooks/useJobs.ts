@@ -53,8 +53,27 @@ export function useJobs() {
 
       const data: JobsResponse = await response.json();
       
-      // Safe data adapter
-      const jobsArray = Array.isArray(data) ? data : data?.data ?? [];
+      // Safe data adapter with normalization
+      const rawJobs = Array.isArray(data) ? data : data?.data ?? [];
+      const jobsArray = rawJobs.map((job: any) => ({
+        ...job,
+        // Normalize application count to number
+        applicationCount: Number(
+          job.applicationsCount ?? 
+          job.applications_count ?? 
+          job.currentApplications ?? 
+          job.current_applications ?? 
+          0
+        ),
+        // Normalize views to number
+        views: Number(job.views ?? 0),
+        // Normalize other numeric fields
+        salary_min: job.salary_min ? Number(job.salary_min) : null,
+        salary_max: job.salary_max ? Number(job.salary_max) : null,
+        ageMin: job.ageMin ? Number(job.ageMin) : null,
+        ageMax: job.ageMax ? Number(job.ageMax) : null,
+        maxApplications: job.maxApplications ? Number(job.maxApplications) : null,
+      }));
       const metaData = Array.isArray(data) ? null : data?.meta ?? null;
       
       if (!cancelled) {
@@ -136,8 +155,27 @@ export function useJobs() {
 
         const data: JobsResponse = await response.json();
         
-        // Safe data adapter
-        const jobsArray = Array.isArray(data) ? data : data?.data ?? [];
+        // Safe data adapter with normalization
+        const rawJobs = Array.isArray(data) ? data : data?.data ?? [];
+        const jobsArray = rawJobs.map((job: any) => ({
+          ...job,
+          // Normalize application count to number
+          applicationCount: Number(
+            job.applicationsCount ?? 
+            job.applications_count ?? 
+            job.currentApplications ?? 
+            job.current_applications ?? 
+            0
+          ),
+          // Normalize views to number
+          views: Number(job.views ?? 0),
+          // Normalize other numeric fields
+          salary_min: job.salary_min ? Number(job.salary_min) : null,
+          salary_max: job.salary_max ? Number(job.salary_max) : null,
+          ageMin: job.ageMin ? Number(job.ageMin) : null,
+          ageMax: job.ageMax ? Number(job.ageMax) : null,
+          maxApplications: job.maxApplications ? Number(job.maxApplications) : null,
+        }));
         const metaData = Array.isArray(data) ? null : data?.meta ?? null;
         
         if (!cancelled) {

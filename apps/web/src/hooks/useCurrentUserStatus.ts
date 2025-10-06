@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import useMe from "@/hooks/useMe";
 import { UsersMeFlags } from "../types/jobs";
 
 export type UserRole = "AGENCY" | "TALENT" | "ADMIN" | "UNKNOWN";
@@ -16,31 +17,10 @@ export type CurrentUserStatus = {
 };
 
 export function useCurrentUserStatus(): CurrentUserStatus {
-  const [raw, setRaw] = useState<UsersMeFlags | null>(null);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    let ignore = false;
-    (async () => {
-      try {
-        const res = await fetch("/api/proxy/api/v1/users/me", { credentials: "include" });
-        if (!res.ok) {
-          setRaw(null);
-        } else {
-          const data = await res.json();
-          setRaw(data?.data ?? data); // {data:{...}} veya direkt {...}
-        }
-      } catch {
-        setRaw(null);
-      } finally {
-        if (!ignore) setLoading(false);
-      }
-    })();
-    return () => { ignore = true; };
-  }, []);
+  const { me: raw, meLoading: loading } = useMe();
 
   return useMemo<CurrentUserStatus>(() => {
-    const user = raw || null;
+    const user = (raw as any) || null;
     const role: UserRole = (user?.role as UserRole) ?? "UNKNOWN";
     const isAuth = !!user?.id;
 

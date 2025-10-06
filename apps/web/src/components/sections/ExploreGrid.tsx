@@ -125,14 +125,7 @@ export default function ExploreGrid() {
   const { data: session } = useSession();
   const isTalent = (session?.user as any)?.role === 'TALENT';
   
-  const { data: rawMe } = useSWR<any>(
-    isTalent ? '/api/proxy/api/v1/users/me' : null,
-    fetcher,
-    { 
-      shouldRetryOnError: (err) => err?.status !== 404, // 404'te retry yapma
-      revalidateOnFocus: false 
-    }
-  );
+  const rawMe = null; // users/me artık useMe ile okunuyor; burada gereksiz
 
   // Me verisini de mapper ile işle
   const me: TalentCard | null = rawMe ? toCard(rawMe) : null;

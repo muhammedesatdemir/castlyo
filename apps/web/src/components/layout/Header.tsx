@@ -2,6 +2,7 @@
 
 import Link from 'next/link'
 import { useSession, signIn, signOut } from 'next-auth/react'
+import { clearClientAuth } from '@/lib/api'
 import { Menu, X } from 'lucide-react'
 import { useState } from 'react'
 import RoleGateCTA from '@/components/shared/RoleGateCTA'
@@ -100,7 +101,14 @@ export default function Header({ onSignup }: HeaderProps) {
           })}
 
           <button
-            onClick={() => (isLoggedIn ? signOut() : signIn())}
+            onClick={() => {
+              if (isLoggedIn) {
+                try { clearClientAuth() } catch {}
+                signOut()
+              } else {
+                signIn()
+              }
+            }}
             className="w-full px-4 py-2 bg-[#F6E6C3] text-[#1b1b1b] rounded-md font-semibold hover:opacity-90"
           >
             {isLoggedIn ? 'Çıkış Yap' : 'Giriş Yap'}

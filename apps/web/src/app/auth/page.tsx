@@ -12,6 +12,7 @@ import { NotificationPermission } from '@/components/ui/notification-permission'
 import { KvkkDialog } from '@/components/ui/kvkk-dialog'
 import { ArrowLeft, Eye, EyeOff } from 'lucide-react'
 import Link from 'next/link'
+import { __SESSION_KILLED__ } from '@/lib/api'
 
 type AuthMode = 'login' | 'register'
 type UserRole = 'talent' | 'agency'
@@ -326,6 +327,9 @@ export default function AuthPage() {
             // Invalidate me query to get fresh role data
             queryClient.invalidateQueries({ queryKey: ['me'] })
             
+            // Reset global kill-switch so /users/me can fetch again
+            try { (window as any).__SESSION_KILLED__ = false; } catch {}
+
             // Login başarılı, NextAuth'ın önerdiği URL'e yönlendir
             router.replace(result.url)
           } else if (result?.ok) {
@@ -335,6 +339,9 @@ export default function AuthPage() {
             // Invalidate me query to get fresh role data
             queryClient.invalidateQueries({ queryKey: ['me'] })
             
+            // Reset kill-switch
+            try { (window as any).__SESSION_KILLED__ = false; } catch {}
+
             // Fallback: callbackUrl'e yönlendir (ana sayfaya, role'e göre onboarding'e yönlendirilir)
             router.replace(nextUrl || '/')
           }

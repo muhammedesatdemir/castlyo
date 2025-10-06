@@ -1,45 +1,54 @@
-'use client';
-import { useQuery } from '@tanstack/react-query';
+"use client";
 
-export interface MeData {
+import useSWR from "swr";
+import { apiFetch, __SESSION_KILLED__ } from "@/lib/api";
+
+export type Me = {
   id: string;
   email: string;
-  role: 'AGENCY' | 'TALENT' | 'ADMIN';
-  first_name?: string;
-  last_name?: string;
-  phone?: string;
-  talent_profile_id?: string;
-  agency_profile_id?: string;
-  canApplyJobs?: boolean;
-  canPostJobs?: boolean;
-  isTalentProfileComplete?: boolean;
-  isAgencyProfileComplete?: boolean;
+  role: string;
+  // ihtiyaca göre diğer alanlar...
+};
+
+function useMeImpl(options?: {
+  revalidateOnFocus?: boolean;
+  shouldRetryOnError?: (err: any) => boolean;
+}) {
+  const key = __SESSION_KILLED__ ? null : "/api/proxy/api/v1/users/me";
+
+  const fetcher = async (_url: string) => {
+    const data = await apiFetch<Me>('/users/me' as any).catch((e) => {
+      // apiFetch already throws with status; rethrow for SWR handler
+      throw e;
+    });
+    return data as Me;
+  };
+
+  const { data, error, isLoading, mutate } = useSWR<Me>(key, fetcher, {
+    revalidateOnFocus: false,
+    shouldRetryOnError: (err: any) => {
+      const s = err?.status ?? err?.response?.status;
+      if (__SESSION_KILLED__) return false;
+      return !(s === 401 || s === 404);
+    },
+    ...options,
+  });
+
+  // Geri uyumluluk: hem eski (data/isLoading) hem yeni (me/meLoading) alanları döndür.
+  return {
+    // yeni isimlendirme
+    me: data ?? null,
+    meError: error ?? null,
+    meLoading: !!key && isLoading,
+    mutateMe: mutate,
+    // eski isimlendirme (back-compat)
+    data: data ?? null,
+    error: error ?? null,
+    isLoading: !!key && isLoading,
+    mutate,
+  };
 }
 
-export function useMe() {
-  return useQuery({
-    queryKey: ['me'],
-    queryFn: async (): Promise<MeData> => {
-      const res = await fetch('/api/proxy/api/v1/users/me', { 
-        credentials: 'include' 
-      });
-      
-      if (!res.ok) {
-        if (res.status === 401) {
-          throw new Error('Unauthorized');
-        }
-        throw new Error('Failed to load user data');
-      }
-      
-      return res.json();
-    },
-    staleTime: 0, // Her zaman fresh data al
-    retry: (failureCount, error) => {
-      // 401 durumunda retry yapma
-      if (error.message === 'Unauthorized') {
-        return false;
-      }
-      return failureCount < 3;
-    }
-  });
-}
+// Hem default, hem named export
+export default useMeImpl;
+export const useMe = useMeImpl;
