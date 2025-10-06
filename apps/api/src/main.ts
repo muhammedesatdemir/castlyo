@@ -12,6 +12,21 @@ async function bootstrap() {
   // Trust proxy for real IP detection (fixes rate limiting behind proxy)
   (app as any).set('trust proxy', 1);
 
+  // Root route handler
+  app.getHttpAdapter().get('/', (req, res) => {
+    res.json({
+      success: true,
+      message: 'Castlyo API is running',
+      version: '1.0.0',
+      timestamp: new Date().toISOString(),
+      endpoints: {
+        health: '/api/v1/health',
+        docs: '/api/docs',
+        jobs: '/api/v1/jobs'
+      }
+    });
+  });
+
   // Global prefix
   app.setGlobalPrefix('api/v1');
 
@@ -40,7 +55,12 @@ async function bootstrap() {
 
   // CORS
   app.enableCors({
-    origin: ['http://localhost:3000'],
+    origin: [
+      'http://localhost:3000',
+      'https://castlyo.com',
+      'https://www.castlyo.com',
+      'https://castlyo.onrender.com'
+    ],
     credentials: true,
     methods: ['GET','POST','PUT','PATCH','DELETE','OPTIONS'],
     allowedHeaders: ['Content-Type','Authorization'],
