@@ -34,9 +34,9 @@
     
     # Çalışmadan önce dist'in varlığını kontrol et, yoksa ağacı göster
     CMD ["sh","-lc","set -e; \
-      echo '--- debug: arama /app/apps/api/dist/main.js'; \
-      if [ ! -f /app/apps/api/dist/main.js ]; then \
-        echo 'dist yok! ağaç:'; ls -la /app; ls -la /app/apps || true; ls -la /app/apps/api || true; exit 66; \
+      echo '--- debug: arama /app/apps/api/dist/apps/api/src/main.js'; \
+      if [ ! -f /app/apps/api/dist/apps/api/src/main.js ]; then \
+        echo 'dist yok! ağaç:'; ls -la /app; ls -la /app/apps || true; ls -la /app/apps/api || true; ls -la /app/apps/api/dist || true; exit 66; \
       fi; \
-      node /app/apps/api/dist/main.js"]
+      node /app/apps/api/dist/apps/api/src/main.js"]
     
