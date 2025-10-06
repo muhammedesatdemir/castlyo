@@ -49,16 +49,13 @@ services:
       - key: ADV_PERMISSIONS_ENABLED
         value: true
       - key: SEARCH_ENABLED
-        value: true
+        value: false
       
-      # Meilisearch
+      # Meilisearch (disabled for free plan, can be enabled with external service)
       - key: MEILISEARCH_HOST
-        fromService:
-          name: castlyo-search
-          type: private_service
-          property: host
+        value: ""
       - key: MEILISEARCH_API_KEY
-        generateValue: true
+        value: ""
       
       # File Storage (will use Render's disk or external S3)
       - key: STORAGE_DRIVER
@@ -156,25 +153,6 @@ services:
         value: https://castlyo.com/privacy
       - key: TERMS_OF_SERVICE_URL
         value: https://castlyo.com/terms
-
-  # Meilisearch Service for Search Functionality
-  - type: private_service
-    name: castlyo-search
-    env: docker
-    dockerImage: getmeili/meilisearch:v1.5
-    plan: free
-    ports:
-      - port: 7700
-        protocol: tcp
-    disk:
-      name: meili-data
-      mountPath: /meili_data
-      sizeGB: 5
-    envVars:
-      - key: MEILI_ENV
-        value: production
-      - key: MEILI_MASTER_KEY
-        generateValue: true
 
 # Managed Databases
 databases:
