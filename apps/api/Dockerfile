@@ -2,40 +2,36 @@
     FROM node:20-alpine AS builder
     WORKDIR /app
     
-    # 1) Root ve workspace manifestlerini kopyala (lock dosyası dahil)
+    # Manifestler
     COPY package*.json ./
     COPY apps/api/package*.json ./apps/api/
     COPY packages/types/package*.json ./packages/types/
     COPY packages/ui/package*.json ./packages/ui/
     COPY packages/database/package*.json ./packages/database/
     
-    # 2) Tüm workspaces bağımlılıklarını (dev dahil) kur
-    #    (Nest CLI ve derleyiciler için dev deps gerekiyor)
+    # Dev deps dahil kur (Nest CLI vs. için gerekli)
     RUN npm ci
     
-    # 3) Kaynak kodu al ve yalnızca API'yi build et
+    # Kaynak kod
     COPY . .
+    
+    # Sadece API'yi derle
     RUN npm run build --workspace=@castlyo/api
-    # Bu adımın sonunda: /app/apps/api/dist/** mevcut
+    # Sonuç: /app/apps/api/dist/**
     
     # ---------- RUNTIME STAGE ----------
     FROM node:20-alpine AS runner
     ENV NODE_ENV=production
-    # Uygulama dizinini direkt API'ye ayarla
-    WORKDIR /app/apps/api
+    WORKDIR /app
     
-    # 1) Sadece çalışması gereken artefact'ları ve node_modules'u al
-    #    - API'nin derlenmiş çıktıları
-    #    - API package.json (start script vs.)
-    #    - root node_modules (hoisted bağımlılıklar)
-    #    - root package*.json (çoğu tool için faydalı ama zorunlu değil)
-    COPY --from=builder /app/apps/api/dist ./dist
-    COPY --from=builder /app/apps/api/package*.json ./
+    # Artefactlar ve bağımlılıklar
+    COPY --from=builder /app/apps/api/dist /app/apps/api/dist
+    COPY --from=builder /app/apps/api/package*.json /app/apps/api/
     COPY --from=builder /app/node_modules /app/node_modules
     COPY --from=builder /app/package*.json /app/
     
-    # 2) Port ve komut
     EXPOSE 3001
-    # Workdir zaten apps/api olduğundan doğrudan node ile başlat
-    CMD ["node", "dist/main.js"]
+    
+    # Başlamadan önce dist'i göster, sonra çalıştır
+    CMD ["sh", "-lc", "ls -la /app/apps/api/dist && node /app/apps/api/dist/main.js"]
     
