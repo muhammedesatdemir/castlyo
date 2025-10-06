@@ -5,9 +5,10 @@ services:
   # API Backend Service
   - type: web
     name: castlyo-api
-    env: docker
-    dockerContext: .
-    dockerfilePath: apps/api/Dockerfile
+    env: node
+    rootDir: .
+    buildCommand: npm ci && npm run build --workspace=@castlyo/api
+    startCommand: node dist/apps/api/src/main.js
     plan: free
     autoDeploy: true
     healthCheckPath: /api/v1/health
@@ -29,7 +30,7 @@ services:
       - key: NODE_ENV
         value: production
       - key: PORT
-        value: 3001
+        value: 10000
       
       # JWT Configuration
       - key: JWT_SECRET
@@ -114,7 +115,6 @@ services:
     buildCommand: npm ci && npm run build
     startCommand: npm run start
     plan: free
-    autoDeploy: true
     envVars:
       # API Configuration
       - key: NEXT_PUBLIC_API_URL
@@ -164,7 +164,6 @@ services:
       - source: 192.168.0.0/16
         description: Allow internal Render network
 
-# Managed Databases
 databases:
   - name: castlyo-db
     plan: free
