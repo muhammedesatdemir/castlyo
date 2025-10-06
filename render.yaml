@@ -6,8 +6,6 @@ services:
   - type: web
     name: castlyo-api
     env: docker
-    rootDir: apps/api
-    dockerContext: .
     dockerfilePath: apps/api/Dockerfile.optimized
     plan: free
     runtime: docker
