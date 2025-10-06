@@ -154,12 +154,12 @@ services:
       - key: TERMS_OF_SERVICE_URL
         value: https://castlyo.com/terms
 
+  # Redis Cache Service
+  - type: redis
+    name: castlyo-redis
+    plan: free
+
 # Managed Databases
 databases:
   - name: castlyo-db
-    plan: free
-
-# Redis Cache
-redis:
-  - name: castlyo-redis
     plan: free
