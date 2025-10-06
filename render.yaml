@@ -1,0 +1,187 @@
+# Render Blueprint for Castlyo Platform
+# This file defines all services needed for the complete platform deployment
+
+services:
+  # API Backend Service
+  - type: web
+    name: castlyo-api
+    env: docker
+    rootDir: apps/api
+    dockerContext: .
+    dockerfilePath: apps/api/Dockerfile.optimized
+    plan: free
+    runtime: docker
+    autoDeploy: true
+    healthCheckPath: /api/v1/health
+    envVars:
+      # Database
+      - key: DATABASE_URL
+        fromDatabase:
+          name: castlyo-db
+          property: connectionString
+      
+      # Redis Cache
+      - key: REDIS_URL
+        fromService:
+          name: castlyo-redis
+          type: redis
+          property: connectionString
+      
+      # Environment
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 3001
+      
+      # JWT Configuration
+      - key: JWT_SECRET
+        generateValue: true
+      - key: JWT_EXPIRES_IN
+        value: 7d
+      - key: JWT_REFRESH_SECRET
+        generateValue: true
+      - key: JWT_REFRESH_EXPIRES_IN
+        value: 30d
+      
+      # Feature Flags
+      - key: PAYMENTS_ENABLED
+        value: true
+      - key: ADV_PERMISSIONS_ENABLED
+        value: true
+      - key: SEARCH_ENABLED
+        value: true
+      
+      # Meilisearch
+      - key: MEILISEARCH_HOST
+        fromService:
+          name: castlyo-search
+          type: private_service
+          property: host
+      - key: MEILISEARCH_API_KEY
+        generateValue: true
+      
+      # File Storage (will use Render's disk or external S3)
+      - key: STORAGE_DRIVER
+        value: local
+      - key: MAX_FILE_SIZE
+        value: 10485760
+      - key: ALLOWED_IMAGE_TYPES
+        value: jpg,jpeg,png,webp
+      - key: ALLOWED_VIDEO_TYPES
+        value: mp4,mov,avi
+      - key: ALLOWED_DOCUMENT_TYPES
+        value: pdf,doc,docx
+      
+      # CORS Origins (will be updated after web service is created)
+      - key: CORS_ORIGINS
+        value: https://castlyo-web.onrender.com,https://castlyo.com,https://www.castlyo.com
+      
+      # Email Configuration (using production SMTP)
+      - key: SMTP_HOST
+        value: smtp.gmail.com
+      - key: SMTP_PORT
+        value: 587
+      - key: SMTP_FROM
+        value: noreply@castlyo.com
+      # Add your SMTP credentials manually in Render dashboard
+      
+      # Application URLs
+      - key: FRONTEND_URL
+        value: https://castlyo-web.onrender.com
+      - key: API_URL
+        value: https://castlyo-api.onrender.com
+      
+      # Security
+      - key: BCRYPT_ROUNDS
+        value: 12
+      - key: RATE_LIMIT_TTL
+        value: 60
+      - key: RATE_LIMIT_MAX
+        value: 100
+      
+      # Logging
+      - key: LOG_LEVEL
+        value: info
+      
+      # Features
+      - key: ENABLE_2FA
+        value: true
+      - key: ENABLE_EMAIL_VERIFICATION
+        value: true
+      - key: ENABLE_SMS_VERIFICATION
+        value: false
+
+  # Frontend Web Application
+  - type: web
+    name: castlyo-web
+    env: node
+    rootDir: apps/web
+    buildCommand: npm ci && npm run build
+    startCommand: npm run start
+    plan: free
+    autoDeploy: true
+    envVars:
+      # API Configuration
+      - key: NEXT_PUBLIC_API_URL
+        value: https://castlyo-api.onrender.com
+      - key: NEXT_PUBLIC_API_BASE_URL
+        value: /api/proxy/api/v1
+      - key: API_PROXY_TARGET
+        value: https://castlyo-api.onrender.com
+      - key: INTERNAL_API_URL
+        value: https://castlyo-api.onrender.com
+      
+      # NextAuth Configuration
+      - key: NEXTAUTH_URL
+        value: https://castlyo-web.onrender.com
+      - key: NEXTAUTH_SECRET
+        generateValue: true
+      
+      # Application Configuration
+      - key: NODE_ENV
+        value: production
+      - key: NEXT_PUBLIC_LANDING_VARIANT
+        value: classic
+      - key: NEXT_PUBLIC_TALENTS_INDEX_API
+        value: true
+      
+      # Legal & Company Info
+      - key: COMPANY_NAME
+        value: Castlyo Teknoloji A.Ş.
+      - key: COMPANY_ADDRESS
+        value: İstanbul, Türkiye
+      - key: COMPANY_EMAIL
+        value: legal@castlyo.com
+      - key: PRIVACY_POLICY_URL
+        value: https://castlyo.com/privacy
+      - key: TERMS_OF_SERVICE_URL
+        value: https://castlyo.com/terms
+
+  # Meilisearch Service for Search Functionality
+  - type: private_service
+    name: castlyo-search
+    env: docker
+    dockerImage: getmeili/meilisearch:v1.5
+    plan: free
+    ports:
+      - port: 7700
+        protocol: tcp
+    disk:
+      name: meili-data
+      mountPath: /meili_data
+      sizeGB: 5
+    envVars:
+      - key: MEILI_ENV
+        value: production
+      - key: MEILI_MASTER_KEY
+        generateValue: true
+
+# Managed Databases
+databases:
+  - name: castlyo-db
+    plan: free
+
+# Redis Cache
+redis:
+  - name: castlyo-redis
+    plan: free

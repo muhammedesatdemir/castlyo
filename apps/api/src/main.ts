@@ -53,14 +53,19 @@ async function bootstrap() {
     },
   }));
 
-  // CORS
+  // CORS - Allow frontend domains
+  const corsOrigins = process.env.CORS_ORIGINS 
+    ? process.env.CORS_ORIGINS.split(',').map(origin => origin.trim())
+    : [
+        'http://localhost:3000',
+        'https://castlyo.com',
+        'https://www.castlyo.com',
+        'https://castlyo.onrender.com',
+        'https://castlyo-web.onrender.com'
+      ];
+
   app.enableCors({
-    origin: [
-      'http://localhost:3000',
-      'https://castlyo.com',
-      'https://www.castlyo.com',
-      'https://castlyo.onrender.com'
-    ],
+    origin: corsOrigins,
     credentials: true,
     methods: ['GET','POST','PUT','PATCH','DELETE','OPTIONS'],
     allowedHeaders: ['Content-Type','Authorization'],

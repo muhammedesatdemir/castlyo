@@ -4,30 +4,34 @@ import { NextRequest, NextResponse } from 'next/server';
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
-const API_BASE = process.env.API_INTERNAL_URL ?? process.env.INTERNAL_API_URL ?? 'http://api:3001';
+const API_BASE = process.env.API_PROXY_TARGET ?? process.env.API_INTERNAL_URL ?? process.env.INTERNAL_API_URL ?? 'http://api:3001';
 
-function rewriteSetCookieForLocalhost(raw: string): string {
+function rewriteSetCookieForProduction(raw: string): string {
   // Cookie ad/değer + attribute'ları ayır
   const parts = raw.split(';').map(p => p.trim());
   const [nameValue, ...attrs] = parts;
 
   // domain/secure/samesite/path'ı normalize et
   const keep: string[] = [];
+  const isProduction = process.env.NODE_ENV === 'production';
 
   // Her attribute'u dolaş
   for (const a of attrs) {
     const k = a.toLowerCase();
 
-    // Lokal için Domain'i kaldır (host-only cookie olsun)
+    // Production'da domain'i kaldır (host-only cookie olsun)
     if (k.startsWith('domain=')) continue;
 
-    // HTTP'de Secure cookie yazılamaz ⇒ kaldır
-    if (k === 'secure') continue;
+    // Production'da HTTPS varsa Secure'u koru, yoksa kaldır
+    if (k === 'secure') {
+      if (isProduction) keep.push(a);
+      continue;
+    }
 
-    // SameSite=None + Secure şartı ihlal olur ⇒ Lax'a çevir
-    if (k.startsWith('samesite=')) continue; // hepsini temizleyip aşağıda Lax koyacağız
+    // SameSite'ı yeniden ayarlayacağız
+    if (k.startsWith('samesite=')) continue;
 
-    // Path yoksa / ekleyeceğiz; varsa bırakabiliriz
+    // Path'i koru
     if (k.startsWith('path=')) { keep.push(a); continue; }
 
     keep.push(a);
@@ -37,8 +41,14 @@ function rewriteSetCookieForLocalhost(raw: string): string {
   if (!keep.some(p => p.toLowerCase().startsWith('path='))) {
     keep.push('Path=/');
   }
-  // Lokal geliştirmede en uyumlusu
-  keep.push('SameSite=Lax');
+  
+  // Production'da Secure + SameSite=Lax, development'ta sadece Lax
+  if (isProduction) {
+    keep.push('SameSite=Lax');
+    keep.push('Secure');
+  } else {
+    keep.push('SameSite=Lax');
+  }
 
   return [nameValue, ...keep].join('; ');
 }
@@ -97,7 +107,7 @@ async function proxy(req: NextRequest, params: { path: string[] }) {
 
   outHeaders.delete('set-cookie');
   for (const raw of setCookieValues) {
-    outHeaders.append('set-cookie', rewriteSetCookieForLocalhost(raw));
+    outHeaders.append('set-cookie', rewriteSetCookieForProduction(raw));
   }
 
   return new NextResponse(body, {
