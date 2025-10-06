@@ -1,40 +1,36 @@
-# Build stage
+# Stage 1: Build the application
 FROM node:20-alpine AS builder
 WORKDIR /app
 
-# Copy package files
+# Copy all package.json and lock files
 COPY package*.json ./
-COPY apps/api/package*.json ./apps/api/
-COPY packages/types/package*.json ./packages/types/
-COPY packages/ui/package*.json ./packages/ui/
-COPY packages/database/package*.json ./packages/database/
+COPY apps/api/package.json ./apps/api/
+COPY packages/database/package.json ./packages/database/
+COPY packages/types/package.json ./packages/types/
+COPY packages/ui/package.json ./packages/ui/
 
-# Install dependencies
+# Install all dependencies
 RUN npm ci
 
-# Copy source code
+# Copy the rest of the source code
 COPY . .
 
-# Build API
+# Build the specific workspace
 RUN npm run build --workspace=@castlyo/api
 
-# Production stage
-FROM node:20-alpine AS production
+# Stage 2: Create the production image
+FROM node:20-alpine
 WORKDIR /app
 
-# Copy built application and dependencies
-COPY --from=builder /app/apps/api/dist ./apps/api/dist
-COPY --from=builder /app/node_modules ./node_modules
-COPY --from=builder /app/package*.json ./
-COPY --from=builder /app/packages ./packages
-
-# Set environment
+# Set production environment
 ENV NODE_ENV=production
-ENV PORT=3001
 
-# Expose port
-EXPOSE 3001
+# Copy only necessary files from the builder stage
+COPY --from=builder /app/node_modules ./node_modules
+COPY --from=builder /app/package.json ./package.json
+COPY --from=builder /app/apps/api/dist ./dist
 
-# Start application
-CMD ["node", "apps/api/dist/apps/api/src/main.js"]
+# The main.js file is located at /app/dist/apps/api/src/main.js
+# This is due to the NestJS monorepo build structure.
+CMD ["node", "dist/apps/api/src/main.js"]
     

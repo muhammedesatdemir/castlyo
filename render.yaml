@@ -5,10 +5,9 @@ services:
   # API Backend Service
   - type: web
     name: castlyo-api
-    env: node
-    rootDir: .
-    buildCommand: npm ci && npm run build --workspace=@castlyo/api
-    startCommand: node dist/apps/api/src/main.js
+    env: docker
+    dockerContext: .
+    dockerfilePath: apps/api/Dockerfile
     plan: free
     autoDeploy: true
     healthCheckPath: /api/v1/health
