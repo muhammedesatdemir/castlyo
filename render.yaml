@@ -6,9 +6,8 @@ services:
   - type: web
     name: castlyo-api
     env: node
-    rootDir: apps/api
-    buildCommand: npm ci && npm run build
-    startCommand: npm run start
+    buildCommand: npm ci && npm run build --workspace=@castlyo/api
+    startCommand: node apps/api/dist/apps/api/src/main.js
     plan: free
     autoDeploy: true
     healthCheckPath: /api/v1/health
