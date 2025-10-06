@@ -158,6 +158,13 @@ services:
   - type: redis
     name: castlyo-redis
     plan: free
+    ipAllowList:
+      - source: 10.0.0.0/8
+        description: Allow internal Render network
+      - source: 172.16.0.0/12
+        description: Allow internal Render network
+      - source: 192.168.0.0/16
+        description: Allow internal Render network
 
 # Managed Databases
 databases:
