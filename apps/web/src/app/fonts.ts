@@ -4,7 +4,7 @@ import localFont from 'next/font/local'
 export const inter = localFont({
   src: [
     {
-      path: '../../public/fonts/inter/Inter-Variable.woff2',
+      path: '/fonts/inter/Inter-Variable.woff2',
       style: 'normal',
     },
   ],
@@ -15,7 +15,7 @@ export const inter = localFont({
 export const cinzel = localFont({
   src: [
     {
-      path: '../../public/fonts/cinzel/Cinzel-Variable.woff2',
+      path: '/fonts/cinzel/Cinzel-Variable.woff2',
       weight: '400 900',
       style: 'normal',
     },
