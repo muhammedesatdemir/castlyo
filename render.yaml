@@ -48,6 +48,8 @@ services:
         value: true
       - key: SEARCH_ENABLED
         value: false
+      - key: ENABLE_EMAIL_VERIFICATION
+        value: false
       
       # Meilisearch (disabled for free plan, can be enabled with external service)
       - key: MEILISEARCH_HOST

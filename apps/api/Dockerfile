@@ -29,8 +29,10 @@ ENV NODE_ENV=production
 COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/package.json ./package.json
 COPY --from=builder /app/apps/api/dist ./dist
+COPY --from=builder /app/packages/database/migrations ./packages/database/migrations
 
 # The main.js file is located at /app/dist/apps/api/src/main.js
 # This is due to the NestJS monorepo build structure.
-CMD ["node", "dist/apps/api/src/main.js"]
+# Run migrations first, then start the application
+CMD ["sh", "-c", "node dist/apps/api/src/scripts/migrate.js || true && node dist/apps/api/src/main.js"]
     

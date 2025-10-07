@@ -144,4 +144,24 @@ export class AuthController {
     }
     return this.authService.checkEmailExists(email);
   }
+
+  @Public()
+  @Post('logout')
+  @HttpCode(HttpStatus.OK)
+  async logout(@Res() res: Response) {
+    // Clear JWT cookies
+    res.clearCookie('accessToken', {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+    });
+    
+    res.clearCookie('refreshToken', {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+    });
+    
+    return res.json({ message: 'Logged out successfully' });
+  }
 }
