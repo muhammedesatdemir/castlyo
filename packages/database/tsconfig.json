@@ -3,9 +3,9 @@
     "target": "ES2020",
     "module": "commonjs",
     "declaration": true,
-    "declarationDir": "./types",   // <-- eklendi
+    "declarationDir": "./types",
     "outDir": "./dist",
-    "rootDir": "./",
+    "rootDir": "src",
     "strict": true,
     "esModuleInterop": true,
     "allowSyntheticDefaultImports": true,
@@ -13,8 +13,20 @@
     "moduleResolution": "node",
     "resolveJsonModule": true,
     "baseUrl": "./",
-    "paths": { "@/*": ["./*"] }
+    "paths": {
+      "@/*": [
+        "./*"
+      ]
+    }
   },
-  "include": ["**/*.ts"],
-  "exclude": ["node_modules", "dist", "types", "migrations"]  // <-- types eklendi
+  "include": [
+    "src/**/*"
+  ],
+  "exclude": [
+    "node_modules",
+    "dist",
+    "types",
+    "migrations",
+    "drizzle.config.ts"
+  ]
 }
