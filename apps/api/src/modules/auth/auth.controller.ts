@@ -13,6 +13,7 @@ import {
   BadRequestException,
   Res
 } from '@nestjs/common';
+import { Response } from 'express';
 import { Throttle, SkipThrottle } from '@nestjs/throttler';
 import { AuthService } from './auth.service';
 import { 
@@ -148,7 +149,7 @@ export class AuthController {
   @Public()
   @Post('logout')
   @HttpCode(HttpStatus.OK)
-  async logout(@Res() res: Response) {
+  async logout(@Res({ passthrough: false }) res: Response) {
     // Clear JWT cookies
     res.clearCookie('accessToken', {
       httpOnly: true,
