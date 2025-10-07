@@ -84,7 +84,7 @@ services:
       - key: FRONTEND_URL
         value: https://castlyo-web.onrender.com
       - key: API_URL
-        value: https://castlyo-api.onrender.com
+        value: https://castlyo.onrender.com
       
       # Security
       - key: BCRYPT_ROUNDS
@@ -116,13 +116,13 @@ services:
     envVars:
       # API Configuration
       - key: NEXT_PUBLIC_API_URL
-        value: https://castlyo-api.onrender.com
+        value: https://castlyo.onrender.com/api/v1
       - key: NEXT_PUBLIC_API_BASE_URL
         value: /api/proxy/api/v1
       - key: API_PROXY_TARGET
-        value: https://castlyo-api.onrender.com
+        value: https://castlyo.onrender.com
       - key: INTERNAL_API_URL
-        value: https://castlyo-api.onrender.com
+        value: https://castlyo.onrender.com
       
       # NextAuth Configuration
       - key: NEXTAUTH_URL
