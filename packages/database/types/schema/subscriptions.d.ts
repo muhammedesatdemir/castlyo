@@ -269,7 +269,7 @@ export declare const userSubscriptions: import("drizzle-orm/pg-core").PgTableWit
             tableName: "user_subscriptions";
             dataType: "string";
             columnType: "PgText";
-            data: "ACTIVE" | "EXPIRED" | "CANCELED" | "PAST_DUE";
+            data: "ACTIVE" | "CANCELED" | "EXPIRED" | "PAST_DUE";
             driverParam: string;
             notNull: false;
             hasDefault: true;
@@ -281,7 +281,7 @@ export declare const userSubscriptions: import("drizzle-orm/pg-core").PgTableWit
             identity: undefined;
             generated: undefined;
         }, {}, {
-            $type: "ACTIVE" | "EXPIRED" | "CANCELED" | "PAST_DUE";
+            $type: "ACTIVE" | "CANCELED" | "EXPIRED" | "PAST_DUE";
         }>;
         periodStart: import("drizzle-orm/pg-core").PgColumn<{
             name: "period_start";

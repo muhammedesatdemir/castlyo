@@ -29,7 +29,8 @@
     "docker:dev:logs": "docker-compose logs -f",
     "docker:prod": "docker-compose -f docker-compose.prod.yml up -d",
     "docker:down": "docker-compose down",
-    "setup": "npm install && npm run db:generate && npm run db:push"
+    "setup": "npm install && npm run db:generate && npm run db:push",
+    "postinstall": "npm dedupe"
   },
   "devDependencies": {
     "@turbo/gen": "^1.11.2",
@@ -43,6 +44,10 @@
   "packageManager": "npm@10.0.0",
   "engines": {
     "node": ">=18"
+  },
+  "overrides": {
+    "zod": "^3.23.8",
+    "@hookform/resolvers": "^3.3.4"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.888.0",
@@ -58,7 +63,6 @@
     "react-hook-form": "^7.62.0",
     "swagger-ui-express": "^4.6.3",
     "turbo": "^1.11.2",
-    "undici": "^7.16.0",
-    "zod": "^4.1.8"
+    "undici": "^7.16.0"
   }
 }

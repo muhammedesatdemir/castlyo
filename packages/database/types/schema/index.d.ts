@@ -8,4 +8,3 @@ export * from './payments';
 export * from './audit';
 export * from './verification';
 export * from './consent';
-export * from './talent-access-requests';
