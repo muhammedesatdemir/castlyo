@@ -50,7 +50,7 @@ export function clearClientAuth() {
   try {
     if (typeof window !== 'undefined') {
       // 0) Sunucu logout'unu dene (httpOnly cookie'leri düşürür)
-      try { fetch('/api/proxy/api/v1/session/logout', { method: 'POST', credentials: 'include' }); } catch {}
+      try { fetch('/api/proxy/api/v1/auth/logout', { method: 'POST', credentials: 'include' }); } catch {}
 
       // 1) Bilinen anahtarlar
       const explicitKeys = [

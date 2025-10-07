@@ -102,7 +102,7 @@ services:
       - key: ENABLE_2FA
         value: true
       - key: ENABLE_EMAIL_VERIFICATION
-        value: true
+        value: false
       - key: ENABLE_SMS_VERIFICATION
         value: false
 
@@ -116,7 +116,7 @@ services:
     envVars:
       # API Configuration
       - key: NEXT_PUBLIC_API_URL
-        value: https://castlyo.onrender.com/api/v1
+        value: https://castlyo.onrender.com
       - key: NEXT_PUBLIC_API_BASE_URL
         value: /api/proxy/api/v1
       - key: API_PROXY_TARGET
