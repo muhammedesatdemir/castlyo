@@ -8,7 +8,7 @@ export async function middleware(req: NextRequest) {
   const wantsTalent = p.startsWith("/onboarding/talent");
   if (!wantsAgency && !wantsTalent) return NextResponse.next();
 
-  const token = await getToken({ req, secret: process.env.NEXTAUTH_SECRET });
+  const token = await getToken({ req: req as any, secret: process.env.NEXTAUTH_SECRET });
   const role = (token as any)?.role ?? null;
 
   console.log("[MW]", { path: p, role, hasSecret: !!process.env.NEXTAUTH_SECRET });
