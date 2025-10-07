@@ -7,7 +7,7 @@ import { TERMS_VERSION, PRIVACY_VERSION } from "@/constants/policies";
 import { api } from "@/lib/api"; // proxy client
 
 export default function RegisterForm() {
-  const methods = useForm<RegisterInput>({ resolver: zodResolver(RegisterSchema), mode: "onChange" });
+  const methods = useForm<RegisterInput>({ resolver: zodResolver(RegisterSchema as any), mode: "onChange" });
   const { handleSubmit, formState: { isValid, isSubmitting } } = methods;
 
   const onSubmit = async (values: RegisterInput) => {
