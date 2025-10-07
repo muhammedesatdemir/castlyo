@@ -16,7 +16,6 @@ export const cinzel = localFont({
   src: [
     {
       path: '/fonts/cinzel/Cinzel-Variable.woff2',
-      weight: '400 900',
       style: 'normal',
     },
   ],
