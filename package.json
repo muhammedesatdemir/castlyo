@@ -9,6 +9,8 @@
   ],
   "scripts": {
     "build": "turbo run build",
+    "build:web": "cd apps/web && npm run build",
+    "build:api": "cd apps/api && npm run build",
     "dev": "turbo run dev --parallel",
     "dev:web": "turbo run dev --filter=@castlyo/web",
     "dev:api": "turbo run dev --filter=@castlyo/api",
@@ -36,7 +38,6 @@
     "drizzle-kit": "^0.31.4",
     "prettier": "^3.1.1",
     "rimraf": "^6.0.1",
-    "turbo": "^1.11.2",
     "typescript": "^5.3.3"
   },
   "packageManager": "npm@10.0.0",
@@ -56,6 +57,7 @@
     "react-easy-crop": "^5.5.1",
     "react-hook-form": "^7.62.0",
     "swagger-ui-express": "^4.6.3",
+    "turbo": "^1.11.2",
     "undici": "^7.16.0",
     "zod": "^4.1.8"
   }
