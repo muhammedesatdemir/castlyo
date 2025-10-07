@@ -110,8 +110,8 @@ services:
   - type: web
     name: castlyo-web
     env: node
-    buildCommand: npm ci && npm run build --workspace=@castlyo/web
-    startCommand: npm run start --workspace=@castlyo/web
+    buildCommand: cd apps/web && npm install && npm run build
+    startCommand: cd apps/web && npm run start
     plan: free
     envVars:
       # API Configuration
