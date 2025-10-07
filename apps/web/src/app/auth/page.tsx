@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { signIn } from 'next-auth/react'
 import { useQueryClient } from '@tanstack/react-query'
@@ -17,7 +17,7 @@ import { __SESSION_KILLED__ } from '@/lib/api'
 type AuthMode = 'login' | 'register'
 type UserRole = 'talent' | 'agency'
 
-export default function AuthPage() {
+function AuthPageContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const queryClient = useQueryClient()
@@ -646,5 +646,13 @@ export default function AuthPage() {
         }}
       />
     </div>
+  )
+}
+
+export default function AuthPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-black flex items-center justify-center"><div className="text-white">Yükleniyor...</div></div>}>
+      <AuthPageContent />
+    </Suspense>
   )
 }

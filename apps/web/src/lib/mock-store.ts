@@ -131,7 +131,7 @@ class MockStore {
     let cleaned = 0
     
     try {
-      for (const [hash, t] of this.tokens) {
+      for (const [hash, t] of Array.from(this.tokens.entries())) {
         if (t.used || t.expiresAt < now) {
           this.tokens.delete(hash)
           cleaned++
@@ -158,7 +158,7 @@ class MockStore {
       return { users: this.users.size, tokens: 0, activeTokens: 0 }
     }
     
-    for (const [, t] of this.tokens) {
+    for (const [, t] of Array.from(this.tokens.entries())) {
       if (!t.used && t.expiresAt > now) activeTokens++
     }
     

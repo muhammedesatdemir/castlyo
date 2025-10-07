@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, Suspense } from 'react'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -21,7 +21,7 @@ import { JobCreateSheet } from '@/components/jobs/JobCreateSheet'
 import { toast } from '@/components/ui/toast'
 import Link from 'next/link'
 
-export default function JobsPage() {
+function JobsPageContent() {
   const { jobs, meta, loading, error, currentParams, updateParams, clearFilters } = useJobs()
   const { userFlags, isVisitor, canPostJobs } = useUserFlags()
   const user = useCurrentUserStatus()
@@ -262,5 +262,13 @@ export default function JobsPage() {
         />
       </div>
     </div>
+  )
+}
+
+export default function JobsPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen flex items-center justify-center"><div className="text-gray-500">İş ilanları yükleniyor...</div></div>}>
+      <JobsPageContent />
+    </Suspense>
   )
 }

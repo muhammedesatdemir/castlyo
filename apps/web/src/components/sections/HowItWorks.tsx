@@ -1,4 +1,4 @@
-import { UserPlus, Search, HandshakeIcon, Star } from 'lucide-react'
+import { UserPlus, Search, Users, Star } from 'lucide-react'
 
 const steps = [
   {
@@ -17,7 +17,7 @@ const steps = [
     id: 3,
     name: 'Bağlantı Kur',
     description: 'Ajanslarla güvenli bir şekilde iletişime geçin ve fırsatları değerlendirin.',
-    icon: HandshakeIcon,
+    icon: Users,
   },
   {
     id: 4,

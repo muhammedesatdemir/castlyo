@@ -41,7 +41,7 @@ export function sanitizeProfilePayload(form: any) {
   return {
     firstName: n(form.firstName),
     lastName: n(form.lastName),
-    displayName: n(form.displayName) ?? `${form.firstName ?? ''} ${form.lastName ?? ''}`.trim() || null,
+    displayName: n(form.displayName) ?? (`${form.firstName ?? ''} ${form.lastName ?? ''}`.trim() || null),
     bio: n(form.bio),
     experience: n(form.experience),
     city: n(form.city),

@@ -1,10 +1,11 @@
 'use client'
 
+import { Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { ArrowRight, Shield } from 'lucide-react'
 
-export default function PrivacyInfoPage() {
+function PrivacyInfoPageContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
   
@@ -125,5 +126,13 @@ export default function PrivacyInfoPage() {
         </div>
       </div>
     </div>
+  )
+}
+
+export default function PrivacyInfoPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-black flex items-center justify-center"><div className="text-white">Yükleniyor...</div></div>}>
+      <PrivacyInfoPageContent />
+    </Suspense>
   )
 }

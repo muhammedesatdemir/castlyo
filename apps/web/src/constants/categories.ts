@@ -22,8 +22,8 @@ export const normalizeSkill = (s: string): SkillSlug | null => {
     muzik:'muzik','müzik':'muzik','müzisyen':'muzik', muzisyen:'muzik',
   };
   const key = s.toLowerCase()
-    .replaceAll('ı','i').replaceAll('ğ','g').replaceAll('ş','s')
-    .replaceAll('ö','o').replaceAll('ç','c').replaceAll('ü','u').trim();
+    .replace(/ı/g,'i').replace(/ğ/g,'g').replace(/ş/g,'s')
+    .replace(/ö/g,'o').replace(/ç/g,'c').replace(/ü/g,'u').trim();
   return map[key] ?? null;
 };
 

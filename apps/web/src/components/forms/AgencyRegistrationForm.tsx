@@ -251,13 +251,13 @@ export default function AgencyRegistrationForm({ onClose }: AgencyRegistrationFo
                         value={field.value || ''}
                         onChange={field.onChange}
                       >
-                        {(inputProps: any) => (
+                        {((inputProps: any) => (
                           <input
                             {...inputProps}
                             className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                             placeholder="+90 (2XX) XXX XX XX"
                           />
-                        )}
+                        )) as any}
                       </InputMask>
                     )}
                   />

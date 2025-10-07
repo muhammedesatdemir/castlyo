@@ -1,14 +1,14 @@
 
-import localFont from 'next/font/local'
+import { Inter, Cinzel } from 'next/font/google'
 
-export const inter = localFont({
-  src: [{ path: './assets/fonts/inter/Inter-Variable.woff2', style: 'normal' }],
+export const inter = Inter({
+  subsets: ['latin'],
   variable: '--font-inter',
   display: 'swap',
 })
 
-export const cinzel = localFont({
-  src: [{ path: './assets/fonts/cinzel/Cinzel-Variable.woff2', style: 'normal' }],
+export const cinzel = Cinzel({
+  subsets: ['latin'],
   variable: '--font-cinzel',
   display: 'swap',
 })
