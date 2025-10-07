@@ -1,22 +1,11 @@
 import type { Metadata, Viewport } from 'next'
-import { Inter, Cinzel } from 'next/font/google'
+import { inter, cinzel } from './fonts'
 import { AuthProvider } from '@/providers/auth-provider'
 import QueryProvider from '@/providers/query-provider'
 import { ToastContainer } from '@/components/ui/toast'
 import RoleGateGlobalGuard from '@/components/auth/RoleGateGlobalGuard'
 import SessionGuard from '@/components/auth/SessionGuard'
 import './globals.css'
-
-const inter = Inter({
-  subsets: ['latin'],
-  variable: '--font-inter',
-})
-
-const cinzel = Cinzel({
-  subsets: ['latin'],
-  weight: ['400', '700', '900'], // 800 yok; 900 kullan
-  variable: '--font-cinzel',
-})
 
 export const metadata: Metadata = { /* ... aynı ... */ }
 export const viewport: Viewport = { /* ... aynı ... */ }
