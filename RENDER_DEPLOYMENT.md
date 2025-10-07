@@ -51,10 +51,10 @@ Eğer kendi domain'inizi kullanmak istiyorsanız:
 
 Deploy sonrası servisleriniz şu adreslerde erişilebilir olacak:
 
-- **API**: `https://castlyo-api.onrender.com`
+- **API**: `https://castlyo.onrender.com`
 - **Web**: `https://castlyo-web.onrender.com`
-- **API Docs**: `https://castlyo-api.onrender.com/api/docs`
-- **Health Check**: `https://castlyo-api.onrender.com/api/v1/health`
+- **API Docs**: `https://castlyo.onrender.com/api/docs`
+- **Health Check**: `https://castlyo.onrender.com/api/v1/health`
 
 ## Önemli Notlar
 
