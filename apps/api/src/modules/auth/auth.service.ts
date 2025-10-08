@@ -19,7 +19,7 @@ import {
   ResetPasswordDto,
   RefreshTokenDto 
 } from './dto/auth.dto';
-import * as bcrypt from 'bcrypt';
+import * as bcrypt from 'bcryptjs';
 import * as crypto from 'crypto';
 import { users, userConsents } from '@castlyo/database';
 import { ConsentDto } from './dto/auth.dto';
@@ -71,12 +71,24 @@ export class AuthService {
       
       this.logger.warn(`[VALIDATE_USER] ❌ Validation failed for email: ${email}`);
       return null;
-    } catch (error) {
+    } catch (error: any) {
       if (error instanceof BadRequestException || error instanceof InternalServerErrorException) {
         throw error;
       }
-      this.logger.error(`[VALIDATE_USER] Database error during validation: ${error.message}`, error.stack);
-      throw new InternalServerErrorException('Authentication service temporarily unavailable');
+      
+      // bubble up postgres error codes for observability
+      const code = error?.code;
+      const message = error?.message || error?.detail || 'Unexpected error';
+
+      // 42P01 = undefined_table, 23505 = unique_violation, 28P01 = invalid_password
+      if (code === '42P01') {
+        // Relation missing: migration didn't run
+        this.logger.error('[AUTH] Missing table (42P01). Run migrations.', error);
+        throw new InternalServerErrorException('DB schema not ready: missing tables');
+      }
+
+      this.logger.error('[AUTH] validateUser error', { code, message });
+      throw new InternalServerErrorException(message);
     }
   }
 
@@ -191,7 +203,27 @@ export class AuthService {
         email: registerDto.email,
       });
 
-      throw new InternalServerErrorException('Registration service temporarily unavailable');
+      // Check for missing tables
+      if (error?.code === '42P01') {
+        this.logger.error('[DB] Missing table(s) – run migrations');
+      }
+
+      // bubble up postgres error codes for observability
+      const code = error?.code;
+      const message = error?.message || error?.detail || 'Unexpected error';
+
+      // 42P01 = undefined_table, 23505 = unique_violation, 28P01 = invalid_password
+      if (code === '23505') {
+        throw new ConflictException('Email already in use');
+      }
+      if (code === '42P01') {
+        // Relation missing: migration didn't run
+        this.logger.error('[AUTH] Missing table (42P01). Run migrations.', error);
+        throw new InternalServerErrorException('DB schema not ready: missing tables');
+      }
+
+      this.logger.error('[AUTH] register error', { code, message });
+      throw new InternalServerErrorException(message);
     }
   }
 
@@ -277,7 +309,24 @@ export class AuthService {
         email: loginDto.email,
       });
 
-      throw new InternalServerErrorException('Authentication service temporarily unavailable');
+      // Check for missing tables
+      if (error?.code === '42P01') {
+        this.logger.error('[DB] Missing table(s) – run migrations');
+      }
+
+      // bubble up postgres error codes for observability
+      const code = error?.code;
+      const message = error?.message || error?.detail || 'Unexpected error';
+
+      // 42P01 = undefined_table, 23505 = unique_violation, 28P01 = invalid_password
+      if (code === '42P01') {
+        // Relation missing: migration didn't run
+        this.logger.error('[AUTH] Missing table (42P01). Run migrations.', error);
+        throw new InternalServerErrorException('DB schema not ready: missing tables');
+      }
+
+      this.logger.error('[AUTH] login error', { code, message });
+      throw new InternalServerErrorException(message);
     }
   }
 
@@ -440,8 +489,25 @@ export class AuthService {
         stack: error.stack,
         email,
       });
+
+      // Check for missing tables
+      if (error?.code === '42P01') {
+        this.logger.error('[DB] Missing table(s) – run migrations');
+      }
       
-      throw new InternalServerErrorException('Email check service temporarily unavailable');
+      // bubble up postgres error codes for observability
+      const code = error?.code;
+      const message = error?.message || error?.detail || 'Unexpected error';
+
+      // 42P01 = undefined_table, 23505 = unique_violation, 28P01 = invalid_password
+      if (code === '42P01') {
+        // Relation missing: migration didn't run
+        this.logger.error('[AUTH] Missing table (42P01). Run migrations.', error);
+        throw new InternalServerErrorException('DB schema not ready: missing tables');
+      }
+
+      this.logger.error('[AUTH] checkEmailExists error', { code, message });
+      throw new InternalServerErrorException(message);
     }
   }
 

@@ -29,10 +29,14 @@ ENV NODE_ENV=production
 COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/package.json ./package.json
 COPY --from=builder /app/apps/api/dist ./dist
+
+# Copy source migrations so that runtime can see packages/database/migrations/** including meta/_journal.json
 COPY --from=builder /app/packages/database/migrations ./packages/database/migrations
 
-# The main.js file is located at /app/dist/apps/api/src/main.js
-# This is due to the NestJS monorepo build structure.
-# Run migrations first, then start the application
-CMD ["sh", "-c", "node dist/apps/api/src/scripts/migrate.js || true && node dist/apps/api/src/main.js"]
+# Copy and setup entrypoint script
+COPY --from=builder /app/apps/api/docker-entrypoint.sh ./docker-entrypoint.sh
+RUN chmod +x ./docker-entrypoint.sh
+
+# Use entrypoint script for migrate-on-boot
+ENTRYPOINT ["./docker-entrypoint.sh"]
     

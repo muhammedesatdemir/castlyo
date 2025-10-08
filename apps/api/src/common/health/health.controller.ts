@@ -1,13 +1,10 @@
-import { Controller, Get, Inject, HttpStatus, HttpException, Logger } from '@nestjs/common';
+import { Controller, Get, HttpStatus, HttpException, Logger } from '@nestjs/common';
 import { Public } from '../../modules/auth/decorators/public.decorator';
-import { DRIZZLE } from '../../config/database.module';
-import { sql } from 'drizzle-orm';
+import { pingDb } from '../../database/client';
 
 @Controller('health')
 export class HealthController {
   private readonly logger = new Logger(HealthController.name);
-
-  constructor(@Inject(DRIZZLE) private readonly db: any) {}
 
   @Public()
   @Get()
@@ -27,8 +24,8 @@ export class HealthController {
     const startTime = Date.now();
     
     try {
-      // Test database connection with a simple query
-      const result = await this.db.execute(sql`SELECT 1 as health_check`);
+      // Test database connection using the centralized ping function
+      await pingDb();
       const responseTime = Date.now() - startTime;
       
       this.logger.log(`Database health check successful in ${responseTime}ms`);
@@ -44,27 +41,35 @@ export class HealthController {
     } catch (error: any) {
       const responseTime = Date.now() - startTime;
       
-      // Log detailed error information for debugging
-      this.logger.error('Database health check failed', {
-        error: error.message,
-        code: error.code,
-        detail: error.detail,
-        hint: error.hint,
-        position: error.position,
-        internalPosition: error.internalPosition,
-        internalQuery: error.internalQuery,
-        where: error.where,
-        schema: error.schema,
-        table: error.table,
-        column: error.column,
-        dataType: error.dataType,
-        constraint: error.constraint,
-        file: error.file,
-        line: error.line,
-        routine: error.routine,
-        stack: error.stack,
-        responseTime,
-      });
+      // Log specific PostgreSQL error codes for debugging
+      if (error?.code === '42P01') {
+        this.logger.error('[DB] Missing table(s) – run migrations', {
+          code: error.code,
+          message: error.message,
+          detail: error.detail,
+        });
+      } else if (error?.code === '28000' || error?.code === '28P01') {
+        this.logger.error('[DB] Authentication failed', {
+          code: error.code,
+          message: error.message,
+          detail: error.detail,
+        });
+      } else if (error?.code === '53300') {
+        this.logger.error('[DB] Too many connections', {
+          code: error.code,
+          message: error.message,
+          detail: error.detail,
+        });
+      } else {
+        this.logger.error('Database health check failed', {
+          error: error.message,
+          code: error.code,
+          detail: error.detail,
+          hint: error.hint,
+          stack: error.stack,
+          responseTime,
+        });
+      }
       
       throw new HttpException(
         {

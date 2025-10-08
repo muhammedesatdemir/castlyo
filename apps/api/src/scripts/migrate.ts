@@ -1,40 +1,44 @@
-// apps/api/src/scripts/migrate.ts
-import { migrate } from "drizzle-orm/node-postgres/migrator";
-import { drizzle } from "drizzle-orm/node-postgres";
-import { Pool } from "pg";
-import { join } from "path";
+import 'dotenv/config';
+import path from 'node:path';
+import fs from 'node:fs';
+import { Client } from 'pg';
+import { drizzle } from 'drizzle-orm/node-postgres';
+import { migrate } from 'drizzle-orm/node-postgres/migrator';
+import { resolveMigrationsDir } from '../config/paths';
 
-async function main() {
-  console.log("[MIGRATE] Starting database migration...");
-  
-  const pool = new Pool({
-    connectionString: process.env.DATABASE_URL,
-    ssl: process.env.NODE_ENV === 'production' || process.env.DB_SSL === 'true'
-      ? { rejectUnauthorized: false }
-      : false,
+function makeClient() {
+  const connectionString = process.env.DATABASE_URL!;
+  const shouldUseSSL = process.env.DB_SSL === 'true' || process.env.NODE_ENV === 'production';
+  return new Client({
+    connectionString,
+    ssl: shouldUseSSL ? { rejectUnauthorized: false } : undefined,
   });
+}
 
-  const db = drizzle(pool);
-  
+(async () => {
+  console.log('[MIGRATE] Starting database migration...');
+  const migrationsDir = resolveMigrationsDir();
+  const journal = path.join(migrationsDir, 'meta', '_journal.json');
+  console.log('[MIGRATE] Migrations dir:', migrationsDir);
+
+  if (!fs.existsSync(journal)) {
+    console.error(
+      '[MIGRATE] ❌ Missing meta/_journal.json. You must COMMIT drizzle migrations to the repo and make sure the folder is available at runtime.\n' +
+      'Expected at: ' + journal
+    );
+    process.exit(1);
+  }
+
+  const client = makeClient();
+  await client.connect();
   try {
-    // Migrations folder path - adjust based on your project structure
-    const migrationsFolder = join(__dirname, "../../../../packages/database/migrations");
-    console.log("[MIGRATE] Migrations folder:", migrationsFolder);
-    
-    await migrate(db, { migrationsFolder });
-    console.log("[MIGRATE] ✅ Database migration completed successfully");
-  } catch (error) {
-    console.error("[MIGRATE] ❌ Migration failed:", error);
+    const db = drizzle(client);
+    await migrate(db, { migrationsFolder: migrationsDir });
+    console.log('[MIGRATE] ✅ Migration complete');
+  } catch (err: any) {
+    console.error('[MIGRATE] ❌ Migration failed:', err?.code, err?.message || err);
     process.exit(1);
   } finally {
-    await pool.end();
-    console.log("[MIGRATE] Database connection closed");
+    await client.end().catch(() => {});
   }
-}
-
-if (require.main === module) {
-  main().catch((error) => {
-    console.error("[MIGRATE] Fatal error:", error);
-    process.exit(1);
-  });
-}
+})();

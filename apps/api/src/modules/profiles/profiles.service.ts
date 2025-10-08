@@ -889,6 +889,11 @@ export class ProfilesService {
         limit,
         skills,
       });
+
+      // Check for missing tables
+      if (error?.code === '42P01') {
+        this.logger.error('[DB] Missing table(s) – run migrations');
+      }
       
       throw new InternalServerErrorException('Profiles service temporarily unavailable');
     }

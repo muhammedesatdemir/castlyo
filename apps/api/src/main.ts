@@ -4,6 +4,7 @@ import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 import { AppModule } from './app.module';
 import { HttpExceptionFilter } from './common/filters/http-exception.filter';
 import { LoggingInterceptor } from './common/interceptors/logging.interceptor';
+import { pingDb } from './database/client';
 const cookieParser = require('cookie-parser');
 
 async function bootstrap() {
@@ -100,6 +101,15 @@ async function bootstrap() {
   process.on('unhandledRejection', (reason, promise) => {
     console.error('🔥 Unhandled Rejection at:', promise, 'reason:', reason);
   });
+
+  // Test database connection before starting server
+  try {
+    await pingDb();
+    logger.log('✅ Database connection verified');
+  } catch (error) {
+    logger.error('❌ Database connection failed:', error);
+    process.exit(1);
+  }
 
   const PORT = Number(process.env.PORT || 3001);
   const HOST = process.env.HOST || '0.0.0.0';

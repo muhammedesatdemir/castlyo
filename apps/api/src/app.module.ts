@@ -27,7 +27,7 @@ import { FEATURES } from './config/features';
       // Varsayılanlar (PORT, JWT vs.) için ignoreEnvFile:false kalsın
     }),
     DatabaseModule,
-    DebugModule,
+    ...(process.env.DEBUG_ENDPOINTS === 'true' ? [DebugModule] : []),
     HealthModule,
     AuthModule,
     UsersModule,
