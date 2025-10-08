@@ -28,15 +28,14 @@ ENV NODE_ENV=production
 # Copy only necessary files from the builder stage
 COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/package.json ./package.json
+
+# copy runtime artifacts
 COPY --from=builder /app/apps/api/dist ./dist
-
-# Copy source migrations so that runtime can see packages/database/migrations/** including meta/_journal.json
 COPY --from=builder /app/packages/database/migrations ./packages/database/migrations
-
-# Copy and setup entrypoint script
 COPY --from=builder /app/apps/api/docker-entrypoint.sh ./docker-entrypoint.sh
-RUN chmod +x ./docker-entrypoint.sh
 
-# Use entrypoint script for migrate-on-boot
-ENTRYPOINT ["./docker-entrypoint.sh"]
+# normalize Windows line endings (avoid /bin/sh^M: not found) and make executable
+RUN sed -i 's/\r$//' ./docker-entrypoint.sh && chmod +x ./docker-entrypoint.sh
+
+ENTRYPOINT ["/app/docker-entrypoint.sh"]
     
