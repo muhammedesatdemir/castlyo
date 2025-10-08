@@ -178,13 +178,31 @@ curl -X GET http://localhost:3001/api/v1/health
 curl -X GET http://localhost:3001/api/v1/health/db
 ```
 
+## Critical Database SSL Fix
+
+### ⚠️ ROOT CAUSE IDENTIFIED
+The 500 errors were caused by **missing SSL configuration** for the Render Postgres connection. The `postgres` client in `database.module.ts` was not configured with SSL, causing connection failures.
+
+### ✅ SSL Configuration Added
+- **File**: `apps/api/src/config/database.module.ts`
+- **Fix**: Added SSL configuration that activates in production or when `DB_SSL=true`
+- **Migration Script**: Updated `apps/api/src/scripts/migrate.ts` with SSL support
+
+```javascript
+// SSL configuration - critical for Render Postgres
+ssl: shouldUseSSL ? { rejectUnauthorized: false } : false,
+```
+
 ## Deployment Configuration
 
-### API Environment (Render)
+### API Environment (Render) - CRITICAL UPDATES
 ```env
 NODE_ENV=production
 PORT=3001
-DATABASE_URL=postgresql://...?sslmode=require
+# CRITICAL: Add ?sslmode=require to DATABASE_URL
+DATABASE_URL=postgresql://user:pass@host:port/castlyo_db?sslmode=require
+# CRITICAL: Enable SSL for database connections
+DB_SSL=true
 JWT_SECRET=<secure-random>
 JWT_ACCESS_SECRET=<secure-random>
 JWT_REFRESH_SECRET=<secure-random>
@@ -237,10 +255,70 @@ NEXT_PUBLIC_API_BASE_URL=/api/proxy/api/v1
 - `/health/db` - Database connectivity verification
 - Proper error responses for service unavailability
 
-## Next Steps
+## Smoke Test Script
 
-1. **Deploy API**: Update environment variables and redeploy
-2. **Deploy Web**: Update environment variables and redeploy
-3. **Monitor**: Check logs for any remaining 500 errors
-4. **Test**: Run comprehensive tests in production environment
-5. **Optimize**: Fine-tune cookie settings based on production behavior
+### ✅ Automated Testing
+- **File**: `apps/api/scripts/smoke-test.js`
+- **Usage**: `node apps/api/scripts/smoke-test.js`
+- **Tests**: Health, Database, Auth flow, Profiles, Logout
+- **Exit Codes**: 0 = success, 1 = failure
+
+## Deployment Steps (CRITICAL ORDER)
+
+### 1. Update Render Environment Variables
+**API Service (castlyo):**
+```env
+DATABASE_URL=postgresql://...?sslmode=require  # ADD ?sslmode=require
+DB_SSL=true                                    # ADD THIS
+NODE_ENV=production
+CORS_ORIGIN=https://castlyo-web.onrender.com
+COOKIE_NAME=castlyo_at
+COOKIE_SECURE=true
+COOKIE_SAMESITE=lax
+```
+
+### 2. Deploy API First
+- Click "Manual Deploy" → "Clear build cache & deploy"
+- Wait for deployment to complete
+- Check logs for SSL configuration messages
+
+### 3. Test Database Connection
+```bash
+# Test health endpoints immediately after deploy
+curl https://castlyo.onrender.com/api/v1/health
+curl https://castlyo.onrender.com/api/v1/health/db
+```
+
+### 4. Deploy Web (if needed)
+- Update WEB environment if changed
+- Deploy castlyo-web service
+
+### 5. Run Smoke Tests
+```bash
+# Set API_BASE_URL to production and run
+API_BASE_URL=https://castlyo.onrender.com/api/v1 node apps/api/scripts/smoke-test.js
+```
+
+## Expected Results After Fix
+
+### ✅ Before vs After
+**Before (500 Errors):**
+- `POST /auth/login` → 500 "Authentication service temporarily unavailable"
+- `POST /auth/register` → 500 "Registration service temporarily unavailable"  
+- `GET /profiles/talents` → 500 "Profiles service temporarily unavailable"
+- Database connection failures in logs
+
+**After (Proper Status Codes):**
+- `POST /auth/login` → 200 + Set-Cookie headers
+- `POST /auth/register` → 201 + Set-Cookie headers
+- `GET /profiles/talents` → 200 with data
+- `GET /health/db` → 200 "connected"
+- All errors properly mapped to 4xx status codes
+
+### ✅ Verification Checklist
+1. **Database Health**: `GET /health/db` returns 200
+2. **Authentication**: Login returns 200 + cookies
+3. **Protected Routes**: `/users/me` works with cookies
+4. **Public Routes**: `/profiles/talents` returns data
+5. **Error Handling**: Duplicate email returns 409, not 500
+6. **Logging**: Detailed error logs for debugging

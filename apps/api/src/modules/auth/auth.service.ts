@@ -165,7 +165,7 @@ export class AuthService {
       const tokens = await this.generateTokens(user);
       return { user: { id: user.id, email: user.email, role: user.role }, ...tokens };
 
-    } catch (error) {
+    } catch (error: any) {
       // Handle known errors
       if (error instanceof BadRequestException || 
           error instanceof ConflictException || 
@@ -178,8 +178,19 @@ export class AuthService {
         throw new ConflictException('Email already exists');
       }
 
-      // Log and throw unexpected errors
-      this.logger.error(`[REGISTER] Registration failed for ${registerDto.email}: ${error.message}`, error.stack);
+      // Log detailed error information for debugging
+      this.logger.error(`[REGISTER] Registration failed for ${registerDto.email}`, {
+        error: error.message,
+        code: error.code,
+        detail: error.detail,
+        hint: error.hint,
+        constraint: error.constraint,
+        table: error.table,
+        column: error.column,
+        stack: error.stack,
+        email: registerDto.email,
+      });
+
       throw new InternalServerErrorException('Registration service temporarily unavailable');
     }
   }
@@ -245,9 +256,28 @@ export class AuthService {
         },
       };
 
-    } catch (error) {
-      this.logger.error(`[LOGIN] Login failed for email: ${loginDto.email}`, error.stack);
-      throw error;
+    } catch (error: any) {
+      // Handle known errors
+      if (error instanceof UnauthorizedException || 
+          error instanceof BadRequestException || 
+          error instanceof InternalServerErrorException) {
+        throw error;
+      }
+
+      // Log detailed error information for debugging
+      this.logger.error(`[LOGIN] Login failed for email: ${loginDto.email}`, {
+        error: error.message,
+        code: error.code,
+        detail: error.detail,
+        hint: error.hint,
+        constraint: error.constraint,
+        table: error.table,
+        column: error.column,
+        stack: error.stack,
+        email: loginDto.email,
+      });
+
+      throw new InternalServerErrorException('Authentication service temporarily unavailable');
     }
   }
 
@@ -400,9 +430,18 @@ export class AuthService {
         exists: existingUser.length > 0,
         email: email.toLowerCase().trim()
       };
-    } catch (error) {
-      this.logger.error(`[checkEmailExists] Failed to check email existence`, error);
-      throw error;
+    } catch (error: any) {
+      // Log detailed error information for debugging
+      this.logger.error(`[checkEmailExists] Failed to check email existence for ${email}`, {
+        error: error.message,
+        code: error.code,
+        detail: error.detail,
+        hint: error.hint,
+        stack: error.stack,
+        email,
+      });
+      
+      throw new InternalServerErrorException('Email check service temporarily unavailable');
     }
   }
 

@@ -25,10 +25,19 @@ export const DRIZZLE = 'DRIZZLE';
         // ESM-only paket => CJS projede dinamik import ile alınır
         const { default: postgres } = await import('postgres');
 
+        // SSL configuration for production/Render
+        const isProduction = nodeEnv === 'production';
+        const dbSsl = cfg.get<string>('DB_SSL', 'false') === 'true';
+        const shouldUseSSL = isProduction || dbSsl;
+
+        console.log('[DB] SSL Configuration:', { isProduction, dbSsl, shouldUseSSL });
+
         const client = postgres(url!, {
           max: 10,
           idle_timeout: 20,
           connect_timeout: 10,
+          // SSL configuration - critical for Render Postgres
+          ssl: shouldUseSSL ? { rejectUnauthorized: false } : false,
           // debug: (conn, q) => console.log('[SQL]', q.text, q.args),
         });
 

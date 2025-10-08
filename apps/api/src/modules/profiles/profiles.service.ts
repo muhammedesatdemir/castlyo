@@ -3,7 +3,9 @@ import {
   Inject, 
   NotFoundException, 
   ForbiddenException, 
-  BadRequestException 
+  BadRequestException,
+  InternalServerErrorException,
+  Logger
 } from '@nestjs/common';
 import { eq, and, sql } from 'drizzle-orm';
 // DATABASE_CONNECTION import removed - using 'DRIZZLE' directly
@@ -26,6 +28,8 @@ import { UpsertAgencyProfileDto } from './dto/agency.dto';
 
 @Injectable()
 export class ProfilesService {
+  private readonly logger = new Logger(ProfilesService.name);
+
   constructor(
     @Inject('DRIZZLE') private readonly database: any,
   ) {}
@@ -813,64 +817,80 @@ export class ProfilesService {
    * Get public talents list for explore page
    */
   async getPublicTalents(page: number = 1, limit: number = 12, skills?: string[]) {
-    const offset = (page - 1) * limit;
-    
-    // Build query for public talent profiles
-    let query = this.database.select({
-      id: talentProfiles.id,
-      userId: talentProfiles.userId,
-      firstName: talentProfiles.firstName,
-      lastName: talentProfiles.lastName,
-      displayName: talentProfiles.displayName,
-      bio: talentProfiles.bio,
-      headline: talentProfiles.headline,
-      city: talentProfiles.city,
-      country: talentProfiles.country,
-      heightCm: talentProfiles.heightCm,
-      weightKg: talentProfiles.weightKg,
-      specialties: talentProfiles.specialties,
-      experience: talentProfiles.experience,
-      profileImage: talentProfiles.profileImage,
-      publishedAt: talentProfiles.publishedAt,
-      createdAt: talentProfiles.createdAt,
-      updatedAt: talentProfiles.updatedAt,
-    })
-    .from(talentProfiles)
-    // .where(eq(talentProfiles.isPublic, true)) // Only published profiles - geçici olarak kapatıldı
-    .orderBy(sql`${talentProfiles.publishedAt} DESC NULLS LAST, ${talentProfiles.updatedAt} DESC`) // Recent published first
-    .limit(limit)
-    .offset(offset);
+    try {
+      const offset = (page - 1) * limit;
+      
+      // Build query for public talent profiles
+      let query = this.database.select({
+        id: talentProfiles.id,
+        userId: talentProfiles.userId,
+        firstName: talentProfiles.firstName,
+        lastName: talentProfiles.lastName,
+        displayName: talentProfiles.displayName,
+        bio: talentProfiles.bio,
+        headline: talentProfiles.headline,
+        city: talentProfiles.city,
+        country: talentProfiles.country,
+        heightCm: talentProfiles.heightCm,
+        weightKg: talentProfiles.weightKg,
+        specialties: talentProfiles.specialties,
+        experience: talentProfiles.experience,
+        profileImage: talentProfiles.profileImage,
+        publishedAt: talentProfiles.publishedAt,
+        createdAt: talentProfiles.createdAt,
+        updatedAt: talentProfiles.updatedAt,
+      })
+      .from(talentProfiles)
+      // .where(eq(talentProfiles.isPublic, true)) // Only published profiles - geçici olarak kapatıldı
+      .orderBy(sql`${talentProfiles.publishedAt} DESC NULLS LAST, ${talentProfiles.updatedAt} DESC`) // Recent published first
+      .limit(limit)
+      .offset(offset);
 
-    // Add skills filter if provided
-    if (skills && skills.length > 0) {
-      // Filter by specialties array overlap
-      query = query.where(
-        sql`${talentProfiles.specialties} && ${skills}` // PostgreSQL array overlap operator
-      );
+      // Add skills filter if provided
+      if (skills && skills.length > 0) {
+        // Filter by specialties array overlap
+        query = query.where(
+          sql`${talentProfiles.specialties} && ${skills}` // PostgreSQL array overlap operator
+        );
+      }
+
+      const talents = await query;
+      
+      // Count total published profiles (with same filters)
+      let countQuery = this.database.select({ count: sql`count(*)` })
+        .from(talentProfiles);
+        // .where(eq(talentProfiles.isPublic, true)); // geçici olarak kapatıldı
+      
+      if (skills && skills.length > 0) {
+        countQuery = countQuery.where(
+          sql`${talentProfiles.specialties} && ${skills}`
+        );
+      }
+    
+      const totalResult = await countQuery;
+      const totalHits = Number(totalResult[0]?.count || 0);
+
+      return {
+        hits: talents,
+        totalHits,
+        page,
+        limit,
+        totalPages: Math.ceil(totalHits / limit),
+      };
+    } catch (error: any) {
+      // Log detailed error information for debugging
+      this.logger.error(`[getPublicTalents] Failed to fetch talents`, {
+        error: error.message,
+        code: error.code,
+        detail: error.detail,
+        hint: error.hint,
+        stack: error.stack,
+        page,
+        limit,
+        skills,
+      });
+      
+      throw new InternalServerErrorException('Profiles service temporarily unavailable');
     }
-
-    const talents = await query;
-    
-    // Count total published profiles (with same filters)
-    let countQuery = this.database.select({ count: sql`count(*)` })
-      .from(talentProfiles);
-      // .where(eq(talentProfiles.isPublic, true)); // geçici olarak kapatıldı
-    
-    if (skills && skills.length > 0) {
-      countQuery = countQuery.where(
-        sql`${talentProfiles.specialties} && ${skills}`
-      );
-    }
-    
-    const totalResult = await countQuery;
-    const totalHits = Number(totalResult[0]?.count || 0);
-
-    return {
-      hits: talents,
-      totalHits,
-      page,
-      limit,
-      totalPages: Math.ceil(totalHits / limit),
-    };
   }
 }
