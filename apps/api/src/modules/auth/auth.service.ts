@@ -43,41 +43,79 @@ export class AuthService {
   async validateUser(email: string, password: string): Promise<any> {
     this.logger.log(`[VALIDATE_USER] Attempting validation for email: ${email}`);
     
-    const user = await this.usersService.findByEmail(email);
-    this.logger.log(`[VALIDATE_USER] User found: ${!!user}, Status: ${user?.status}, EmailVerified: ${user?.emailVerified}`);
-    
-    if (user) {
-      this.logger.log(`[VALIDATE_USER] Password hash from DB: ${user.passwordHash}`);
-      this.logger.log(`[VALIDATE_USER] Password to compare: ${password}`);
-      const passwordMatch = await bcrypt.compare(password, user.passwordHash);
-      this.logger.log(`[VALIDATE_USER] Password match: ${passwordMatch}`);
-      
-      if (passwordMatch) {
-        const { passwordHash, ...result } = user;
-        this.logger.log(`[VALIDATE_USER] ✅ Validation successful for user: ${user.id}`);
-        return result;
-      }
+    if (!email || !password) {
+      this.logger.warn(`[VALIDATE_USER] Missing email or password`);
+      throw new BadRequestException('Email and password are required');
     }
     
-    this.logger.warn(`[VALIDATE_USER] ❌ Validation failed for email: ${email}`);
-    return null;
+    try {
+      const user = await this.usersService.findByEmail(email);
+      this.logger.log(`[VALIDATE_USER] User found: ${!!user}, Status: ${user?.status}, EmailVerified: ${user?.emailVerified}`);
+      
+      if (user && user.passwordHash) {
+        // Guard against undefined password hash
+        if (!user.passwordHash) {
+          this.logger.error(`[VALIDATE_USER] User ${user.id} has no password hash`);
+          throw new InternalServerErrorException('User authentication data is corrupted');
+        }
+        
+        const passwordMatch = await bcrypt.compare(password, user.passwordHash);
+        this.logger.log(`[VALIDATE_USER] Password match: ${passwordMatch}`);
+        
+        if (passwordMatch) {
+          const { passwordHash, ...result } = user;
+          this.logger.log(`[VALIDATE_USER] ✅ Validation successful for user: ${user.id}`);
+          return result;
+        }
+      }
+      
+      this.logger.warn(`[VALIDATE_USER] ❌ Validation failed for email: ${email}`);
+      return null;
+    } catch (error) {
+      if (error instanceof BadRequestException || error instanceof InternalServerErrorException) {
+        throw error;
+      }
+      this.logger.error(`[VALIDATE_USER] Database error during validation: ${error.message}`, error.stack);
+      throw new InternalServerErrorException('Authentication service temporarily unavailable');
+    }
   }
 
   async register(registerDto: RegisterDto, ip?: string) {
     this.logger.log(`[REGISTER] Starting registration for email: ${registerDto.email}`);
     
+    // Validate input
+    if (!registerDto.email || !registerDto.password) {
+      throw new BadRequestException('Email and password are required');
+    }
+
+    if (registerDto.password !== registerDto.passwordConfirm) {
+      throw new BadRequestException('Passwords do not match');
+    }
+
+    if (!registerDto?.consents?.acceptedTerms || !registerDto?.consents?.acceptedPrivacy) {
+      throw new BadRequestException('Required consents must be accepted');
+    }
+
     try {
+      // Check if email already exists
+      const existingUser = await this.usersService.findByEmail(registerDto.email);
+      if (existingUser) {
+        throw new ConflictException('Email already exists');
+      }
+
       // 1) Atomik: user + consents tek transaction
       const { user } = await this.db.transaction(async (tx: any) => {
-        // Check if passwords match
-        if (registerDto.password !== registerDto.passwordConfirm) {
-          this.logger.warn(`[REGISTER] Password mismatch for email: ${registerDto.email}`);
-          throw Object.assign(new Error("PASSWORDS_DO_NOT_MATCH"), { status: 400 });
-        }
-
-        // Hash password
+        // Hash password with proper error handling
         const saltRounds = Number(this.configService.get('BCRYPT_SALT_ROUNDS', 10));
-        const passwordHash = await bcrypt.hash(registerDto.password, saltRounds);
+        let passwordHash: string;
+        
+        try {
+          passwordHash = await bcrypt.hash(registerDto.password, saltRounds);
+        } catch (hashError) {
+          this.logger.error(`[REGISTER] Password hashing failed: ${hashError.message}`, hashError.stack);
+          throw new InternalServerErrorException('Password processing failed');
+        }
+        
         this.logger.debug(`[REGISTER] Password hashed for email: ${registerDto.email}`);
 
         // Check if email verification is enabled
@@ -92,17 +130,11 @@ export class AuthService {
           emailVerified: !emailVerificationEnabled,
         }).returning();
 
-        // Zorunlu onay guard (controller'da da var ama burada da kontrol edelim)
-        if (!registerDto?.consents?.acceptedTerms || !registerDto?.consents?.acceptedPrivacy) {
-          // Nest hata fırlatmayın; transaction içindeyiz → normal Error atıp dışarıda BadRequest'e map'leriz
-          throw Object.assign(new Error("CONSENTS_REQUIRED"), { status: 400 });
-        }
-
         // Insert terms consent
         await tx.insert(userConsents).values({
           userId: user[0].id,
           consentType: 'TERMS',
-          version: registerDto.consents.termsVersion,
+          version: registerDto.consents.termsVersion || '1.0',
           consented: true,
           ipAddress: ip ?? null,
           userAgent: registerDto.userAgent ?? null,
@@ -112,7 +144,7 @@ export class AuthService {
         await tx.insert(userConsents).values({
           userId: user[0].id,
           consentType: 'PRIVACY',
-          version: registerDto.consents.privacyVersion,
+          version: registerDto.consents.privacyVersion || '1.0',
           consented: true,
           ipAddress: ip ?? null,
           userAgent: registerDto.userAgent ?? null,
@@ -122,10 +154,7 @@ export class AuthService {
       });
 
       // 2) Yan etkiler (kritik değil) → başarısız olsa bile kullanıcıya 201 döneceğiz
-      // Bunları transaction SONRASINA al ve try/catch ile sar
       try {
-        // await this.audit("user_registered", { userId: user.id });
-        // await this.mailer.sendWelcome(user.email) // varsa
         this.logger.log(`[REGISTER] User registered successfully: ${user.id} | Email: ${registerDto.email} | Role: ${registerDto.role}`);
       } catch (sideErr) {
         this.logger.warn({ msg: "register side-effect failed", sideErr });
@@ -136,10 +165,22 @@ export class AuthService {
       const tokens = await this.generateTokens(user);
       return { user: { id: user.id, email: user.email, role: user.role }, ...tokens };
 
-    } catch (e) {
-      // Let the global exception filter handle the error mapping
-      this.logger.error({ msg: "register failed", err: e });
-      throw e; // Re-throw to let the filter handle it
+    } catch (error) {
+      // Handle known errors
+      if (error instanceof BadRequestException || 
+          error instanceof ConflictException || 
+          error instanceof InternalServerErrorException) {
+        throw error;
+      }
+
+      // Handle database constraint violations
+      if (error?.code === "23505" || error?.constraint?.includes("unique")) {
+        throw new ConflictException('Email already exists');
+      }
+
+      // Log and throw unexpected errors
+      this.logger.error(`[REGISTER] Registration failed for ${registerDto.email}: ${error.message}`, error.stack);
+      throw new InternalServerErrorException('Registration service temporarily unavailable');
     }
   }
 

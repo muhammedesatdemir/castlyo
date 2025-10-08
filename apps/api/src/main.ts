@@ -2,7 +2,8 @@ import { Logger, ValidationPipe, BadRequestException } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 import { AppModule } from './app.module';
-import { PrismaExceptionFilter } from './common/filters/prisma-exception.filter';
+import { HttpExceptionFilter } from './common/filters/http-exception.filter';
+import { LoggingInterceptor } from './common/interceptors/logging.interceptor';
 const cookieParser = require('cookie-parser');
 
 async function bootstrap() {
@@ -33,8 +34,11 @@ async function bootstrap() {
   // Cookie parser middleware
   app.use(cookieParser());
 
+  // Global interceptors
+  app.useGlobalInterceptors(new LoggingInterceptor());
+
   // Global exception filter
-  app.useGlobalFilters(new PrismaExceptionFilter());
+  app.useGlobalFilters(new HttpExceptionFilter());
   
   // Global validation pipe with detailed error messages
   app.useGlobalPipes(new ValidationPipe({
@@ -54,8 +58,8 @@ async function bootstrap() {
   }));
 
   // CORS - Allow frontend domains
-  const corsOrigins = process.env.CORS_ORIGINS 
-    ? process.env.CORS_ORIGINS.split(',').map(origin => origin.trim())
+  const corsOrigins = process.env.CORS_ORIGIN 
+    ? process.env.CORS_ORIGIN.split(',').map(origin => origin.trim())
     : [
         'http://localhost:3000',
         'https://castlyo.com',
@@ -68,7 +72,7 @@ async function bootstrap() {
     origin: corsOrigins,
     credentials: true,
     methods: ['GET','POST','PUT','PATCH','DELETE','OPTIONS'],
-    allowedHeaders: ['Content-Type','Authorization'],
+    allowedHeaders: ['Content-Type','Authorization','Cookie'],
   });
 
   // Swagger documentation

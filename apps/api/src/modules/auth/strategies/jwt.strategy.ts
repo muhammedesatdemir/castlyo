@@ -6,11 +6,17 @@ import { ConfigService } from '@nestjs/config';
 @Injectable()
 export class JwtStrategy extends PassportStrategy(Strategy) {
   constructor(private configService: ConfigService) {
+    const cookieName = configService.get('COOKIE_NAME', 'castlyo_at');
+    
     super({
       jwtFromRequest: ExtractJwt.fromExtractors([
         ExtractJwt.fromAuthHeaderAsBearerToken(),
         (request) => {
-          // Extract JWT from cookies
+          // Extract JWT from cookies using configurable cookie name
+          if (request.cookies && request.cookies[cookieName]) {
+            return request.cookies[cookieName];
+          }
+          // Fallback to legacy cookie name for backward compatibility
           if (request.cookies && request.cookies.accessToken) {
             return request.cookies.accessToken;
           }

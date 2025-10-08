@@ -4,7 +4,7 @@ import { NextRequest, NextResponse } from 'next/server';
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
-const API_BASE = process.env.API_PROXY_TARGET ?? process.env.API_INTERNAL_URL ?? process.env.INTERNAL_API_URL ?? 'http://api:3001';
+const API_BASE = process.env.API_BASE_URL ?? process.env.API_PROXY_TARGET ?? process.env.API_INTERNAL_URL ?? process.env.INTERNAL_API_URL ?? 'http://localhost:3001';
 
 function rewriteSetCookieForProduction(raw: string): string {
   // Cookie ad/değer + attribute'ları ayır
@@ -22,18 +22,13 @@ function rewriteSetCookieForProduction(raw: string): string {
     // Production'da domain'i kaldır (host-only cookie olsun)
     if (k.startsWith('domain=')) continue;
 
-    // Production'da HTTPS varsa Secure'u koru, yoksa kaldır
-    if (k === 'secure') {
-      if (isProduction) keep.push(a);
-      continue;
-    }
+    // Secure attribute'unu yeniden ayarlayacağız
+    if (k === 'secure') continue;
 
     // SameSite'ı yeniden ayarlayacağız
     if (k.startsWith('samesite=')) continue;
 
-    // Path'i koru
-    if (k.startsWith('path=')) { keep.push(a); continue; }
-
+    // Path, HttpOnly, MaxAge gibi diğer attribute'ları koru
     keep.push(a);
   }
 
@@ -42,9 +37,10 @@ function rewriteSetCookieForProduction(raw: string): string {
     keep.push('Path=/');
   }
   
-  // Production'da Secure + SameSite=Lax, development'ta sadece Lax
+  // Production'da Secure + SameSite=None (cross-origin için), development'ta SameSite=Lax
   if (isProduction) {
-    keep.push('SameSite=Lax');
+    // Render.com gibi proxy arkasında çalışırken SameSite=None gerekebilir
+    keep.push('SameSite=Lax'); // Lax ile başlayalım, gerekirse None'a çevirebiliriz
     keep.push('Secure');
   } else {
     keep.push('SameSite=Lax');

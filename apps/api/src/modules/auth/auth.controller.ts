@@ -14,6 +14,7 @@ import {
   Res
 } from '@nestjs/common';
 import { Response } from 'express';
+import { ConfigService } from '@nestjs/config';
 import { Throttle, SkipThrottle } from '@nestjs/throttler';
 import { AuthService } from './auth.service';
 import { 
@@ -26,11 +27,19 @@ import {
 } from './dto/auth.dto';
 import { LocalAuthGuard } from './guards/local-auth.guard';
 import { Public } from './decorators/public.decorator';
+import { CookieConfigService } from './utils/cookie.config';
 
 @Controller('auth')
 @SkipThrottle()
 export class AuthController {
-  constructor(private authService: AuthService) {}
+  private cookieConfig: CookieConfigService;
+
+  constructor(
+    private authService: AuthService,
+    private configService: ConfigService,
+  ) {
+    this.cookieConfig = new CookieConfigService(configService);
+  }
 
 
   @Public()
@@ -52,20 +61,14 @@ export class AuthController {
     registerDto.userAgent = userAgent;
     const result = await this.authService.register(registerDto, ipAddress);
     
-    // Set JWT cookies
-    res.cookie('accessToken', result.access_token, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
-      maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
-    });
+    // Set JWT cookies with environment-based configuration
+    const accessTokenCookieName = this.cookieConfig.getAccessTokenCookieName();
+    const refreshTokenCookieName = this.cookieConfig.getRefreshTokenCookieName();
+    const accessTokenOptions = this.cookieConfig.getAccessTokenCookieOptions();
+    const refreshTokenOptions = this.cookieConfig.getRefreshTokenCookieOptions();
     
-    res.cookie('refreshToken', result.refresh_token, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
-      maxAge: 30 * 24 * 60 * 60 * 1000, // 30 days
-    });
+    res.cookie(accessTokenCookieName, result.access_token, accessTokenOptions);
+    res.cookie(refreshTokenCookieName, result.refresh_token, refreshTokenOptions);
     
     return res.json(result);
   }
@@ -90,20 +93,14 @@ export class AuthController {
       const result = await this.authService.login(loginDto);
       console.log(`[LOGIN_ATTEMPT] Login successful for: ${loginDto.email}`);
       
-      // Set JWT cookies
-      res.cookie('accessToken', result.access_token, {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === 'production',
-        sameSite: 'lax',
-        maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
-      });
+      // Set JWT cookies with environment-based configuration
+      const accessTokenCookieName = this.cookieConfig.getAccessTokenCookieName();
+      const refreshTokenCookieName = this.cookieConfig.getRefreshTokenCookieName();
+      const accessTokenOptions = this.cookieConfig.getAccessTokenCookieOptions();
+      const refreshTokenOptions = this.cookieConfig.getRefreshTokenCookieOptions();
       
-      res.cookie('refreshToken', result.refresh_token, {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === 'production',
-        sameSite: 'lax',
-        maxAge: 30 * 24 * 60 * 60 * 1000, // 30 days
-      });
+      res.cookie(accessTokenCookieName, result.access_token, accessTokenOptions);
+      res.cookie(refreshTokenCookieName, result.refresh_token, refreshTokenOptions);
       
       return res.json(result);
     } catch (error) {
@@ -150,18 +147,13 @@ export class AuthController {
   @Post('logout')
   @HttpCode(HttpStatus.OK)
   async logout(@Res({ passthrough: false }) res: Response) {
-    // Clear JWT cookies
-    res.clearCookie('accessToken', {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
-    });
+    // Clear JWT cookies with proper configuration
+    const accessTokenCookieName = this.cookieConfig.getAccessTokenCookieName();
+    const refreshTokenCookieName = this.cookieConfig.getRefreshTokenCookieName();
+    const clearOptions = this.cookieConfig.getClearCookieOptions();
     
-    res.clearCookie('refreshToken', {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
-    });
+    res.clearCookie(accessTokenCookieName, clearOptions);
+    res.clearCookie(refreshTokenCookieName, clearOptions);
     
     return res.json({ message: 'Logged out successfully' });
   }
