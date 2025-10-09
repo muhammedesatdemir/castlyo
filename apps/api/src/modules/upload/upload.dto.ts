@@ -1,4 +1,4 @@
-import { IsEnum, IsString } from 'class-validator';
+import { IsEnum, IsString, IsIn } from 'class-validator';
 
 export enum UploadFolder {
   DOCUMENTS = 'documents',
