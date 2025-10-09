@@ -32,15 +32,7 @@ export class CreateJobPostDto {
   @Length(0, 1000)
   requirements?: string;
 
-  @IsOptional()
-  @IsNumber()
-  @Min(0)
-  age_min?: number;
-
-  @IsOptional()
-  @IsNumber()
-  @Min(0)
-  age_max?: number;
+  // age_min and age_max fields removed - columns no longer exist in DB
 
   @IsOptional()
   @IsNumber()
@@ -87,17 +79,7 @@ export class CreateJobPostDto {
   @IsDateString()
   shootingEndDate?: string;
 
-  @IsOptional()
-  @IsNumber()
-  @Min(16)
-  @Max(80)
-  ageMin?: number;
-
-  @IsOptional()
-  @IsNumber()
-  @Min(16)
-  @Max(80)
-  ageMax?: number;
+  // ageMin and ageMax fields removed - columns no longer exist in DB
 
   @IsOptional()
   @IsArray()
@@ -203,17 +185,7 @@ export class UpdateJobPostDto {
   @IsDateString()
   shootingEndDate?: string;
 
-  @IsOptional()
-  @IsNumber()
-  @Min(16)
-  @Max(80)
-  ageMin?: number;
-
-  @IsOptional()
-  @IsNumber()
-  @Min(16)
-  @Max(80)
-  ageMax?: number;
+  // ageMin and ageMax fields removed - columns no longer exist in DB
 
   @IsOptional()
   @IsArray()

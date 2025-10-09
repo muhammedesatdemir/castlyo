@@ -61,8 +61,7 @@ const jobPostSelectBase = {
   createdAt: jobPosts.createdAt,
   updatedAt: jobPosts.updatedAt,
   budgetRange: sql`"job_posts"."budget_range"`,
-  ageMin: sql`"job_posts"."age_min"`,
-  ageMax: sql`"job_posts"."age_max"`,
+  // ageMin and ageMax fields removed - columns no longer exist in DB
   maxApplications: sql`"job_posts"."max_applications"`,
   // API field names
   salary_min: jobPosts.salaryMin,
@@ -113,8 +112,7 @@ export class JobsService {
         salaryMin: jobData.salary_min ?? jobData.budgetMin,
         salaryMax: jobData.salary_max ?? jobData.budgetMax,
         currency: jobData.currency || 'TRY',
-        ageMin: jobData.age_min ?? jobData.ageMin ?? null,
-        ageMax: jobData.age_max ?? jobData.ageMax ?? null,
+        // ageMin and ageMax fields removed - columns no longer exist in DB
         status: 'DRAFT',
       })
       .returning();
@@ -205,8 +203,7 @@ export class JobsService {
         createdAt: jobPosts.createdAt,
         updatedAt: jobPosts.updatedAt,
         budgetRange: sql`"job_posts"."budget_range"`,
-        ageMin: sql`"job_posts"."age_min"`,
-        ageMax: sql`"job_posts"."age_max"`,
+        // ageMin and ageMax fields removed - columns no longer exist in DB
         maxApplications: sql`"job_posts"."max_applications"`,
         // API field names
         salary_min: jobPosts.salaryMin,
@@ -255,8 +252,7 @@ export class JobsService {
       salaryMax: jobPosts.salaryMax,
       currency: jobPosts.currency,
       applicationDeadline: jobPosts.applicationDeadline,
-      ageMin: sql`"job_posts"."age_min"`,
-      ageMax: sql`"job_posts"."age_max"`,
+      // ageMin and ageMax fields removed - columns no longer exist in DB
       createdAt: jobPosts.createdAt,
       updatedAt: jobPosts.updatedAt,
       agencyId: jobPosts.agencyId,
@@ -384,8 +380,7 @@ export class JobsService {
         description: jobData.description,
         jobType: jobData.category as any,
         // requirements: jobData.requirements, // Field doesn't exist in schema
-        ageMin: jobData.ageMin ?? null,
-        ageMax: jobData.ageMax ?? null,
+        // ageMin and ageMax fields removed - columns no longer exist in DB
         genderRequirement: (jobData.genderPreference?.[0] ?? 'ANY') as 'ANY'|'MALE'|'FEMALE',
         // heightMin: jobData.heightMin, // field doesn't exist in schema
         // heightMax: jobData.heightMax, // field doesn't exist in schema

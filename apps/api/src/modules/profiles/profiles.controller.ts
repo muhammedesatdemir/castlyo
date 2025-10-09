@@ -14,6 +14,7 @@ import {
   HttpCode,
   HttpStatus,
   UnauthorizedException,
+  NotFoundException,
   ParseUUIDPipe
 } from '@nestjs/common';
 import { Request as ExpressRequest } from 'express';
@@ -98,7 +99,13 @@ export class ProfilesController {
     if (!userId) {
       throw new UnauthorizedException('Missing user id in token');
     }
-    return this.profilesService.getTalentProfile(userId);
+    
+    const profile = await this.profilesService.getTalentProfile(userId);
+    if (!profile) {
+      throw new NotFoundException('PROFILE_NOT_FOUND');
+    }
+    
+    return profile;
   }
 
   @Get('agency/me')

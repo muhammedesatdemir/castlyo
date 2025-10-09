@@ -188,28 +188,30 @@ export class ProfilesService {
   }
 
   async getTalentProfile(userId: string, requestingUserId?: string) {
-    const rows = await this.database
-      .select({
-        tp: talentProfiles,
-        u: users,
-        g: {
-          id: guardianContacts.id,
-          fullName: guardianContacts.fullName,
-          relation: guardianContacts.relation,
-          phone: guardianContacts.phone,
-          email: guardianContacts.email,
-        }
-      })
-      .from(talentProfiles)
-      .leftJoin(users, eq(talentProfiles.userId, users.id))
-      .leftJoin(guardianContacts, eq(guardianContacts.talentProfileId, talentProfiles.id))
-      .where(eq(talentProfiles.userId, userId))
-      .limit(1);
+    try {
+      const rows = await this.database
+        .select({
+          tp: talentProfiles,
+          u: users,
+          g: {
+            id: guardianContacts.id,
+            fullName: guardianContacts.fullName,
+            relation: guardianContacts.relation,
+            phone: guardianContacts.phone,
+            email: guardianContacts.email,
+          }
+        })
+        .from(talentProfiles)
+        .leftJoin(users, eq(talentProfiles.userId, users.id))
+        .leftJoin(guardianContacts, eq(guardianContacts.talentProfileId, talentProfiles.id))
+        .where(eq(talentProfiles.userId, userId))
+        .limit(1);
 
-    const row = rows[0];
-    if (!row) {
-      throw new NotFoundException('Talent profile not found');
-    }
+      const row = rows[0];
+      if (!row) {
+        // Return null instead of throwing - let controller handle 404
+        return null;
+      }
 
     const { tp, u, g } = row;
 
@@ -243,7 +245,11 @@ export class ProfilesService {
       } : null,
     };
 
-    return formattedProfile;
+      return formattedProfile;
+    } catch (error) {
+      this.logger.error(`[getTalentProfile] Error fetching profile for user ${userId}:`, error);
+      return null; // Safe fallback - let controller handle 404
+    }
   }
 
   /**
@@ -899,7 +905,10 @@ export class ProfilesService {
         bio: talentProfiles.bio,
         headline: talentProfiles.headline,
         city: talentProfiles.city,
+        city_label: talentProfiles.cityLabel,
+        city_code: talentProfiles.cityCode,
         country: talentProfiles.country,
+        gender: talentProfiles.gender,
         heightCm: talentProfiles.heightCm,
         weightKg: talentProfiles.weightKg,
         specialties: talentProfiles.specialties,
@@ -939,8 +948,16 @@ export class ProfilesService {
       const totalResult = await countQuery;
       const totalHits = Number(totalResult[0]?.count || 0);
 
+      // Map talents to ensure new fields are nullable
+      const mappedTalents = talents.map(talent => ({
+        ...talent,
+        city_label: talent.city_label ?? null,
+        city_code: talent.city_code ?? null,
+        gender: talent.gender ?? null,
+      }));
+
       return {
-        hits: talents,
+        hits: mappedTalents,
         totalHits,
         page,
         limit,
