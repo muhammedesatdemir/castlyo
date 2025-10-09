@@ -149,9 +149,22 @@ export async function fetchCombined() {
   ]);
 
   if (!userRes.ok) throw new Error("Kullanıcı bilgisi alınamadı");
+  
   // profil yoksa 404 gelebilir – sorun değil
   const user: ApiUser = await userRes.json();
-  const profile: ApiTalentProfile | null = profRes.ok ? await profRes.json() : null;
+  let profile: ApiTalentProfile | null = null;
+  
+  if (profRes.ok) {
+    profile = await profRes.json();
+  } else if (profRes.status === 404) {
+    // Profil henüz oluşturulmamış - bu normal
+    console.debug('[OnboardingMap] Profile not found (404) - user has no profile yet');
+    profile = null;
+  } else {
+    // Gerçek hata durumu
+    console.error('[OnboardingMap] Profile fetch error:', profRes.status, profRes.statusText);
+    throw new Error(`Profil yüklenemedi: ${profRes.status} ${profRes.statusText}`);
+  }
 
   return mapToUi(user, profile);
 }

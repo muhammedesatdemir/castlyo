@@ -78,6 +78,11 @@ async function fetchProfileData(userRole?: string): Promise<Profile> {
     } else if (!pRes.ok) {
       // Gerçek hata durumu
       console.error('[ProfilePage] Profile fetch error:', pRes.status, pRes.statusText);
+      // 404 değilse hata fırlat
+      if (pRes.status !== 404) {
+        throw new Error(`Profil yüklenemedi: ${pRes.status} ${pRes.statusText}`);
+      }
+      // 404 ise boş profil ile devam et
       profileRaw = {};
     }
 
@@ -109,6 +114,33 @@ async function fetchProfileData(userRole?: string): Promise<Profile> {
     return mapApiToProfile(combinedData);
   } catch (error) {
     console.error('[ProfilePage] Fetch error:', error);
+    // 404 hatalarını fırlatma - boş profil döndür
+    if (error instanceof Error && (error.message.includes('404') || error.message.includes('Profile not found'))) {
+      return {
+        firstName: '',
+        lastName: '',
+        email: '',
+        phone: '',
+        role: null,
+        status: null,
+        company: null,
+        profilePhotoUrl: null,
+        professional: {
+          specialties: [],
+          bio: '',
+          experience: '',
+          cvUrl: null,
+        },
+        personal: {
+          city: '',
+          birthDate: null,
+          gender: '',
+          heightCm: undefined,
+          weightKg: undefined,
+          guardian: null,
+        },
+      } as Profile;
+    }
     throw error;
   }
 }
@@ -257,9 +289,32 @@ export default function ProfilePage() {
           </div>
         )}
 
-        {!isLoading && !error && data && (
+        {!isLoading && !error && (
           <ProfileClient
-            initialProfile={data}
+            initialProfile={data || {
+              firstName: '',
+              lastName: '',
+              email: '',
+              phone: '',
+              role: null,
+              status: null,
+              company: null,
+              profilePhotoUrl: null,
+              professional: {
+                specialties: [],
+                bio: '',
+                experience: '',
+                cvUrl: null,
+              },
+              personal: {
+                city: '',
+                birthDate: null,
+                gender: '',
+                heightCm: undefined,
+                weightKg: undefined,
+                guardian: null,
+              },
+            }}
             theme={THEME}
             onSaved={(fresh) => {
               // Optimistic update: update SWR cache immediately

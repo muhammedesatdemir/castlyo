@@ -281,7 +281,10 @@ function TalentOnboardingContent() {
         });
       } catch (error) {
         console.error("[ONBOARDING] Profile load error:", error);
-        // Hata durumunda boş form ile devam et
+        // Hata durumunda boş form ile devam et - 404 değilse hata göster
+        if (error instanceof Error && !error.message.includes('404')) {
+          setMsg("Profil bilgileri yüklenirken hata oluştu. Boş form ile devam edebilirsiniz.");
+        }
       } finally {
         if (alive) setLoading(false);
       }
