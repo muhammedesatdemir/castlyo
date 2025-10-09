@@ -1,5 +1,5 @@
 // Presigned URL helper with profile fallbacks
-type PresignedPut = { type: 'PUT'; putUrl: string; fileUrl: string };
+type PresignedPut = { type: 'PUT'; putUrl: string; fileUrl: string; contentType?: string };
 type PresignedPost = { url: string; fields: Record<string, string>; fileUrl?: string };
 
 function guessMime(name: string) {
