@@ -166,7 +166,7 @@ function JobsPageContent() {
                   >
                     <option value="">Tümü</option>
                     {TURKISH_CITIES.map(city => (
-                      <option key={city.value} value={city.value}>
+                      <option key={city.slug} value={city.slug}>
                         {city.label}
                       </option>
                     ))}

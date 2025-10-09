@@ -279,7 +279,7 @@ export default function AgencyRegistrationForm({ onClose }: AgencyRegistrationFo
                   >
                     <option value="">Şehir seçiniz</option>
                     {TURKISH_CITIES.map(city => (
-                      <option key={city.value} value={city.value}>
+                      <option key={city.slug} value={city.slug}>
                         {city.label}
                       </option>
                     ))}
