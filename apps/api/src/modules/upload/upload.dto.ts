@@ -1,4 +1,4 @@
-import { IsEnum, IsString, IsIn } from 'class-validator';
+import { IsEnum, IsString, IsIn, IsOptional } from 'class-validator';
 
 export enum UploadFolder {
   DOCUMENTS = 'documents',
@@ -18,6 +18,10 @@ export class PresignDto {
 
   @IsEnum(UploadFolder)
   folder!: UploadFolder;
+
+  @IsOptional()
+  @IsString()
+  contentDisposition?: string;
 }
 
 

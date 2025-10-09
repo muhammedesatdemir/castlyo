@@ -42,8 +42,10 @@ export const talentProfiles = pgTable("talent_profiles", {
   displayName: text("display_name"),
   bio: text("bio"),
   headline: text("headline"),
-  // Dual city model: store free-text label and normalized code
+  // Dual city model: store free-text label and normalized code (keep legacy city)
   cityLabel: text("city_label"),
+  cityCode: cityCodeEnum("city_code"),
+  // legacy column kept for backward compatibility in responses
   city: cityCodeEnum("city"),
   country: text("country"),
 
@@ -58,7 +60,7 @@ export const talentProfiles = pgTable("talent_profiles", {
   profileImage: text("profile_image"),
   
   // Personal info
-  birthDate: text("birth_date"), // ISO date string
+  birthDate: timestamp("birth_date", { withTimezone: false, mode: 'date' }),
   gender: talentGenderEnum("gender"),
   resumeUrl: text("resume_url"),
   

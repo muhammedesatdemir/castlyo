@@ -124,6 +124,8 @@ export class ProfilesService {
         ...profileData,
         // Dual city model
         cityLabel: cityLabel ?? null,
+        cityCode: normalizedCode ?? null,
+        // legacy compatibility field for older consumers expecting "city"
         city: normalizedCode ?? null,
         specialties: profileData.specialties || [],
         country: profileData.country || 'TR',
@@ -409,6 +411,7 @@ export class ProfilesService {
         lastName:      src.last_name      ?? profileData.lastName,
         // City dual fields
         cityLabel:     src.city_label     ?? (profileData as any).city_label,
+        cityCode:      undefined,
         // city_code accepted but overridden by city_label normalization
         city:          undefined,
         birthDate:     src.birth_date     ?? profileData.birthDate,
@@ -435,11 +438,12 @@ export class ProfilesService {
       // Apply city normalization
       if (mappedData.cityLabel !== undefined) {
         const code = this.normalizeCity(mappedData.cityLabel);
-        mappedData.city = code ?? null;
+        mappedData.cityCode = code ?? null;
+        mappedData.city = code ?? null; // legacy response compatibility
       } else if ((src.city_code ?? (profileData as any)?.city_code) !== undefined) {
         // Allow explicit code only if label absent
         const code = String(src.city_code ?? (profileData as any)?.city_code).toUpperCase();
-        mappedData.city = [
+        const valid = [
           'ADANA','ADIYAMAN','AFYONKARAHISAR','AGRI','AMASYA','ANKARA','ANTALYA','ARTVIN','AYDIN',
           'BALIKESIR','BILECIK','BINGOL','BITLIS','BOLU','BURDUR','BURSA',
           'CANAKKALE','CANKIRI','CORUM','DENIZLI','DIYARBAKIR','EDIRNE','ELAZIG','ERZINCAN','ERZURUM',
@@ -449,7 +453,10 @@ export class ProfilesService {
           'SIVAS','TEKIRDAG','TOKAT','TRABZON','TUNCELI','SANLIURFA','USAK','VAN','YOZGAT','ZONGULDAK',
           'AKSARAY','BAYBURT','KARAMAN','KIRIKKALE','BATMAN','SIRNAK','BARTIN','ARDAHAN','IGDIR','YALOVA',
           'KARABUK','KILIS','OSMANIYE','DUZCE'
-        ].includes(code as any) ? code : null;
+        ];
+        const finalCode = valid.includes(code as any) ? code : null;
+        mappedData.cityCode = finalCode;
+        mappedData.city = finalCode; // legacy compatibility
       }
 
       // Upsert (insert or update) - one record per user
@@ -463,6 +470,7 @@ export class ProfilesService {
       if (mappedData.firstName !== undefined) updateSet.firstName = sql`EXCLUDED.first_name`;
       if (mappedData.lastName !== undefined) updateSet.lastName = sql`EXCLUDED.last_name`;
       if (mappedData.cityLabel !== undefined) updateSet.cityLabel = sql`EXCLUDED.city_label`;
+      if (mappedData.cityCode !== undefined) updateSet.cityCode = sql`EXCLUDED.city_code`;
       if (mappedData.city !== undefined) updateSet.city = sql`EXCLUDED.city`;
       if (mappedData.country !== undefined) updateSet.country = sql`EXCLUDED.country`;
       if (mappedData.bio !== undefined) updateSet.bio = sql`EXCLUDED.bio`;

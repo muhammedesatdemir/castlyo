@@ -7,6 +7,7 @@
     "build": "npm run clean && tsc -p tsconfig.build.json && tsc-alias -p tsconfig.build.json",
     "migrate": "node dist/apps/api/src/scripts/migrate.js",
     "db:migrate:prod": "node dist/apps/api/src/scripts/migrate.js",
+    "start:with-migrate": "npm run db:migrate:prod && node dist/main.js",
     "format": "prettier --write \"src/**/*.ts\" \"test/**/*.ts\"",
     "start": "npm run migrate && npm run start:prod",
     "start:prod": "node dist/main.js",
