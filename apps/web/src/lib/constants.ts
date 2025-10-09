@@ -5,7 +5,6 @@ import { ALL_OPTION, CATEGORIES } from '@/constants/categories';
 export const GENDER_OPTIONS = [
   { value: 'MALE', label: 'Erkek' },
   { value: 'FEMALE', label: 'Kadın' },
-  { value: 'OTHER', label: 'Diğer' },
 ] as const;
 
 // Experience levels
@@ -111,21 +110,10 @@ export const LANGUAGES = [
   { value: 'OTHER', label: 'Diğer' },
 ] as const;
 
-// Turkish cities
-export const TURKISH_CITIES = [
-  'Adana', 'Adıyaman', 'Afyonkarahisar', 'Ağrı', 'Amasya', 'Ankara', 'Antalya',
-  'Artvin', 'Aydın', 'Balıkesir', 'Bilecik', 'Bingöl', 'Bitlis', 'Bolu',
-  'Burdur', 'Bursa', 'Çanakkale', 'Çankırı', 'Çorum', 'Denizli', 'Diyarbakır',
-  'Edirne', 'Elazığ', 'Erzincan', 'Erzurum', 'Eskişehir', 'Gaziantep', 'Giresun',
-  'Gümüşhane', 'Hakkâri', 'Hatay', 'Isparta', 'Mersin', 'İstanbul', 'İzmir',
-  'Kars', 'Kastamonu', 'Kayseri', 'Kırklareli', 'Kırşehir', 'Kocaeli', 'Konya',
-  'Kütahya', 'Malatya', 'Manisa', 'Kahramanmaraş', 'Mardin', 'Muğla', 'Muş',
-  'Nevşehir', 'Niğde', 'Ordu', 'Rize', 'Sakarya', 'Samsun', 'Siirt', 'Sinop',
-  'Sivas', 'Tekirdağ', 'Tokat', 'Trabzon', 'Tunceli', 'Şanlıurfa', 'Uşak',
-  'Van', 'Yozgat', 'Zonguldak', 'Aksaray', 'Bayburt', 'Karaman', 'Kırıkkale',
-  'Batman', 'Şırnak', 'Bartın', 'Ardahan', 'Iğdır', 'Yalova', 'Karabük', 'Kilis',
-  'Osmaniye', 'Düzce'
-].map(city => ({ value: city, label: city }));
+// Turkish cities - using the new normalized data
+import { TURKIYE_CITIES } from '@/data/turkiye-cities';
+
+export const TURKISH_CITIES = TURKIYE_CITIES;
 
 // Eye colors
 export const EYE_COLORS = [

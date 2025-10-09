@@ -3,6 +3,18 @@ import { pgEnum } from 'drizzle-orm/pg-core';
 export const userRoleEnum = pgEnum('user_role', ['TALENT', 'AGENCY', 'ADMIN']);
 export const userStatusEnum = pgEnum('user_status', ['PENDING', 'ACTIVE', 'SUSPENDED', 'DELETED']);
 export const genderEnum = pgEnum('gender', ['MALE', 'FEMALE', 'OTHER']);
+export const talentGenderEnum = pgEnum('talent_gender', ['MALE', 'FEMALE']);
+export const cityCodeEnum = pgEnum('city_code', [
+  'ADANA','ADIYAMAN','AFYONKARAHISAR','AGRI','AMASYA','ANKARA','ANTALYA','ARTVIN','AYDIN',
+  'BALIKESIR','BILECIK','BINGOL','BITLIS','BOLU','BURDUR','BURSA',
+  'CANAKKALE','CANKIRI','CORUM','DENIZLI','DIYARBAKIR','EDIRNE','ELAZIG','ERZINCAN','ERZURUM',
+  'ESKISEHIR','GAZIANTEP','GIRESUN','GUMUSHANE','HAKKARI','HATAY','ISPARTA','MERSIN','ISTANBUL','IZMIR',
+  'KARS','KASTAMONU','KAYSERI','KIRKLARELI','KIRSEHIR','KOCAELI','KONYA','KUTAHYA','MALATYA','MANISA',
+  'KAHRAMANMARAS','MARDIN','MUGLA','MUS','NEVSEHIR','NIGDE','ORDU','RIZE','SAKARYA','SAMSUN','SIIRT','SINOP',
+  'SIVAS','TEKIRDAG','TOKAT','TRABZON','TUNCELI','SANLIURFA','USAK','VAN','YOZGAT','ZONGULDAK',
+  'AKSARAY','BAYBURT','KARAMAN','KIRIKKALE','BATMAN','SIRNAK','BARTIN','ARDAHAN','IGDIR','YALOVA',
+  'KARABUK','KILIS','OSMANIYE','DUZCE'
+]);
 export const genderRequirementEnum = pgEnum('gender_requirement', ['ANY', 'MALE', 'FEMALE', 'OTHER']);
 export const locationTypeEnum = pgEnum('location_type', ['ONSITE', 'REMOTE', 'HYBRID']);
 export const jobTypeEnum = pgEnum('job_type', ['FULL_TIME', 'PART_TIME', 'CONTRACT', 'INTERN']);

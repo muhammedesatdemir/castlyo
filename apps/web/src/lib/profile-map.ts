@@ -1,12 +1,11 @@
-const GENDER_MAP: Record<string, 'MALE'|'FEMALE'|'OTHER'> = {
+import { toCityCode, toIsoDate, toIntOrNull, normalizeGender, compact } from '@/utils/normalizers';
+
+const GENDER_MAP: Record<string, 'MALE'|'FEMALE'> = {
   'Erkek': 'MALE',
   'Kadın': 'FEMALE',
   'Kadin': 'FEMALE',
-  'Diğer': 'OTHER',
-  'Diger': 'OTHER',
   'MALE': 'MALE',
-  'FEMALE': 'FEMALE',
-  'OTHER': 'OTHER'
+  'FEMALE': 'FEMALE'
 };
 
 function toISOFromTR(dobTR?: string | null) {
@@ -38,19 +37,21 @@ export function sanitizeProfilePayload(form: any) {
   const languages = Array.isArray(form.languages) ? form.languages : [];
   const specialties = Array.isArray(form.specialties) ? form.specialties : [];
 
-  return {
+  const payload = {
     firstName: n(form.firstName),
     lastName: n(form.lastName),
     displayName: n(form.displayName) ?? (`${form.firstName ?? ''} ${form.lastName ?? ''}`.trim() || null),
     bio: n(form.bio),
     experience: n(form.experience),
-    city: n(form.city),
+    // Dual city model
+    city_label: n(form.city),
+    city_code: toCityCode(n(form.city) ?? undefined),
     country: n(form.country) ?? 'TR',
-    gender: form.gender ? GENDER_MAP[form.gender] ?? null : null,
-    dateOfBirth: toISOFromTR(form.birthDate),
+    gender: normalizeGender(form.gender), // Use new gender normalizer
+    birthDate: toIsoDate(form.birthDate), // Use new date normalizer
 
-    height: ni(form.height),
-    weight: ni(form.weight),
+    heightCm: toIntOrNull(form.height), // Use new number normalizer
+    weightKg: toIntOrNull(form.weight), // Use new number normalizer
     eyeColor: n(form.eyeColor),
     hairColor: n(form.hairColor),
 
@@ -64,6 +65,9 @@ export function sanitizeProfilePayload(form: any) {
     
     isPublic: form.isPublic ?? true,
   };
+
+  // Remove undefined values to avoid sending them to API
+  return compact(payload);
 }
 
 export type SanitizedProfilePayload = ReturnType<typeof sanitizeProfilePayload>;

@@ -9,7 +9,7 @@ import {
   integer,
   uniqueIndex,
 } from "drizzle-orm/pg-core";
-import { userRoleEnum, userStatusEnum, genderEnum } from './enums';
+import { userRoleEnum, userStatusEnum, genderEnum, talentGenderEnum, cityCodeEnum } from './enums';
 
 export const users = pgTable("users", {
   id: uuid("id").defaultRandom().primaryKey(),
@@ -42,7 +42,9 @@ export const talentProfiles = pgTable("talent_profiles", {
   displayName: text("display_name"),
   bio: text("bio"),
   headline: text("headline"),
-  city: text("city"),
+  // Dual city model: store free-text label and normalized code
+  cityLabel: text("city_label"),
+  city: cityCodeEnum("city"),
   country: text("country"),
 
   // API'nin beklediği isim alanları (users tablosundan da gelebilir)
@@ -57,7 +59,7 @@ export const talentProfiles = pgTable("talent_profiles", {
   
   // Personal info
   birthDate: text("birth_date"), // ISO date string
-  gender: genderEnum("gender"),
+  gender: talentGenderEnum("gender"),
   resumeUrl: text("resume_url"),
   
   // API'nin beklediği ek alanlar

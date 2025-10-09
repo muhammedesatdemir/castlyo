@@ -19,6 +19,16 @@ import { Transform, Type, Expose } from 'class-transformer';
 
 // ---- types ----
 export type ApiGender = 'MALE' | 'FEMALE';
+export type CityCode = 
+  | 'ADANA'|'ADIYAMAN'|'AFYONKARAHISAR'|'AGRI'|'AMASYA'|'ANKARA'|'ANTALYA'|'ARTVIN'|'AYDIN'
+  | 'BALIKESIR'|'BILECIK'|'BINGOL'|'BITLIS'|'BOLU'|'BURDUR'|'BURSA'
+  | 'CANAKKALE'|'CANKIRI'|'CORUM'|'DENIZLI'|'DIYARBAKIR'|'EDIRNE'|'ELAZIG'|'ERZINCAN'|'ERZURUM'
+  | 'ESKISEHIR'|'GAZIANTEP'|'GIRESUN'|'GUMUSHANE'|'HAKKARI'|'HATAY'|'ISPARTA'|'MERSIN'|'ISTANBUL'|'IZMIR'
+  | 'KARS'|'KASTAMONU'|'KAYSERI'|'KIRKLARELI'|'KIRSEHIR'|'KOCAELI'|'KONYA'|'KUTAHYA'|'MALATYA'|'MANISA'
+  | 'KAHRAMANMARAS'|'MARDIN'|'MUGLA'|'MUS'|'NEVSEHIR'|'NIGDE'|'ORDU'|'RIZE'|'SAKARYA'|'SAMSUN'|'SIIRT'|'SINOP'
+  | 'SIVAS'|'TEKIRDAG'|'TOKAT'|'TRABZON'|'TUNCELI'|'SANLIURFA'|'USAK'|'VAN'|'YOZGAT'|'ZONGULDAK'
+  | 'AKSARAY'|'BAYBURT'|'KARAMAN'|'KIRIKKALE'|'BATMAN'|'SIRNAK'|'BARTIN'|'ARDAHAN'|'IGDIR'|'YALOVA'
+  | 'KARABUK'|'KILIS'|'OSMANIYE'|'DUZCE';
 
 // ---- transformation helpers ----
 const GENDER_MAP: Record<string, ApiGender> = {
@@ -52,6 +62,38 @@ function toNumberOrUndefined(v: any): number | undefined {
   if (v === '' || v == null) return undefined;
   const n = Number(v);
   return Number.isFinite(n) ? n : undefined;
+}
+
+function toCityCode(v: any): CityCode | undefined {
+  if (!v || typeof v !== 'string') return undefined;
+  const normalized = v.trim().toUpperCase()
+    .replace(/İ/g, 'I')
+    .replace(/ı/g, 'I')
+    .replace(/Ş/g, 'S')
+    .replace(/ş/g, 'S')
+    .replace(/Ç/g, 'C')
+    .replace(/ç/g, 'C')
+    .replace(/Ğ/g, 'G')
+    .replace(/ğ/g, 'G')
+    .replace(/Ü/g, 'U')
+    .replace(/ü/g, 'U')
+    .replace(/Ö/g, 'O')
+    .replace(/ö/g, 'O');
+  
+  // Check if it's a valid city code
+  const validCities: CityCode[] = [
+    'ADANA','ADIYAMAN','AFYONKARAHISAR','AGRI','AMASYA','ANKARA','ANTALYA','ARTVIN','AYDIN',
+    'BALIKESIR','BILECIK','BINGOL','BITLIS','BOLU','BURDUR','BURSA',
+    'CANAKKALE','CANKIRI','CORUM','DENIZLI','DIYARBAKIR','EDIRNE','ELAZIG','ERZINCAN','ERZURUM',
+    'ESKISEHIR','GAZIANTEP','GIRESUN','GUMUSHANE','HAKKARI','HATAY','ISPARTA','MERSIN','ISTANBUL','IZMIR',
+    'KARS','KASTAMONU','KAYSERI','KIRKLARELI','KIRSEHIR','KOCAELI','KONYA','KUTAHYA','MALATYA','MANISA',
+    'KAHRAMANMARAS','MARDIN','MUGLA','MUS','NEVSEHIR','NIGDE','ORDU','RIZE','SAKARYA','SAMSUN','SIIRT','SINOP',
+    'SIVAS','TEKIRDAG','TOKAT','TRABZON','TUNCELI','SANLIURFA','USAK','VAN','YOZGAT','ZONGULDAK',
+    'AKSARAY','BAYBURT','KARAMAN','KIRIKKALE','BATMAN','SIRNAK','BARTIN','ARDAHAN','IGDIR','YALOVA',
+    'KARABUK','KILIS','OSMANIYE','DUZCE'
+  ];
+  
+  return validCities.includes(normalized as CityCode) ? normalized as CityCode : undefined;
 }
 
 function toStringArray(v: any): string[] | undefined {
@@ -92,11 +134,28 @@ export class CreateTalentProfileDto {
   @IsDateString()
   dateOfBirth?: string;
 
+  @IsOptional()
   @IsEnum(['MALE', 'FEMALE'])
-  gender: 'MALE' | 'FEMALE';
+  gender?: 'MALE' | 'FEMALE';
 
+  // Dual city fields
+  @IsOptional()
   @IsString()
-  city: string;
+  city_label?: string;
+
+  @IsOptional()
+  @IsIn([
+    'ADANA','ADIYAMAN','AFYONKARAHISAR','AGRI','AMASYA','ANKARA','ANTALYA','ARTVIN','AYDIN',
+    'BALIKESIR','BILECIK','BINGOL','BITLIS','BOLU','BURDUR','BURSA',
+    'CANAKKALE','CANKIRI','CORUM','DENIZLI','DIYARBAKIR','EDIRNE','ELAZIG','ERZINCAN','ERZURUM',
+    'ESKISEHIR','GAZIANTEP','GIRESUN','GUMUSHANE','HAKKARI','HATAY','ISPARTA','MERSIN','ISTANBUL','IZMIR',
+    'KARS','KASTAMONU','KAYSERI','KIRKLARELI','KIRSEHIR','KOCAELI','KONYA','KUTAHYA','MALATYA','MANISA',
+    'KAHRAMANMARAS','MARDIN','MUGLA','MUS','NEVSEHIR','NIGDE','ORDU','RIZE','SAKARYA','SAMSUN','SIIRT','SINOP',
+    'SIVAS','TEKIRDAG','TOKAT','TRABZON','TUNCELI','SANLIURFA','USAK','VAN','YOZGAT','ZONGULDAK',
+    'AKSARAY','BAYBURT','KARAMAN','KIRIKKALE','BATMAN','SIRNAK','BARTIN','ARDAHAN','IGDIR','YALOVA',
+    'KARABUK','KILIS','OSMANIYE','DUZCE'
+  ])
+  city_code?: CityCode;
 
   @IsOptional()
   @IsString()
@@ -201,10 +260,25 @@ export class UpdateTalentProfileDto {
   @Length(0, 1000)
   bio?: string;
 
+  // Dual city fields
   @IsOptional()
   @Transform(({ value }) => String(value ?? '').trim() || undefined)
   @IsString()
-  city?: string;
+  city_label?: string;
+
+  @IsOptional()
+  @IsIn([
+    'ADANA','ADIYAMAN','AFYONKARAHISAR','AGRI','AMASYA','ANKARA','ANTALYA','ARTVIN','AYDIN',
+    'BALIKESIR','BILECIK','BINGOL','BITLIS','BOLU','BURDUR','BURSA',
+    'CANAKKALE','CANKIRI','CORUM','DENIZLI','DIYARBAKIR','EDIRNE','ELAZIG','ERZINCAN','ERZURUM',
+    'ESKISEHIR','GAZIANTEP','GIRESUN','GUMUSHANE','HAKKARI','HATAY','ISPARTA','MERSIN','ISTANBUL','IZMIR',
+    'KARS','KASTAMONU','KAYSERI','KIRKLARELI','KIRSEHIR','KOCAELI','KONYA','KUTAHYA','MALATYA','MANISA',
+    'KAHRAMANMARAS','MARDIN','MUGLA','MUS','NEVSEHIR','NIGDE','ORDU','RIZE','SAKARYA','SAMSUN','SIIRT','SINOP',
+    'SIVAS','TEKIRDAG','TOKAT','TRABZON','TUNCELI','SANLIURFA','USAK','VAN','YOZGAT','ZONGULDAK',
+    'AKSARAY','BAYBURT','KARAMAN','KIRIKKALE','BATMAN','SIRNAK','BARTIN','ARDAHAN','IGDIR','YALOVA',
+    'KARABUK','KILIS','OSMANIYE','DUZCE'
+  ])
+  city_code?: CityCode;
 
   @IsOptional()
   @Transform(({ value }) => String(value ?? '').trim() || undefined)

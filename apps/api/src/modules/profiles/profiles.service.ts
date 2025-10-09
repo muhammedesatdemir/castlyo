@@ -34,6 +34,36 @@ export class ProfilesService {
     @Inject('DRIZZLE') private readonly database: any,
   ) {}
 
+  // Normalize Turkish city labels to enum codes using slug-like rules
+  private normalizeCity(label?: string | null): (any) /* CityCode | null */ {
+    if (!label) return null;
+    const slug = String(label)
+      .trim()
+      .toLowerCase()
+      .replace(/ğ/g,'g').replace(/ü/g,'u').replace(/ş/g,'s')
+      .replace(/ı/g,'i').replace(/ö/g,'o').replace(/ç/g,'c')
+      .replace(/[^a-z0-9]+/g,'');
+
+    const map: Record<string, string> = {
+      adana:'ADANA', adiyaman:'ADIYAMAN', afyonkarahisar:'AFYONKARAHISAR', agri:'AGRI', amasya:'AMASYA',
+      ankara:'ANKARA', antalya:'ANTALYA', artvin:'ARTVIN', aydin:'AYDIN', balikseir:'BALIKESIR', balikesir:'BALIKESIR',
+      bilecik:'BILECIK', bingol:'BINGOL', bitlis:'BITLIS', bolu:'BOLU', burdur:'BURDUR', bursa:'BURSA',
+      canakkale:'CANAKKALE', cankiri:'CANKIRI', corum:'CORUM', denizli:'DENIZLI', diyarbakir:'DIYARBAKIR',
+      edirne:'EDIRNE', elazig:'ELAZIG', erzincan:'ERZINCAN', erzurum:'ERZURUM', eskisehir:'ESKISEHIR',
+      gaziantep:'GAZIANTEP', giresun:'GIRESUN', gumushane:'GUMUSHANE', hakkari:'HAKKARI', hatay:'HATAY',
+      isparta:'ISPARTA', mersin:'MERSIN', istanbul:'ISTANBUL', izmir:'IZMIR', kars:'KARS', kastamonu:'KASTAMONU',
+      kayseri:'KAYSERI', kirklareli:'KIRKLARELI', kirsehir:'KIRSEHIR', kocaeli:'KOCAELI', konya:'KONYA',
+      kutahya:'KUTAHYA', malatya:'MALATYA', manisa:'MANISA', kahramanmaras:'KAHRAMANMARAS', mardin:'MARDIN',
+      mugla:'MUGLA', mus:'MUS', nevsehir:'NEVSEHIR', nigde:'NIGDE', ordu:'ORDU', rize:'RIZE', sakarya:'SAKARYA',
+      samsun:'SAMSUN', siirt:'SIIRT', sinop:'SINOP', sivas:'SIVAS', tekirdag:'TEKIRDAG', tokat:'TOKAT',
+      trabzon:'TRABZON', tunceli:'TUNCELI', sanliurfa:'SANLIURFA', usak:'USAK', van:'VAN', yozgat:'YOZGAT',
+      zonguldak:'ZONGULDAK', aksaray:'AKSARAY', bayburt:'BAYBURT', karaman:'KARAMAN', kirikkale:'KIRIKKALE',
+      batman:'BATMAN', sirnak:'SIRNAK', bartin:'BARTIN', ardahan:'ARDAHAN', igdir:'IGDIR', yalova:'YALOVA',
+      karabuk:'KARABUK', kilis:'KILIS', osmaniye:'OSMANIYE', duzce:'DUZCE'
+    };
+    return map[slug] ?? null;
+  }
+
   private normalizeRelation(input: string): string {
     const x = input?.toLowerCase();
     if (x === 'baba') return 'father';
@@ -84,10 +114,17 @@ export class ProfilesService {
       throw new BadRequestException('Talent profile already exists');
     }
 
+    // Normalize city from label -> code (nullable if not matched)
+    const cityLabel = (profileData as any).city_label?.trim() || undefined;
+    const normalizedCode = this.normalizeCity(cityLabel);
+
     const newProfile = await this.database.insert(talentProfiles)
       .values({
         userId,
         ...profileData,
+        // Dual city model
+        cityLabel: cityLabel ?? null,
+        city: normalizedCode ?? null,
         specialties: profileData.specialties || [],
         country: profileData.country || 'TR',
       })
@@ -370,7 +407,10 @@ export class ProfilesService {
         userId, // Use only the JWT user ID
         firstName:     src.first_name     ?? profileData.firstName,
         lastName:      src.last_name      ?? profileData.lastName,
-        city:          src.city           ?? profileData.city,
+        // City dual fields
+        cityLabel:     src.city_label     ?? (profileData as any).city_label,
+        // city_code accepted but overridden by city_label normalization
+        city:          undefined,
         birthDate:     src.birth_date     ?? profileData.birthDate,
         gender:        src.gender         ?? profileData.gender,
         heightCm:      toNum(src.height_cm ?? profileData.heightCm ?? src.height ?? profileData.height),
@@ -392,6 +432,26 @@ export class ProfilesService {
 
       console.log('[SRV] normalized mappedData =', JSON.stringify(mappedData, null, 2));
 
+      // Apply city normalization
+      if (mappedData.cityLabel !== undefined) {
+        const code = this.normalizeCity(mappedData.cityLabel);
+        mappedData.city = code ?? null;
+      } else if ((src.city_code ?? (profileData as any)?.city_code) !== undefined) {
+        // Allow explicit code only if label absent
+        const code = String(src.city_code ?? (profileData as any)?.city_code).toUpperCase();
+        mappedData.city = [
+          'ADANA','ADIYAMAN','AFYONKARAHISAR','AGRI','AMASYA','ANKARA','ANTALYA','ARTVIN','AYDIN',
+          'BALIKESIR','BILECIK','BINGOL','BITLIS','BOLU','BURDUR','BURSA',
+          'CANAKKALE','CANKIRI','CORUM','DENIZLI','DIYARBAKIR','EDIRNE','ELAZIG','ERZINCAN','ERZURUM',
+          'ESKISEHIR','GAZIANTEP','GIRESUN','GUMUSHANE','HAKKARI','HATAY','ISPARTA','MERSIN','ISTANBUL','IZMIR',
+          'KARS','KASTAMONU','KAYSERI','KIRKLARELI','KIRSEHIR','KOCAELI','KONYA','KUTAHYA','MALATYA','MANISA',
+          'KAHRAMANMARAS','MARDIN','MUGLA','MUS','NEVSEHIR','NIGDE','ORDU','RIZE','SAKARYA','SAMSUN','SIIRT','SINOP',
+          'SIVAS','TEKIRDAG','TOKAT','TRABZON','TUNCELI','SANLIURFA','USAK','VAN','YOZGAT','ZONGULDAK',
+          'AKSARAY','BAYBURT','KARAMAN','KIRIKKALE','BATMAN','SIRNAK','BARTIN','ARDAHAN','IGDIR','YALOVA',
+          'KARABUK','KILIS','OSMANIYE','DUZCE'
+        ].includes(code as any) ? code : null;
+      }
+
       // Upsert (insert or update) - one record per user
       // Build update set object with only defined fields
       const updateSet: Record<string, any> = {
@@ -402,6 +462,7 @@ export class ProfilesService {
       if (mappedData.displayName !== undefined) updateSet.displayName = sql`EXCLUDED.display_name`;
       if (mappedData.firstName !== undefined) updateSet.firstName = sql`EXCLUDED.first_name`;
       if (mappedData.lastName !== undefined) updateSet.lastName = sql`EXCLUDED.last_name`;
+      if (mappedData.cityLabel !== undefined) updateSet.cityLabel = sql`EXCLUDED.city_label`;
       if (mappedData.city !== undefined) updateSet.city = sql`EXCLUDED.city`;
       if (mappedData.country !== undefined) updateSet.country = sql`EXCLUDED.country`;
       if (mappedData.bio !== undefined) updateSet.bio = sql`EXCLUDED.bio`;

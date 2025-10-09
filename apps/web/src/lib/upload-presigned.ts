@@ -78,18 +78,33 @@ export async function uploadFileWithPresigned(
     throw new Error(`Desteklenen dosya formatları: ${allowedExtensions.join(", ")}`);
   }
 
+  // Content-Type validation
+  const allowedTypes = purpose === "cv" 
+    ? ["application/pdf"] 
+    : ["image/jpeg", "image/png", "image/webp"];
+  
+  if (!allowedTypes.includes(file.type)) {
+    throw new Error(`Desteklenen dosya türleri: ${allowedTypes.join(", ")}`);
+  }
+
   const presigned = await getPresignedWithProfileFallbacks(file, profileId, purpose, folder);
 
-  // Backend yanıtı: { type: 'PUT', putUrl: string, fileUrl: string }
+  // Backend yanıtı: { type: 'PUT', putUrl: string, fileUrl: string, contentType: string }
   const putResponse = presigned as PresignedPut;
   if (putResponse.type === 'PUT' && putResponse.putUrl) {
-    console.log("[UPLOAD] Using PUT method");
+    console.log("[UPLOAD] Using PUT method with Content-Type:", putResponse.contentType);
     const put = await fetch(putResponse.putUrl, {
       method: "PUT",
-      headers: { "Content-Type": file.type || guessMime(file.name) },
+      headers: { 
+        "Content-Type": putResponse.contentType || file.type || guessMime(file.name) 
+      },
       body: file,
     });
-    if (!put.ok) throw new Error(`Dosya yüklenemedi (HTTP ${put.status})`);
+    if (!put.ok) {
+      const errorText = await put.text();
+      console.error("[UPLOAD] PUT failed:", put.status, errorText);
+      throw new Error(`Dosya yüklenemedi (HTTP ${put.status}): ${errorText}`);
+    }
     return putResponse.fileUrl;
   }
 

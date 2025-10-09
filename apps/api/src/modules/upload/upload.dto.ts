@@ -13,6 +13,7 @@ export class PresignDto {
   fileName!: string;
 
   @IsString()
+  @IsIn(['image/jpeg', 'image/png', 'image/webp', 'application/pdf'])
   fileType!: string;
 
   @IsEnum(UploadFolder)
