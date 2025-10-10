@@ -565,32 +565,18 @@ export default function ProfileClient({
         return;
       }
 
-      // Helper function to clean undefined values
-      const clean = <T extends Record<string, any>>(obj: T): Partial<T> => {
-        const o: any = {};
-        Object.entries(obj).forEach(([k, v]) => {
-          if (v === '' || v === undefined || v === null) return;
-          o[k] = v;
-        });
-        return o;
-      };
+      // Import the new API functions
+      const { createTalentProfile, savePhone } = await import('@/lib/profile-map');
 
-      // Helper function to convert phone to E.164
-      const toE164TRLocal = (cc: string, digits: string) => {
-        const d = (digits ?? '').replace(/\D/g,'');
-        if (!d) return undefined;
-        return `${cc}${d}`;
-      };
-
-      // Use the new profile-specific mapper to create properly formatted payload
-      const mapperInput = {
+      // Prepare form data for the new mapper
+      const formData = {
         firstName: form.firstName?.trim(),
         lastName: form.lastName?.trim(),
         city: form.city?.trim(),
         birthDate: form.birthDate, // Already in YYYY-MM-DD format
         gender: form.gender, // Keep as MALE/FEMALE (API format)
-        height: form.heightCm, // Pass as height, mapper will convert to height_cm
-        weight: form.weightKg, // Pass as weight, mapper will convert to weight_kg
+        heightCm: form.heightCm, // Pass as heightCm
+        weightKg: form.weightKg, // Pass as weightKg
         bio: form.bio?.trim(),
         experience: form.experience?.trim(),
         specialties: selectedSpecs?.length ? selectedSpecs : [],
@@ -598,47 +584,17 @@ export default function ProfileClient({
         cvUrl: form.resumeUrl,
       };
 
-      const profilePayload: any = profileFormUiToApi(mapperInput);
+      console.log('[ProfileSave] Form data:', formData);
 
-      // Add guardian data if user is minor
-      if (isMinorByDate(form.birthDate)) {
-        const guardianPhoneDigits = guardian.phoneDigits;
-        if (guardian.fullName.trim() || guardianPhoneDigits || guardian.relation || guardian.email.trim()) {
-          const guardianData: Record<string, any> = {};
-          if (guardian.fullName.trim()) guardianData.fullName = guardian.fullName.trim();
-          if (guardian.relation) guardianData.relation = guardian.relation;
-          if (guardianPhoneDigits) guardianData.phone = toE164TR(guardianPhoneDigits);
-          if (guardian.email.trim()) guardianData.email = guardian.email.trim();
-          if (guardian.consent !== undefined) {
-            guardianData.consent = guardian.consent;
-            guardianData.consentAccepted = guardian.consent;
-          }
-          if (Object.keys(guardianData).length) {
-            profilePayload.guardian = guardianData;
-          }
-        }
-      }
+      // 1) Create/update profile using the new API
+      const profileResult = await createTalentProfile(formData);
 
-      // Phone payload (user data)
-      const phonePayload = clean({
-        phone: toE164TR(form.phoneDigits),                      // "+90555..." veya undefined
-      });
-
-      console.log('[ProfileSave] Profile payload', profilePayload);
-      console.log('[ProfileSave] Phone payload', phonePayload);
-
-      // 1) Save profile data using the new secure API
-      const { saveMyProfile } = await import('@/features/profile/api');
-      const profileResult = await saveMyProfile(profilePayload);
-
-      // 2) Save phone data (if provided)
-      if (phonePayload.phone) {
-        const phoneRes = await apiFetch('/users/me', {
-          method: 'PUT',
-          json: phonePayload,
-        });
-        if (!phoneRes) {
-          console.warn('Phone update failed, but profile was saved');
+      // 2) Save phone data separately (if provided)
+      if (form.phoneDigits && form.phoneDigits.length === 10) {
+        try {
+          await savePhone(form.phoneDigits);
+        } catch (phoneError) {
+          console.warn('Phone update failed, but profile was saved:', phoneError);
         }
       }
 
@@ -663,7 +619,7 @@ export default function ProfileClient({
           cvUrl: form.resumeUrl,
           specialties: selectedSpecs,
         },
-        phone: toE164TR(form.phoneDigits),
+        phone: form.phoneDigits ? `+90${form.phoneDigits}` : initialProfile.phone,
         profilePhotoUrl: photoUrl,
       });
 
@@ -684,8 +640,8 @@ export default function ProfileClient({
         errorMsg = "Oturum süresi dolmuş. Lütfen tekrar giriş yapın.";
       } else if (errorMessage.includes('(404)')) {
         errorMsg = "Profil bulunamadı. Onboarding'i tamamlayın.";
-      } else if (errorMessage.includes('(400)') || errorMessage.includes('(422)')) {
-        errorMsg = "Lütfen alanları kontrol edin.";
+      } else if (errorMessage.includes('(400)') || errorMessage.includes('VALIDATION_FAILED')) {
+        errorMsg = "Lütfen alanları kontrol edin. " + errorMessage;
       } else if (errorMessage.includes('(500)') || errorMessage.includes('(502)') || errorMessage.includes('(503)')) {
         errorMsg = "Sunucu hatası. Lütfen daha sonra tekrar deneyin.";
       } else if ((error as any)?.body) {

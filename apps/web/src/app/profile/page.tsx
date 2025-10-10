@@ -54,94 +54,76 @@ const THEME = { light: "#F6E6C3", dark: "#962901", black: "#000000" };
 /* ---------- SWR fetcher ---------- */
 async function fetchProfileData(userRole?: string): Promise<Profile> {
   try {
+    // Import the new safe get function
+    const { safeGet } = await import('@/lib/profile-map');
+    
     // Role'e göre doğru endpoint'i seç
     const profileEndpoint = userRole === 'AGENCY' 
       ? '/api/proxy/api/v1/profiles/agency/me'
       : '/api/proxy/api/v1/profiles/talent/me';
     
-    const [uRes, pRes] = await Promise.all([
-      fetch('/api/proxy/api/v1/users/me', { credentials: 'include' }),
-      fetch(profileEndpoint, { credentials: 'include' }),
+    // Use safe get for both user and profile data
+    const [userResult, profileResult] = await Promise.all([
+      safeGet('/api/proxy/api/v1/users/me'),
+      safeGet(profileEndpoint),
     ]);
 
-    const user = uRes.ok ? await uRes.json() : {};
-    let profileRaw: any = {};
-    
-    // 404'u "profil yok" olarak ele al - hata değil
-    if (pRes.ok) {
-      const p = await pRes.json();
-      profileRaw = p && typeof p === 'object' && !Array.isArray(p) ? p : {};
-    } else if (pRes.status === 404) {
-      // Profil henüz oluşturulmamış - bu normal
-      console.debug('[ProfilePage] Profile not found (404) - user has no profile yet');
-      profileRaw = {};
-    } else if (!pRes.ok) {
-      // Gerçek hata durumu
-      console.error('[ProfilePage] Profile fetch error:', pRes.status, pRes.statusText);
-      // 404 değilse hata fırlat
-      if (pRes.status !== 404) {
-        throw new Error(`Profil yüklenemedi: ${pRes.status} ${pRes.statusText}`);
-      }
-      // 404 ise boş profil ile devam et
-      profileRaw = {};
-    }
+    const user = userResult.ok ? userResult.data : {};
+    const profileRaw = profileResult.ok ? profileResult.data : {};
 
-    const hasProfile = Object.keys(profileRaw).length > 0;
+    const hasProfile = profileResult.ok && Object.keys(profileRaw || {}).length > 0;
 
     console.info('[ProfilePage] API Response structure', {
-      hasUser: !!user?.id,
+      hasUser: userResult.ok,
       hasProfile,
       userKeys: Object.keys(user || {}),
       profileKeys: Object.keys(profileRaw || {}),
-      profileStatus: pRes.status,
+      profileStatus: profileResult.ok ? 200 : 404,
     });
 
     // Merge user and profile data with proper priority
     // Profile data takes priority for all fields, user data as fallback
     const combinedData = {
       // Start with user data as base
-      ...user,
+      ...(user || {}),
       // Profile data takes priority for all fields (profile > user > '')
-      first_name: profileRaw?.first_name ?? user?.first_name ?? '',
-      last_name: profileRaw?.last_name ?? user?.last_name ?? '',
-      email: user?.email ?? profileRaw?.email ?? '',
-      phone: profileRaw?.phone ?? user?.phone ?? '',
+      first_name: (profileRaw as any)?.first_name ?? (user as any)?.first_name ?? '',
+      last_name: (profileRaw as any)?.last_name ?? (user as any)?.last_name ?? '',
+      email: (user as any)?.email ?? (profileRaw as any)?.email ?? '',
+      phone: (profileRaw as any)?.phone ?? (user as any)?.phone ?? '',
       // Add all other profile fields
-      ...profileRaw,
+      ...(profileRaw || {}),
     };
 
     // Map API → UI (safe defaults)
     return mapApiToProfile(combinedData);
   } catch (error) {
     console.error('[ProfilePage] Fetch error:', error);
-    // 404 hatalarını fırlatma - boş profil döndür
-    if (error instanceof Error && (error.message.includes('404') || error.message.includes('Profile not found'))) {
-      return {
-        firstName: '',
-        lastName: '',
-        email: '',
-        phone: '',
-        role: null,
-        status: null,
-        company: null,
-        profilePhotoUrl: null,
-        professional: {
-          specialties: [],
-          bio: '',
-          experience: '',
-          cvUrl: null,
-        },
-        personal: {
-          city: '',
-          birthDate: null,
-          gender: '',
-          heightCm: undefined,
-          weightKg: undefined,
-          guardian: null,
-        },
-      } as Profile;
-    }
-    throw error;
+    // Return empty profile for any error
+    return {
+      firstName: '',
+      lastName: '',
+      email: '',
+      phone: '',
+      role: null,
+      status: null,
+      company: null,
+      profilePhotoUrl: null,
+      professional: {
+        specialties: [],
+        bio: '',
+        experience: '',
+        cvUrl: null,
+      },
+      personal: {
+        city: '',
+        birthDate: null,
+        gender: '',
+        heightCm: undefined,
+        weightKg: undefined,
+        guardian: null,
+      },
+    } as Profile;
   }
 }
 

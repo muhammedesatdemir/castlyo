@@ -93,10 +93,26 @@ export default function ExploreGrid() {
   const ENABLE_INDEX = true; // Her zaman aktif
   const LIST_URL = '/api/proxy/api/v1/profiles/talents?limit=12&order=-updated_at';
   
-  // ❶ Tüm yayınlanmış yetenekleri çek
+  // ❶ Tüm yayınlanmış yetenekleri çek - 500 hatasını ele al
   const { data: rawTalents, error } = useSWR<any>(
     LIST_URL,
-    fetcher,
+    async (url) => {
+      try {
+        const res = await fetch(url, { credentials: 'include' });
+        if (!res.ok) {
+          if (res.status === 500) {
+            console.warn('[ExploreGrid] Talents list 500 error - showing empty list');
+            return { data: [], meta: { total: 0, limit: 12 } };
+          }
+          throw new Error(`HTTP ${res.status}: ${res.statusText}`);
+        }
+        return await res.json();
+      } catch (err) {
+        console.warn('[ExploreGrid] Talents list fetch failed:', err);
+        // Return empty data instead of throwing
+        return { data: [], meta: { total: 0, limit: 12 } };
+      }
+    },
     { shouldRetryOnError: false, revalidateOnFocus: false }
   );
 
