@@ -32,8 +32,13 @@ export class UploadService {
 
   constructor(private configService: ConfigService) {
     this.bucketName = this.configService.get<string>('S3_BUCKET', 'castlyo-dev');
-    this.cdnUrl = this.configService.get<string>('CDN_URL', 'http://localhost:9000');
-    this.publicUrl = this.configService.get<string>('S3_PUBLIC_URL', 'http://localhost:9000');
+    
+    // Production'da S3, development'ta MinIO
+    const isProduction = process.env.NODE_ENV === 'production';
+    this.cdnUrl = this.configService.get<string>('CDN_URL', 
+      isProduction ? 'https://your-s3-bucket.amazonaws.com' : 'http://localhost:9000');
+    this.publicUrl = this.configService.get<string>('S3_PUBLIC_URL',
+      isProduction ? 'https://your-s3-bucket.amazonaws.com' : 'http://localhost:9000');
 
     const accessKeyId = this.configService.get<string>('S3_ACCESS_KEY');
     const secretAccessKey = this.configService.get<string>('S3_SECRET_KEY');

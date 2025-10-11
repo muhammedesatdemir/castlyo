@@ -41,8 +41,12 @@ class MockPaymentProvider implements PaymentProvider {
   ) {
     // In development, return a mock checkout URL
     const sessionId = `mock_session_${Date.now()}`;
+    const frontendUrl = process.env.FRONTEND_URL || 
+      (process.env.NODE_ENV === 'production' 
+        ? 'https://castlyo-web.onrender.com' 
+        : 'http://localhost:3000');
     return {
-      checkoutUrl: `http://localhost:3000/checkout/mock?session=${sessionId}&plan=${planId}&user=${userId}`,
+      checkoutUrl: `${frontendUrl}/checkout/mock?session=${sessionId}&plan=${planId}&user=${userId}`,
       sessionId,
     };
   }
@@ -119,10 +123,14 @@ export class PaymentsService {
       .returning();
 
     // Create checkout session with payment provider
+    const frontendUrl = this.configService.get('FRONTEND_URL') || 
+      (process.env.NODE_ENV === 'production' 
+        ? 'https://castlyo-web.onrender.com' 
+        : 'http://localhost:3000');
     const successUrl = checkoutData.successUrl || 
-      `${this.configService.get('FRONTEND_URL')}/payment/success`;
+      `${frontendUrl}/payment/success`;
     const cancelUrl = checkoutData.cancelUrl || 
-      `${this.configService.get('FRONTEND_URL')}/payment/cancel`;
+      `${frontendUrl}/payment/cancel`;
 
     const checkoutSession = await this.paymentProvider.createCheckoutSession(
       checkoutData.planId,

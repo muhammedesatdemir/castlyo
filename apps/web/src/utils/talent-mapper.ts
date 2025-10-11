@@ -89,7 +89,10 @@ const toAbsolute = (url?: string | null) => {
   try {
     // zaten absolute ise dokunma
     if (/^https?:\/\//i.test(url)) return url;
-    const base = process.env.NEXT_PUBLIC_S3_PUBLIC_URL || 'http://localhost:9000';
+    const base = process.env.NEXT_PUBLIC_S3_PUBLIC_URL || 
+      (process.env.NODE_ENV === 'production' 
+        ? 'https://your-s3-bucket.amazonaws.com' 
+        : 'http://localhost:9000');
     return `${base.replace(/\/+$/,'')}/${url.replace(/^\/+/, '')}`;
   } catch {
     return '';

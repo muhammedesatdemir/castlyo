@@ -61,13 +61,9 @@ async function bootstrap() {
   // CORS - Allow frontend domains
   const corsOrigins = process.env.CORS_ORIGIN 
     ? process.env.CORS_ORIGIN.split(',').map(origin => origin.trim())
-    : [
-        'http://localhost:3000',
-        'https://castlyo.com',
-        'https://www.castlyo.com',
-        'https://castlyo.onrender.com',
-        'https://castlyo-web.onrender.com'
-      ];
+    : process.env.NODE_ENV === 'production'
+      ? ['https://castlyo-web.onrender.com', 'https://castlyo.com', 'https://www.castlyo.com']
+      : ['http://localhost:3000'];
 
   app.enableCors({
     origin: corsOrigins,

@@ -4,7 +4,10 @@ import { NextRequest, NextResponse } from 'next/server';
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
-const API_BASE = process.env.API_BASE_URL ?? process.env.API_PROXY_TARGET ?? process.env.API_INTERNAL_URL ?? process.env.INTERNAL_API_URL ?? 'http://localhost:3001';
+const API_BASE = process.env.API_PROXY_TARGET || 
+  (process.env.NODE_ENV === 'production' 
+    ? 'https://castlyo.onrender.com' 
+    : 'http://localhost:3001');
 
 function rewriteSetCookieForProduction(raw: string): string {
   // Cookie ad/değer + attribute'ları ayır

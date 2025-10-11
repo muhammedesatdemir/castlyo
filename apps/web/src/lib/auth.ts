@@ -1,7 +1,10 @@
 import Credentials from "next-auth/providers/credentials";
 import type { NextAuthOptions } from "next-auth";
 
-const API = process.env.INTERNAL_API_URL ?? "http://castlyo-api:3001";
+const API = process.env.INTERNAL_API_URL || 
+  (process.env.NODE_ENV === 'production' 
+    ? 'https://castlyo.onrender.com' 
+    : 'http://castlyo-api:3001');
 
 export const authOptions: NextAuthOptions = {
   session: { strategy: "jwt" },
