@@ -140,7 +140,10 @@ export function mapUISpecialtiesToApi(specialties: string[]): string[] {
 
 // Helper to create public URL from S3 key
 export function createPublicUrl(key: string): string {
-  const baseUrl = process.env.NEXT_PUBLIC_S3_PUBLIC_URL || 'http://localhost:9000';
+  const baseUrl = process.env.NEXT_PUBLIC_S3_PUBLIC_URL || 
+    (process.env.NODE_ENV === 'production' 
+      ? 'https://your-s3-bucket.amazonaws.com' 
+      : 'http://localhost:9000');
   const bucket = process.env.NEXT_PUBLIC_S3_BUCKET || 'castlyo-dev';
   return `${baseUrl}/${bucket}/${key}`;
 }

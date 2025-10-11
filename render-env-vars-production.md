@@ -62,6 +62,7 @@ NEXT_PUBLIC_S3_BUCKET=castlyo-prod
 
 # Frontend URLs
 FRONTEND_URL=https://castlyo-web.onrender.com
+NEXT_PUBLIC_WEB_URL=https://castlyo-web.onrender.com
 ```
 
 ## 🎯 DEPLOYMENT SIRASI

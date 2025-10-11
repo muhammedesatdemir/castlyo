@@ -7,5 +7,8 @@ export const INTERNAL_API_URL =
   process.env.INTERNAL_API_URL ||
   'http://api:3001';
 
-export const NEXTAUTH_URL = process.env.NEXTAUTH_URL || 'http://localhost:3000';
+export const NEXTAUTH_URL = process.env.NEXTAUTH_URL || 
+  (process.env.NODE_ENV === 'production'
+    ? 'https://castlyo-web.onrender.com'
+    : 'http://localhost:3000');
 export const NEXTAUTH_SECRET = process.env.NEXTAUTH_SECRET || 'dev-nextauth-secret-change-in-production';

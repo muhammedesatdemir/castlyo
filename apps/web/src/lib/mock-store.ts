@@ -59,7 +59,10 @@ class MockStore {
     const hash = this.sha(raw)
     this.tokens.set(hash, { userId, expiresAt: Date.now() + ttlMs, used: false })
 
-    const url = `${process.env.NEXT_PUBLIC_WEB_URL || 'http://localhost:3000'}/auth/verify?token=${raw}`
+    const url = `${process.env.NEXT_PUBLIC_WEB_URL || 
+      (process.env.NODE_ENV === 'production' 
+        ? 'https://castlyo-web.onrender.com' 
+        : 'http://localhost:3000')}/auth/verify?token=${raw}`
 
     if (!isProd) {
       // Prod'da ham token/hashing detaylarını loglamıyoruz
